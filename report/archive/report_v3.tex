@@ -144,7 +144,7 @@ caliper check is pending.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig2_dataset.pdf}
+\includegraphics[width=\textwidth]{../figures/fig2_dataset.pdf}
 \caption{Dataset design. (a) Head-camera frames at 1, 8 and 22\,s of a held-out episode (order BPR). (b) Episodes per stacking order, as collected
 (main/early domains) and after processing (train/val). (c) Episode-level QA funnel.}
 \label{fig:dataset}
@@ -281,7 +281,7 @@ not interpret differences between them.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig4_eval.pdf}
+\includegraphics[width=\textwidth]{../figures/fig4_eval.pdf}
 \caption{Offline evaluation. (a) Geo score over training on all versus moving held-out samples; the pre-registered rule
 selects 160k. (b) Joint MAE at $k{=}30$ on moving samples, policy versus zero-motion predictor. (c) Prompt swap on the final
 checkpoint: prediction spread across the six order instructions (same seed) versus across three noise seeds (true instruction).}
@@ -385,7 +385,7 @@ cut from; the full videos are in the repository.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.8\textwidth]{figures/fig7_mast3r_trajectories.png}
+\includegraphics[width=0.8\textwidth]{../figures/fig7_mast3r_trajectories.png}
 \caption{MASt3R-SLAM wrist trajectories of an HRL80 stacking take (order PRB). Left: head camera and both wrist fisheye
 cameras. Right: trajectories gravity-aligned (z up), each arm's origin at its start pose, current tool axes drawn (x red,
 y green, z blue), metric scale from the IMU; below, both grippers (1 = open). Videos of three takes (PRB, RBP, PBR):
@@ -473,7 +473,7 @@ scratch run), so they are not a transfer comparison and we do not report one.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig5_ego_init_loss.pdf}
+\includegraphics[width=\textwidth]{../figures/fig5_ego_init_loss.pdf}
 \caption{R312c fine-tuning from the base model versus from the 50k ego checkpoint, same data, schedule and seed. (a) Training
 loss. (b) Ratio of the two; values below 1 favour the ego initialization. Training loss only.}
 \label{fig:egoinit}
@@ -516,7 +516,7 @@ PnP-valid and the PnP/IMU ratio has a median of 1.062 (p16--p84 0.959--1.274; Fi
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig6_cube_scale.pdf}
+\includegraphics[width=\textwidth]{../figures/fig6_cube_scale.pdf}
 \caption{Per-episode metric scale of the MASt3R-SLAM trajectory from the IMU and from cube PnP. (a) HRL80 stacking takes,
 where the IMU scale is reliable. (b) HRA\_red approach takes: the IMU scale scatters around zero.}
 \label{fig:cube}
