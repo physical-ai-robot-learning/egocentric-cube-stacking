@@ -14,7 +14,7 @@ class Kin:
         from handumi.robots.registry import load_embodiment
         cfg = dict(IK); cfg.update(ik_cfg or {})
         self.rt = load_embodiment("rebot_b601")
-        w = dataclasses.replace(self.rt.config.ik_weights, max_joint_delta=float(cfg["max_joint_delta"]), ori_weight=float(cfg["ori_weight"]))
+        w = dataclasses.replace(self.rt.config.ik_weights, max_joint_delta=(None if cfg["max_joint_delta"] is None else float(cfg["max_joint_delta"])), ori_weight=float(cfg["ori_weight"]))
         self.solver = self.rt.solver_cls(config=w)
         self.home_q = self.rt.home_q().astype(np.float32); self._names = list(self.solver.joint_names); self._arm = {}
         for s in ("left", "right"):

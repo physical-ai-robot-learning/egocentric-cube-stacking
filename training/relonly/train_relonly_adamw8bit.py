@@ -1,10 +1,10 @@
-"""[2026-10-02] AdamW8bit variant of train_rel16_relonly.py: torch.optim.AdamW -> bitsandbytes AdamW8bit (bnb 0.45.5 from
-${REMOTE_HOME}/pylib_bnb, NOT installed into the holobrain env), then runs the unchanged REL-only entry (runpy).
+"""[2026-10-02 user] AdamW8bit variant of train_rel16_relonly.py: torch.optim.AdamW -> bitsandbytes AdamW8bit (bnb 0.45.5 from
+/srv/data/johann/relonly/pylib_bnb, NOT installed into the holobrain env), then runs the unchanged REL-only entry (runpy).
 Checkpoint fix: bnb keeps state['step'] as a python int, which lerobot's safetensors optimizer save rejects
 ("Key state/0/step ... expected torch.Tensor"). state_dict() returns COPIES of the per-param state with step as a 0-d int64
 tensor (the live state is not touched); load_state_dict() turns it back into an int before bnb loads it."""
 import os, runpy, sys
-sys.path.insert(0, "${REMOTE_HOME}/pylib_bnb")
+sys.path.insert(0, "/srv/data/johann/relonly/pylib_bnb")
 import torch, bitsandbytes as bnb
 
 
@@ -43,5 +43,5 @@ class AdamW8bitShim(bnb.optim.AdamW8bit):
 
 
 torch.optim.AdamW = AdamW8bitShim
-sys.argv[0] = "${REMOTE_HOME}/umi_bridge/umi76/train_rel16_relonly.py"
+sys.argv[0] = "/srv/data/johann/relonly/code/train_rel16_relonly.py"
 runpy.run_path(sys.argv[0], run_name="__main__")
