@@ -1,0 +1,34 @@
+# Checks that need no hardware, GPU, recorded data or private checkpoints. Only subsets that pass on a clean
+# Python 3.12 install are run:
+#   - tests/collector is not run: 12 known failures + 3 errors (mock-gripper gate, camera listing, m15 UI), also on main.
+#   - tests/experimental/vteleop is not run: collection fails (ImportError gripper_cmd_from_g), also on main.
+#   - test_aero_backends.py is not run: it needs torch + dex-retargeting (the `aero` extra).
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: System libraries for OpenCV / Qt wheels
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1 libxkbcommon0
+      - name: Byte-compile every Python file
+        run: python -m compileall -q -x '/\.git/' .
+      - name: Claims check (every number in the report and README)
+        run: |
+          pip install pyyaml
+          python analysis/verify_claims.py
+      - name: Install
+        run: pip install -e ".[collector,experimental,dev]" rosbags
+      - name: Tests
+        run: |
+          pytest -q tests/cart20
+          pytest -q tests/experimental/v0
+          pytest -q tests/experimental/teleop --ignore=tests/experimental/teleop/test_aero_backends.py
