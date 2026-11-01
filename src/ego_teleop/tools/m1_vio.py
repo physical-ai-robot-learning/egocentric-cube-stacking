@@ -178,7 +178,7 @@ def main(argv=None) -> int:
     ap.add_argument("--mode", default="production", choices=["production", "calibration"], help="openvins: calibration = optimise extrinsic + time offset and trace them")
     ap.add_argument("--segments", default=None, help='protocol segments, relative seconds: "S0:0-10,S1:10-25,..."')
     ap.add_argument("--segmented", action="store_true", help="segmented relative VIO: IMU-static windows hold (delta p = 0), moving segments re-init the backend; outputs to derived/pose_<backend>_seg")
-    ap.add_argument("--protocol", default=str(Path(__file__).resolve().parents[2] / "configs/ego_teleop/m1_protocol.yaml"))
+    ap.add_argument("--protocol", default=str(Path(__file__).resolve().parents[3] / "configs/ego_teleop/m1_protocol.yaml"))
     a = ap.parse_args(argv)
     cal_dir = Path(a.cal_dir) if a.cal_dir else None
     if a.synth_cal: cal_dir = synth_cal_dir(Path(a.episode), a.side, cal_dir or Path(a.episode) / "_synth_calibration")

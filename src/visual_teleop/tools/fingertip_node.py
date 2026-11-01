@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import yaml
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def find_camera(name: str, max_index: int = 6) -> int:
@@ -104,7 +104,7 @@ def main() -> None:
     ap.add_argument("--cam-index", type=int, default=None, help="OpenCV index of the wrist camera (ffmpeg numbering differs!)")
     ap.add_argument("--conf", type=float, default=None, help="override detector confidence (diagnostics only)")
     a = ap.parse_args()
-    c = yaml.safe_load((ROOT / "visual_teleop/config/teleop_rebot.yaml").read_text())
+    c = yaml.safe_load((ROOT / "src/visual_teleop/config/teleop_rebot.yaml").read_text())
     pub = Publisher(c["link"]["pinch_port"]); stop = threading.Event(); rec = Path(a.record).expanduser() if a.record else None
     th = [threading.Thread(target=run_side, args=(s, c["cameras"][f"{s}_wrist"], c["cameras"]["wrist_image_wh"], pub, stop, rec, dict(c["gripper"]["detector"], **({"conf": a.conf} if a.conf is not None else {})), a.cam_index),
                            daemon=True) for s in a.sides]

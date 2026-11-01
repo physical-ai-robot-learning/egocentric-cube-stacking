@@ -25,7 +25,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "scripts"))
 from handumi_collector.pose.rgbd_io import RgbdEpisode                      # noqa: E402
 import handumi_body_track as B                                              # noqa: E402
 

@@ -32,7 +32,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 
 from handumi_collector.pose.rgbd_io import RgbdEpisode, backproject          # noqa: E402
 from handumi_collector.pose.episode_io import RawEpisode                     # noqa: E402

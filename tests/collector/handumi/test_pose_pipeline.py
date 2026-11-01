@@ -17,7 +17,7 @@ from handumi_collector.pose.estimator import BackendUnavailable
 from handumi_collector.pose.run import process_episode
 from handumi_collector.tools.synth_episode import INTRINSICS, synth_episode
 
-PKG = Path(__file__).resolve().parents[2] / "handumi_collector"
+PKG = Path(__file__).resolve().parents[3] / "src" / "handumi_collector"
 
 
 @pytest.fixture(scope="module")

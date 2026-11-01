@@ -27,7 +27,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent)); sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 DROP_FRACTION = 0.45      # a covered lens loses far more than this; a shadow or a passing hand does not
 MAX_OTHER_DROP = 0.15     # the uncovered stream must stay put, or the two are not independent

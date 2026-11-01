@@ -42,7 +42,7 @@ from handumi_collector.pose.episode_io import RawEpisode
 from handumi_collector.pose.calibration import SideCalibration
 from handumi_collector.pose.backends.segmented import static_windows, DEFAULTS as SEG_DEFAULTS
 
-CFG_PATH = Path(__file__).resolve().parents[2] / "configs" / "handumi" / "retarget_shakedown.yaml"
+CFG_PATH = Path(__file__).resolve().parents[3] / "configs" / "handumi" / "retarget_shakedown.yaml"
 SIDES = ("left", "right")
 _CLUSTERS: dict = {}          # (session, side) -> session_grip_clusters, computed once per run
 

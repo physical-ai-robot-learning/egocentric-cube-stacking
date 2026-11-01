@@ -23,7 +23,7 @@ import numpy as np
 from .. import config as vcfg
 from ..imu.imu_reader import ImuReader, open_teensy
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 PROTOCOL = [   # (seconds, spoken instruction)
     (20, "유미를 카메라 가까이에서 천천히 움직이세요"), (20, "이번에는 카메라에서 멀리, 작업대 끝 쪽에서 움직이세요"),
     (20, "왼쪽 오른쪽, 위 아래로 크게 움직이세요"), (20, "제자리에서 집게 축을 중심으로 비트세요"), (20, "집게 끝을 위아래로 끄덕이세요"),

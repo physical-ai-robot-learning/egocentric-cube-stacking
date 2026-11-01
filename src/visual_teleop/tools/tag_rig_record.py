@@ -20,7 +20,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 TAG_IDS = (200, 201, 202, 210, 211, 212, 220, 221, 222, 230, 231, 232)   # 10-17: UMI R 200-202, UMI L 210-212, robot R 220-222, robot L 230-232
 
 

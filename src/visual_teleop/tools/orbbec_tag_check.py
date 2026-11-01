@@ -8,7 +8,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 RIGHT, LEFT = (200, 201, 202), (210, 211, 212)
 
 

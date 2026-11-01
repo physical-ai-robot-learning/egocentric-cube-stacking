@@ -32,7 +32,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation, Slerp
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 
 G = 9.80665
 ACCEL_GAIN = 0.02          # per-sample pull of the gravity correction; 0.02 at ~200 Hz is a ~0.25 s time constant

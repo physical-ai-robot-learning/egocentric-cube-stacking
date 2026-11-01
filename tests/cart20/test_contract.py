@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 from ego_cart20.config import AUX, ST_GRIP, UMI_DT
 from ego_cart20.convert import convert_episode
 from ego_cart20.geometry.rotation6d import (matrix_to_quaternion, matrix_to_rotation_6d, quaternion_to_matrix,

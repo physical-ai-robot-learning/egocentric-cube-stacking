@@ -17,7 +17,7 @@ from scipy.spatial.transform import Rotation as R
 from .. import config as vcfg
 from .wrist_frontend_check import lock_exposure, say
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 VIO_PROTO = [   # DIY tracker spec tests A-E (~72 s)
     (10, "A. 십 초 동안 가만히 들고 계세요"),
     (4, "B. 자를 따라 정확히 십 센티 앞으로 옮기고 멈추세요"), (4, "다시 십 센티 뒤로 옮기고 멈추세요"), (4, "앞으로 십 센티, 멈추세요"), (4, "뒤로 십 센티, 멈추세요"),

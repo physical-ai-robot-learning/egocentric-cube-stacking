@@ -27,7 +27,7 @@ import numpy as np
 import cv2
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from handumi_collector.pose.rgbd_io import RgbdEpisode                         # noqa: E402
 
 BAND = (0.25, 0.80)          # working volume in front of the head camera

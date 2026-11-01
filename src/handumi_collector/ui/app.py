@@ -205,7 +205,7 @@ class MainWindow(W.QMainWindow):
             try:
                 import yaml as _y
                 from ..robotlike.start_match import StartMatcher
-                c = pathlib.Path(__file__).resolve().parents[2] / "configs/calibration"; fy = _y.safe_load(open(c / "fisheye_right_v002.yaml"))
+                c = pathlib.Path(__file__).resolve().parents[3] / "configs/calibration"; fy = _y.safe_load(open(c / "fisheye_right_v002.yaml"))
                 self.sm = StartMatcher(fy["K"], fy["D"], fy["image_size"], ref_height_mm=200.0)   # scale: start camera height above the table (assumed 20 cm; relative check)
                 ci = _y.safe_load(open(c / "camera_imu_right_v002.yaml")); self._R_ci = np.array(ci["T_camera_imu"], float)[:3, :3]
                 # Kalibr extrinsic is ~18 deg off about cam x (2026-10-06: cube-axis err 17.8 -> 3.4 deg, SLAM up drift 17.2 -> 4.9 deg)

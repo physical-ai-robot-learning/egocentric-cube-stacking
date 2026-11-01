@@ -10,7 +10,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 # ROI in ONE preview view (800 x 450, = the tracker's 960 x 540 gray frame resized); jaws sit bottom-centre in both cameras
 ROI = (slice(180, 450), slice(200, 760))
 DS = 2

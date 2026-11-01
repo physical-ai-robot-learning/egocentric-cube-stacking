@@ -38,7 +38,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1])); sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from ego_collector.camera.calibration import CharucoSpec, detect_charuco                  # noqa: E402
 from handumi_collector.pose.calibration import write_fisheye                              # noqa: E402
 from handumi_collector.tools.calibrate_fisheye import (DIST_BINS, DIST_MID, DIST_NEAR,    # noqa: E402

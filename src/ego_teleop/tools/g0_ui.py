@@ -22,7 +22,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import g0_mount_qual as G
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 RUN_DIR = REPO / "runs" / "g0_ui"
 DEFAULT_ROOT = REPO / "datasets" / "human_handumi_raw" / "G0MOUNT"
 SEG_RE = re.compile(r"^\s{2}(\w+)\s+([\d.]+)s\s+(.*)$")

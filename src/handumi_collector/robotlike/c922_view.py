@@ -12,7 +12,7 @@ class C922View:
     def __init__(self) -> None:
         import json, yaml
         from pathlib import Path
-        c = Path(__file__).resolve().parents[2] / "configs/calibration"
+        c = Path(__file__).resolve().parents[3] / "configs/calibration"
         y = yaml.safe_load(open(c / "fisheye_right_v002.yaml")); self.K = np.array(y["K"], np.float64); self.D = np.array(y["D"], np.float64).reshape(4, 1)
         self.size = tuple(int(x) for x in y["image_size"])
         r = json.load(open(c / "robot_right_wrist_c922_v001.json")); self.Kr = np.array(r["K"], np.float64); self.Dr = np.array(r["dist"], np.float64)

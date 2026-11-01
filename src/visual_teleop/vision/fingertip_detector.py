@@ -79,7 +79,7 @@ class JawTapeDetector:
 
     def __init__(self, undistort=None, **_ignored) -> None:
         import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts" / "umi_fusion"))
+        sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts" / "umi_fusion"))
         self.prev = {0: None, 1: None}                   # red_mask = scripts/umi_fusion/jaw_redx (10-13 v3), imported in detect
 
     def detect(self, image_bgr: np.ndarray) -> FingertipResult:

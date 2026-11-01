@@ -57,7 +57,7 @@ def main() -> None:
             from pathlib import Path
             cap = cv2.VideoCapture(a.video_index)
             if cap.isOpened():
-                vp = Path(__file__).resolve().parents[2] / "datasets" / "tcp_check" / time.strftime("tcp_%H%M%S.mp4"); vp.parent.mkdir(parents=True, exist_ok=True)
+                vp = Path(__file__).resolve().parents[3] / "datasets" / "tcp_check" / time.strftime("tcp_%H%M%S.mp4"); vp.parent.mkdir(parents=True, exist_ok=True)
                 stop_v = threading.Event(); frames = []
                 def grab():
                     while not stop_v.is_set():

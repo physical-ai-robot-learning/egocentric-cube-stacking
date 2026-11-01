@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 from visual_teleop.tools.wrist_frontend_check import lock_exposure
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 
 class Grab(threading.Thread):

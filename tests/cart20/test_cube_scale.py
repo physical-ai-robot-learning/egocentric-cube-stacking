@@ -1,7 +1,7 @@
 """Known-size cube scale: ray-cast a red cube of known edge into a pointmap and recover the scale (incl. Sim3 s_k)."""
 import pathlib, sys
 import numpy as np
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 from ego_cart20 import cube_scale as CS
 from scipy.spatial.transform import Rotation
 

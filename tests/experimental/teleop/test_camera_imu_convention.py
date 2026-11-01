@@ -16,7 +16,7 @@ from ego_teleop.transforms.calibration import load_teleop_calibration
 from ego_teleop.transforms.se3 import inv_T
 from ego_teleop.tracking.backends.openvins import write_openvins_config
 
-CAL_DIR = Path(__file__).resolve().parents[2] / "configs" / "calibration"
+CAL_DIR = Path(__file__).resolve().parents[3] / "configs" / "calibration"
 # Kalibr, right wrist, 2026-09-16 (calib_right-camchain-imucam.yaml). IMU expressed in the CAMERA frame, metres.
 KALIBR_T_CAM_IMU = np.array([[-0.9941856423076082, -0.09761961776862138, 0.0454457792992612, -0.04765307471729195],
                              [-0.09065814574395467, 0.5310952136417725, -0.8424482029520083, 0.07698258355630894],

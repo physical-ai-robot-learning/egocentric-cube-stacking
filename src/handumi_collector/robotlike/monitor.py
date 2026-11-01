@@ -25,7 +25,7 @@ import yaml
 from ..devices.base import SampleBuffer, now_ns
 
 log = logging.getLogger("handumi.robotlike")
-PROTOCOL_DIR = Path(__file__).resolve().parents[2] / "configs" / "handumi"
+PROTOCOL_DIR = Path(__file__).resolve().parents[3] / "configs" / "handumi"
 
 
 def load_protocol(name_or_path: str) -> dict:

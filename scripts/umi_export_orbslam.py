@@ -16,7 +16,7 @@ Two details that are easy to get wrong and are handled explicitly:
 import argparse, json, pathlib, sys
 import numpy as np, yaml, cv2
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1])); sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "src"))
 from handumi_collector.pose.episode_io import RawEpisode
 from handumi_collector.pose.timing import fit_device_to_host, imu_host_times_ns
 

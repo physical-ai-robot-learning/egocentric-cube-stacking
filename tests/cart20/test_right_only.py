@@ -2,7 +2,7 @@
 Run: ~/xvla-mac/bin/python tests/test_right_only.py"""
 import json, pathlib, sys, tempfile
 import numpy as np
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 from ego_cart20.config import UMI_DT
 from ego_cart20.geometry.rotation6d import matrix_to_quaternion
 from ego_cart20.io.raw_episode_loader import save_raw_episode

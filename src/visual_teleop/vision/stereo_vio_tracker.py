@@ -23,7 +23,7 @@ import numpy as np
 import yaml
 from scipy.spatial.transform import Rotation as R
 
-ROOT = Path(__file__).resolve().parents[2]; sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "scripts"))
+ROOT = Path(__file__).resolve().parents[3]; sys.path.insert(0, str(ROOT / "src")); sys.path.insert(0, str(ROOT / "scripts"))
 from stereo_openvins_eval import write_config                        # noqa: E402
 import stereo_openvins_eval as _ove, stereo_basalt_eval as _bse         # noqa: E402
 CAMIMU_FILE = "configs/calibration/stereo_trackcam_imu_v004.yaml"   # 10-16 15:40: bracket slipped 16 deg (pitch); v003 before

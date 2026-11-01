@@ -16,7 +16,7 @@ import numpy as np
 from visual_teleop import config as vcfg
 from visual_teleop.tools.stereo_check import index_for_location
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 U = str(Path.home() / "robot-cockpit/bin/uvc-util")
 RULER_CM = 30   # 10-16 ruler length used by the "ruler" protocol
 PROTOS = {

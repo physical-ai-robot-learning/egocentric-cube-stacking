@@ -21,7 +21,7 @@ from ..robot.ik import ArmIk
 from ..robot.ik_pink import PinkIkSolver, PinkParams
 from .robot_moves import READY_Q_DEG, ramp_to, say, unpark
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def profile(kind, D, hold, period, cycles, hz, reps=1):

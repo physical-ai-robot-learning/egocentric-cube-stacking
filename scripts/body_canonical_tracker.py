@@ -49,7 +49,7 @@ from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from handumi_collector.pose.rgbd_io import RgbdEpisode                              # noqa: E402
 from scripts.handumi_body_track import fit_table_plane, BAND, ABOVE_PLANE, DARK_MAX  # noqa: E402
 from scripts.provenance import stamp                                                 # noqa: E402

@@ -1,0 +1,64 @@
+# Root project for the whole repository (src layout). Merges the former collection/pyproject.toml
+# ("handumi-collector") and experimental/pyproject.toml ("handumi-rebot-experimental"); the dependency
+# lists are the union of the two, unchanged. Install: `pip install -e ".[dev]"` (or `uv pip install -e ".[dev]"`).
+[project]
+name = "egocentric-cube-stacking"
+version = "0.1.0"
+description = "HandUMI egocentric bimanual demonstrations -> reBot B601 / X-VLA: collection, pose, dataset, retargeting, training and deployment code"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-contrib-python>=4.10,<5",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.1",
+    "pyarrow>=14",
+    "pyyaml>=6.0",
+    "matplotlib>=3.8",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# HandUMI raw collector (src/handumi_collector); was the core dependency list of collection/pyproject.toml
+collector = [
+    "mcap>=1.2",
+    "pyserial>=3.5",
+    "PySide6>=6.7",
+    "feetech-servo-sdk>=1.0.0",
+    "av>=12",
+    "trimesh>=4.0",
+]
+# experimental packages (src/ego_collector, src/ego_teleop, src/visual_teleop); was experimental/pyproject.toml
+experimental = ["mediapipe>=0.10.14"]
+apriltag = ["pupil-apriltags>=1.0.4"]
+viz = ["rerun-sdk>=0.20"]
+# Aero hand branch (ego_teleop/hand3d + retarget/aero_backends): dex_retargeting/DexPilot on the Aero URDF.
+# The head RGB-D camera additionally needs `pyorbbecsdk`, installed by hand.
+aero = ["dex-retargeting>=0.5,<1"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+ego-collector = "ego_collector.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/handumi_collector",
+    "src/ego_collector",
+    "src/ego_teleop",
+    "src/visual_teleop",
+    "src/ego_cart20",
+    "src/mast3r_pose",
+    "src/rebot_prep",
+    "src/rebot_deploy",
+    "src/training",
+]
+
+[tool.pytest.ini_options]
+# `src` on the path so the tests also run from a plain checkout without `pip install -e .`
+pythonpath = ["src", "."]
+testpaths = ["tests"]
+markers = ["slow: runs the real OpenVINS through ov_bridge (seconds); skipped when the bridge is not built"]

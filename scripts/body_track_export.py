@@ -26,7 +26,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from scripts.handumi_body_track import track_episode                           # noqa: E402
 from scripts.body_to_ego16 import align_from_plane                             # noqa: E402
 from scripts.imu_orientation import clock_map, integrate, resample             # noqa: E402

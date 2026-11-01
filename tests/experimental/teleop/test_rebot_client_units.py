@@ -126,5 +126,5 @@ def test_default_base_url_is_robot_service_port():
     from ego_teleop.config import RebotCfg
     import yaml, pathlib
     assert RebotCfg().base_url.endswith(":8020")
-    y = yaml.safe_load((pathlib.Path(__file__).resolve().parents[2] / "configs/ego_teleop/rebot.yaml").read_text())
+    y = yaml.safe_load((pathlib.Path(__file__).resolve().parents[3] / "configs/ego_teleop/rebot.yaml").read_text())
     assert y["base_url"].endswith(":8020")

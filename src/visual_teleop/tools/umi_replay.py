@@ -19,7 +19,7 @@ from ..robot.ik import ArmIk
 from ..robot.ik_pink import PinkIkSolver, PinkParams
 from .robot_moves import READY_Q_DEG, ramp_to, say, unpark
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 SIDE = {"오른손": "right", "왼손": "left"}
 
 

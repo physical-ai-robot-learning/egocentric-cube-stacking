@@ -131,7 +131,7 @@ def sync(c, side: str, seconds: float, accept_warn: bool, cam_index: int | None 
     from pathlib import Path
     from .fingertip_node import find_camera
     from ..imu.time_sync import estimate_side, fit_device_to_host
-    cam = c.cameras[f"{side}_wrist"]; K_y = yaml.safe_load((Path(__file__).resolve().parents[2] / cam["intrinsics"]).read_text())
+    cam = c.cameras[f"{side}_wrist"]; K_y = yaml.safe_load((Path(__file__).resolve().parents[3] / cam["intrinsics"]).read_text())
     K = np.asarray(K_y["K"], float); D = np.asarray(K_y["D"], float).reshape(4, 1); W0, H0 = K_y["image_size"]
     cap = cv2.VideoCapture(cam_index if cam_index is not None else find_camera(cam["match_name"]), cv2.CAP_AVFOUNDATION)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, W0); cap.set(cv2.CAP_PROP_FRAME_HEIGHT, H0); cap.set(cv2.CAP_PROP_FPS, cam["fps"])

@@ -71,7 +71,7 @@ class EpisodeManager:
         # [2026-10-12 UMI spec §10] the marker / world-frame definition travels with the data (per session; episodes share it)
         if dataset and dataset in cfg.tasks.datasets and cfg.tasks.datasets[dataset].get("world_config"):
             import shutil as _sh
-            wc = Path(__file__).resolve().parents[2] / "configs/handumi" / cfg.tasks.datasets[dataset]["world_config"]
+            wc = Path(__file__).resolve().parents[3] / "configs/handumi" / cfg.tasks.datasets[dataset]["world_config"]
             if wc.exists(): _sh.copyfile(wc, self.session_dir / "world_config.json")
         (self.session_dir / "_discarded").mkdir(exist_ok=True)
         give_back(self.session_dir)          # the head camera needs sudo; the data does not belong to root

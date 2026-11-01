@@ -30,7 +30,7 @@ from ego_teleop.tracking.local_pose import LocalPoseConfig, LocalPoseContinuity
 from ego_teleop.tracking.wrist_pose_provider import EstimatorWristPoseProvider, TrackingSupervisor, TrackingSupervisorConfig
 from ego_teleop.transforms.se3 import make_T
 
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[3]
 INTR = dict(model="pinhole", fx=300.0, fy=300.0, cx=320.0, cy=240.0, width=640, height=480)
 IMG = np.zeros((480, 640, 3), np.uint8)
 

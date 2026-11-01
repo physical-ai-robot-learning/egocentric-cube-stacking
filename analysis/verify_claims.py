@@ -90,21 +90,21 @@ check("split", "non-quarantined sessions", 13, len({m["session"] for m in man}) 
 
 # ---------------------------------------------------------------- calibration
 import yaml  # noqa: E402
-fl, fr = (yaml.safe_load(open(R / f"calibration/{f}")) for f in ("fisheye_left_v002.yaml", "fisheye_right_v003.yaml"))
-check("calib", "left fx px", 789, fl["K"][0][0], "calibration/fisheye_left_v002.yaml", tol=0.5)
-check("calib", "right fx px", 791, fr["K"][0][0], "calibration/fisheye_right_v003.yaml", tol=0.5)
-cl, cr = (yaml.safe_load(open(R / f"calibration/{f}")) for f in ("camera_imu_left_v001.yaml", "camera_imu_right_v002.yaml"))
-check("calib", "left cam-IMU offset ms", 30.2, cl["time_offset_ms"], "calibration/camera_imu_left_v001.yaml")
-check("calib", "right cam-IMU offset ms", 32.8, cr["time_offset_ms"], "calibration/camera_imu_right_v002.yaml")
+fl, fr = (yaml.safe_load(open(R / f"configs/dataset_calibration/{f}")) for f in ("fisheye_left_v002.yaml", "fisheye_right_v003.yaml"))
+check("calib", "left fx px", 789, fl["K"][0][0], "configs/dataset_calibration/fisheye_left_v002.yaml", tol=0.5)
+check("calib", "right fx px", 791, fr["K"][0][0], "configs/dataset_calibration/fisheye_right_v003.yaml", tol=0.5)
+cl, cr = (yaml.safe_load(open(R / f"configs/dataset_calibration/{f}")) for f in ("camera_imu_left_v001.yaml", "camera_imu_right_v002.yaml"))
+check("calib", "left cam-IMU offset ms", 30.2, cl["time_offset_ms"], "configs/dataset_calibration/camera_imu_left_v001.yaml")
+check("calib", "right cam-IMU offset ms", 32.8, cr["time_offset_ms"], "configs/dataset_calibration/camera_imu_right_v002.yaml")
 rep = lambda f: float(re.search(r"Reprojection error \(cam0\) \[px\]:\s+mean ([0-9.]+)", open(R / f).read()).group(1))
-check("calib", "left reprojection mean px", 6.0, rep("calibration/kalibr/calib_left-results-imucam.txt"), "calibration/kalibr/calib_left-results-imucam.txt")
-check("calib", "right reprojection mean px", 5.6, rep("calibration/kalibr/calib_right-results-imucam.txt"), "calibration/kalibr/calib_right-results-imucam.txt")
-ct = yaml.safe_load(open(R / "calibration/camera_tcp/handumi_camera_tcp_v2.yaml"))["translation"]["t_camera_tcp_m"]
-check("calib", "cam->TCP ty mm", 55.3, 1e3 * ct[1], "calibration/camera_tcp/handumi_camera_tcp_v2.yaml")
-check("calib", "cam->TCP tz mm", 122.5, 1e3 * ct[2], "calibration/camera_tcp/handumi_camera_tcp_v2.yaml")
-g = open(R / "pipeline/grip/correct_grip.py").read()
-check("calib", "jaw aperture mm", 67.5, 1e3 * float(re.search(r"APERTURE_M = ([0-9.]+)", g).group(1)), "pipeline/grip/correct_grip.py")
-check("calib", "jaw aperture +/- mm", 5, 1e3 * float(re.search(r"APERTURE_UNCERTAINTY_M = ([0-9.]+)", g).group(1)), "pipeline/grip/correct_grip.py")
+check("calib", "left reprojection mean px", 6.0, rep("configs/dataset_calibration/kalibr/calib_left-results-imucam.txt"), "configs/dataset_calibration/kalibr/calib_left-results-imucam.txt")
+check("calib", "right reprojection mean px", 5.6, rep("configs/dataset_calibration/kalibr/calib_right-results-imucam.txt"), "configs/dataset_calibration/kalibr/calib_right-results-imucam.txt")
+ct = yaml.safe_load(open(R / "configs/dataset_calibration/camera_tcp/handumi_camera_tcp_v2.yaml"))["translation"]["t_camera_tcp_m"]
+check("calib", "cam->TCP ty mm", 55.3, 1e3 * ct[1], "configs/dataset_calibration/camera_tcp/handumi_camera_tcp_v2.yaml")
+check("calib", "cam->TCP tz mm", 122.5, 1e3 * ct[2], "configs/dataset_calibration/camera_tcp/handumi_camera_tcp_v2.yaml")
+g = open(R / "src/rebot_prep/grip/correct_grip.py").read()
+check("calib", "jaw aperture mm", 67.5, 1e3 * float(re.search(r"APERTURE_M = ([0-9.]+)", g).group(1)), "src/rebot_prep/grip/correct_grip.py")
+check("calib", "jaw aperture +/- mm", 5, 1e3 * float(re.search(r"APERTURE_UNCERTAINTY_M = ([0-9.]+)", g).group(1)), "src/rebot_prep/grip/correct_grip.py")
 
 # ---------------------------------------------------------------- pose benchmark (RTX 5080 run = the one that produced the dataset)
 log = open(R / "results/pose_benchmark/cp6_ss1_5080.log").read().split("=== FIT")[0]
@@ -145,9 +145,9 @@ check("train", "grad clip", 10, tc["optimizer"]["grad_clip_norm"], src)
 check("train", "warm-up steps", 1000, tc["scheduler"]["num_warmup_steps"], src)
 check("train", "final lr", 2.5e-6, tc["scheduler"]["decay_lr"], src, tol=0)
 check("train", "save every", 10000, tc["save_freq"], src)
-ch = open(R / "training/c8old_chain.sh").read()
-check("train", "aux C weight", 2.0, float(re.search(r"EE_AUX_LAMBDA=([0-9.]+)", ch).group(1)), "training/c8old_chain.sh")
-check("train", "FK D weight", 20, float(re.search(r"EE_FK_LAMBDA=([0-9.]+)", ch).group(1)), "training/c8old_chain.sh")
+ch = open(R / "scripts/training/c8old/c8old_chain.sh").read()
+check("train", "aux C weight", 2.0, float(re.search(r"EE_AUX_LAMBDA=([0-9.]+)", ch).group(1)), "scripts/training/c8old/c8old_chain.sh")
+check("train", "FK D weight", 20, float(re.search(r"EE_FK_LAMBDA=([0-9.]+)", ch).group(1)), "scripts/training/c8old/c8old_chain.sh")
 
 # ---------------------------------------------------------------- offline evaluation
 e160, e300 = J("results/eval/160000.json"), J("results/eval/300000.json"); sel = J("results/selection.json")
@@ -498,7 +498,7 @@ for need in ("48{,}411", "$-6.20$\\%", "57{,}283 (51.4\\%)", "1{,}482 of the 2{,
 # ---------------------------------------------------------------- v4.1: HandUMI hardware section (Part I full, Sec. III)
 # Each pair: text in the report  ->  the same fact in the hardware / collector docs kept in this repository.
 hw_ev = {p: open(R / p).read() for p in ("hardware/README.md", "hardware/mods/README.md", "hardware/print/README.md",
-                                          "collection/README.md", "collection/firmware/teensy_imu/PROTOCOL.md",
+                                          "docs/collector/README.md", "firmware/teensy_imu/PROTOCOL.md",
                                           "upstream/README.md", "upstream/NOTICE.md")}
 for need, src, ev in (("\\texttt{e58de33}", "hardware/README.md", "`e58de33`"),
                       ("first released on 20 August 2026 as \\texttt{robonet-ai/handumi-hw}", "hardware/README.md", "released 2026-08-20 as `robonet-ai/handumi-hw`"),
@@ -512,13 +512,13 @@ for need, src, ev in (("\\texttt{e58de33}", "hardware/README.md", "`e58de33`"),
                       ("about 4\\,h and 110\\,g per\nhand", "hardware/README.md", "about 4 h and 110 g per hand"),
                       ("US\\$110 per unit", "hardware/README.md", "roughly US$110 per unit"),
                       ("CH343, 1\\,Mbaud, servo id 1", "hardware/README.md", "servo id 1 on our units"),
-                      ("runs at 200\\,Hz", "collection/README.md", "the firmware runs it at 200 Hz"),
-                      ("40-byte payload, CRC-16", "collection/firmware/teensy_imu/PROTOCOL.md", "### type 0x01 IMU (len = 40)"),
-                      ("(417, 531, 501\\,px)", "collection/README.md", "fx by session (417/531/501)"),
-                      ("(\\texttt{UC684})", "collection/README.md", "same USB serial `UC684`"),
+                      ("runs at 200\\,Hz", "docs/collector/README.md", "the firmware runs it at 200 Hz"),
+                      ("40-byte payload, CRC-16", "firmware/teensy_imu/PROTOCOL.md", "### type 0x01 IMU (len = 40)"),
+                      ("(417, 531, 501\\,px)", "docs/collector/README.md", "fx by session (417/531/501)"),
+                      ("(\\texttt{UC684})", "docs/collector/README.md", "same USB serial `UC684`"),
                       ("85.7$\\times$21.4$\\times$42.1\\mm, printed twice", "hardware/mods/README.md", "85.7 × 21.4 × 42.1 mm"),
                       ("depth 21.4$\\to$31.4\\mm", "hardware/mods/README.md", "depth 21.4 → 31.4 mm"),
-                      ("12.2\\,V supply", "collection/README.md", "12.2 V supply against the 12.0 V EEPROM limit")):
+                      ("12.2\\,V supply", "docs/collector/README.md", "12.2 V supply against the 12.0 V EEPROM limit")):
     check("v41_hw", f"report: {need[:40]}", "True", str(need in tex), "report/archive/part1_stacking_en_full.tex")
     _full_needs.append(need)
     check("v41_hw", f"evidence: {ev[:40]}", "True", str(ev in hw_ev[src]), src)

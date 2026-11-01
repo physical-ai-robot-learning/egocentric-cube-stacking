@@ -468,4 +468,4 @@ def thumb_gap_servo(
 
 
 def default_urdf(side: str) -> Path:
-    return Path(__file__).resolve().parents[2] / "assets" / "aero_hand_open" / f"aero_hand_open_{side}.urdf"
+    return Path(__file__).resolve().parents[3] / "assets" / "aero_hand_open" / f"aero_hand_open_{side}.urdf"

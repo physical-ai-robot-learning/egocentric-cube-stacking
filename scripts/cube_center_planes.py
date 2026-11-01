@@ -26,7 +26,7 @@ import numpy as np
 import cv2
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "src"))
 from handumi_collector.pose.rgbd_io import RgbdEpisode                              # noqa: E402
 from scripts.handumi_body_track import fit_table_plane, BAND, ABOVE_PLANE           # noqa: E402
 from scripts.provenance import stamp                                                # noqa: E402

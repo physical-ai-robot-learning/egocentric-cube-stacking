@@ -14,7 +14,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 PROTO = [(5, "가만히 들고 계세요"), (7, "유미를 앞뒤 좌우로 천천히 움직이세요"), (7, "손목을 돌리고 숙이세요"), (5, "빠르게 움직이세요"), (6, "천을 집으러 가듯이 작업대로 손을 뻗으세요")]
 LATEST = {"jpg": None}
 

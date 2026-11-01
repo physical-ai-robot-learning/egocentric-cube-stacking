@@ -18,7 +18,7 @@ import numpy as np, cv2, yaml
 from handumi_collector.pose.episode_io import RawEpisode
 from handumi_collector.pose.timing import fit_device_to_host, imu_host_times_ns
 
-CAL = Path(__file__).resolve().parents[2] / "configs/calibration"
+CAL = Path(__file__).resolve().parents[3] / "configs/calibration"
 BUNDLE = {"left": "wrist_bundle_left_v005.yaml", "right": "wrist_bundle_right_v005.yaml"}
 FISHEYE = {"left": "fisheye_left_v002.yaml", "right": "fisheye_right_v003.yaml"}
 STREAM = {"left": "left_wrist", "right": "right_wrist"}

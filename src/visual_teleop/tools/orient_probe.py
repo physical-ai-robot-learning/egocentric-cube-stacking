@@ -31,7 +31,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default=None); ap.add_argument("--phase-s", type=float, default=5.0)
     a = ap.parse_args(); c = vcfg.load(a.config)
-    out = Path(__file__).resolve().parents[2] / "datasets" / "orient_probe" / time.strftime("%H%M%S"); out.mkdir(parents=True, exist_ok=True)
+    out = Path(__file__).resolve().parents[3] / "datasets" / "orient_probe" / time.strftime("%H%M%S"); out.mkdir(parents=True, exist_ok=True)
     rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); rx.bind(("127.0.0.1", c.link["hand_port"])); rx.settimeout(0.05)
     cmd = Publisher(c.link["cmd_port"]); cmd.send("cmd", cmd="rec_start", dir=str(out)); time.sleep(0.3)
     rows = []; t0 = time.monotonic(); ph = -1
