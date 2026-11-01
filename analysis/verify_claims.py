@@ -476,14 +476,15 @@ for need in ("349", "561 (43.0\\%)", "233 train / 26", "39.9\\mm", "0.72 to 0.90
              "1.021 over 100k--150k", "471k, 305k and 310k", "71 checkpoints ran 49{,}431", "completed the full three-cube stack", "no success rate",
              "median of 0.012", "95 takes", "37 of 57", "1.062 (p16--p84 0.959--1.274", "151 train, 20{,}319 rows", "0.354 (p5 0.188, p95 0.500)",
              "0.16\\,px RMS", "169.5\\mm", "0.38\\mm over 60.4\\mm", "$z=-27.1$\\mm", "0.999", "0.21\\textdegree", "12.6\\mm, minimum 7.6\\mm",
-             "0.150 (0.066)", "0.299 (0.018)", "0.124 (0.110)", "0.132 (0.097)", "0.224 (0.020)", "0.190 (0.022)", "69 of the day's 127", "available on request"):
+             "0.150 (0.066)", "0.299 (0.018)", "0.124 (0.110)", "0.132 (0.097)", "0.224 (0.020)", "0.190 (0.022)", "69 of the day's 127"):
     check("text_short", f"short version contains: {need[:40]}", "True", str(need in short), "report/part*_en.tex")
     _full_needs.append(need)
 for bad in ("16.5\\%", "20.8/23.8", "versus 0.09", "five early", "6.1 and 5.6", "128\\textdegree"):
     check("text_short", f"retired value absent (short): {bad}", "True", str(bad not in short), "report/part*_en.tex")
 for bad in ("16.5\\%", "20.8/23.8", "versus 0.09", "five early", "6.1 and 5.6", "128\\textdegree"):
     check("text", f"retired value absent: {bad}", "True", str(bad not in tex), "report/archive/part*_en_full.tex")
-check("text", "repository marked available on request (private since 2026-10-07)", "True", str("available on request" in tex), "report/archive/part*_en_full.tex")
+check("text_short", "no 'available on request' in the short reports (repository public)", "True", str("available on request" not in short), "report/part*_en.tex")
+check("text", "archived full reports keep their dated wording (available on request, private 2026-10-07)", "True", str("available on request" in tex), "report/archive/part*_en_full.tex")
 for need in ("211.7k", "$-33\\%$", "$+13\\%$", "36.5\\%", "56.1\\%", "58.9\\%", "14.7", "996 segments", "4.6/17.0", "18.5/23.8", "versus 0.03", "ten early", "6.0 and 5.6", "0.24 versus 0.07", "39.9", "3.55", "233 train", "561"):
     check("text", f"value present: {need}", "True", str(need in tex), "report/archive/part*_en_full.tex")
     _full_needs.append(need)
@@ -537,6 +538,7 @@ for f, need in (("report/archive/part1_stacking_en_full.tex", "The capture devic
 # The unified report merges Part I full, Part II full and Methods. Every string required above must be in it; where the
 # unified text words a value differently, the same value is required in its new wording.
 uni = " ".join(open(R / "report/report_en.tex").read().split())
+check("v5_unified", "repository is public: no 'available on request', URL present", "True", str("available on request" not in uni and "github.com/physical-ai-vla/egocentric-cube-stacking" in uni), "report/report_en.tex")
 REPHRASED = {
     "0.72 to 0.90": "0.72 at $k{=}1$ to 0.90", "3.55 of 6": "is 3.55 (chance 3.5", "36.5\\% to 56.1\\%": "v1 single anchor & 36.5\\%",
     "1.49$\\to$0.27": "from 1.49 to 0.27\\,rad", "5.6--14.7\\%": "$-14.7$ to $-5.6\\%$", "0.544 and 0.493": "& 0.544 & 0.493",
