@@ -557,16 +557,17 @@ for need in ("The capture device is \\emph{not our design}", "designed and publi
     check("attribution", f"report_en.tex: {need[:40]}", "True", str(need in uni), "report/report_en.tex")
 
 # ---------------------------------------------------------------- README: the same verified values, and none of the stale ones
-rd = open(R / "README.md").read()
+# The release-by-release README narrative moved verbatim to docs/history.md on 2026-11-01; both files are checked together.
+rd = open(R / "README.md").read() + "\n" + open(R / "docs/history.md").read()
 for need in ("349 recorded", "284 pass sync", "259 source", "561 bimanual", "233 train", "26 held-out", "1.5 / 5.7 mm", "11.2 / 39.9 mm",
              "4.8 mm", "3.55 of 6", "36.5 %", "56.1 %", "1.494 / 1.551", "0.272 / 0.454", "58.9 %", "0.067 vs 0.144", "996 TR segments",
              "896 / val 100", "27,776", "−10.0 %", "−14.7 to −5.6 %", "8 of 10", "211.7k", "−33 %", "+13 %", "4.6 / 17.0 %", "11.3 mm"):
-    check("readme", f"value present: {need}", "True", str(need in rd), "README.md")
+    check("readme", f"value present: {need}", "True", str(need in rd), "README.md + docs/history.md")
 for need in ("48,411 rows (−6.20 %)", "1,482 / 2,598", "99.7 / 99.5 %", "45.2 / 52.2 %", "1,854 / 1,487", "slots 10–17", "−0.05 / −0.03",
              "+0.81 / +0.77", "0.244 vs 0.945", "0.984 (55–60k, tie)", "1.062 (p16–p84 0.959–1.274)", "151 episodes / 20,319 rows", "49,431"):
-    check("readme", f"v3 value present: {need}", "True", str(need in rd), "README.md")
+    check("readme", f"v3 value present: {need}", "True", str(need in rd), "README.md + docs/history.md")
 for bad in ("is running; no results yet", "234 checks", "This repository reports no closed-loop robot results", "outcomes were not logged)."):
-    check("readme", f"stale text absent: {bad}", "True", str(bad not in rd), "README.md")
+    check("readme", f"stale text absent: {bad}", "True", str(bad not in rd), "README.md + docs/history.md")
 
 # ---------------------------------------------------------------- output
 nf = sum(r[-1] == "FAIL" for r in rows)

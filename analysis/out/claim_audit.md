@@ -695,49 +695,49 @@ hand | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
 | v5_unified | retired value absent (unified): 128\textdegree | True | True | `report/report_en.tex` | PASS |
 | attribution | report_en.tex: The capture device is \emph{not our desi | True | True | `report/report_en.tex` | PASS |
 | attribution | report_en.tex: designed and published by BrikHMP18 (not | True | True | `report/report_en.tex` | PASS |
-| readme | value present: 349 recorded | True | True | `README.md` | PASS |
-| readme | value present: 284 pass sync | True | True | `README.md` | PASS |
-| readme | value present: 259 source | True | True | `README.md` | PASS |
-| readme | value present: 561 bimanual | True | True | `README.md` | PASS |
-| readme | value present: 233 train | True | True | `README.md` | PASS |
-| readme | value present: 26 held-out | True | True | `README.md` | PASS |
-| readme | value present: 1.5 / 5.7 mm | True | True | `README.md` | PASS |
-| readme | value present: 11.2 / 39.9 mm | True | True | `README.md` | PASS |
-| readme | value present: 4.8 mm | True | True | `README.md` | PASS |
-| readme | value present: 3.55 of 6 | True | True | `README.md` | PASS |
-| readme | value present: 36.5 % | True | True | `README.md` | PASS |
-| readme | value present: 56.1 % | True | True | `README.md` | PASS |
-| readme | value present: 1.494 / 1.551 | True | True | `README.md` | PASS |
-| readme | value present: 0.272 / 0.454 | True | True | `README.md` | PASS |
-| readme | value present: 58.9 % | True | True | `README.md` | PASS |
-| readme | value present: 0.067 vs 0.144 | True | True | `README.md` | PASS |
-| readme | value present: 996 TR segments | True | True | `README.md` | PASS |
-| readme | value present: 896 / val 100 | True | True | `README.md` | PASS |
-| readme | value present: 27,776 | True | True | `README.md` | PASS |
-| readme | value present: −10.0 % | True | True | `README.md` | PASS |
-| readme | value present: −14.7 to −5.6 % | True | True | `README.md` | PASS |
-| readme | value present: 8 of 10 | True | True | `README.md` | PASS |
-| readme | value present: 211.7k | True | True | `README.md` | PASS |
-| readme | value present: −33 % | True | True | `README.md` | PASS |
-| readme | value present: +13 % | True | True | `README.md` | PASS |
-| readme | value present: 4.6 / 17.0 % | True | True | `README.md` | PASS |
-| readme | value present: 11.3 mm | True | True | `README.md` | PASS |
-| readme | v3 value present: 48,411 rows (−6.20 %) | True | True | `README.md` | PASS |
-| readme | v3 value present: 1,482 / 2,598 | True | True | `README.md` | PASS |
-| readme | v3 value present: 99.7 / 99.5 % | True | True | `README.md` | PASS |
-| readme | v3 value present: 45.2 / 52.2 % | True | True | `README.md` | PASS |
-| readme | v3 value present: 1,854 / 1,487 | True | True | `README.md` | PASS |
-| readme | v3 value present: slots 10–17 | True | True | `README.md` | PASS |
-| readme | v3 value present: −0.05 / −0.03 | True | True | `README.md` | PASS |
-| readme | v3 value present: +0.81 / +0.77 | True | True | `README.md` | PASS |
-| readme | v3 value present: 0.244 vs 0.945 | True | True | `README.md` | PASS |
-| readme | v3 value present: 0.984 (55–60k, tie) | True | True | `README.md` | PASS |
-| readme | v3 value present: 1.062 (p16–p84 0.959–1.274) | True | True | `README.md` | PASS |
-| readme | v3 value present: 151 episodes / 20,319 rows | True | True | `README.md` | PASS |
-| readme | v3 value present: 49,431 | True | True | `README.md` | PASS |
-| readme | stale text absent: is running; no results yet | True | True | `README.md` | PASS |
-| readme | stale text absent: 234 checks | True | True | `README.md` | PASS |
-| readme | stale text absent: This repository reports no closed-loop robot results | True | True | `README.md` | PASS |
-| readme | stale text absent: outcomes were not logged). | True | True | `README.md` | PASS |
+| readme | value present: 349 recorded | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 284 pass sync | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 259 source | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 561 bimanual | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 233 train | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 26 held-out | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 1.5 / 5.7 mm | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 11.2 / 39.9 mm | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 4.8 mm | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 3.55 of 6 | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 36.5 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 56.1 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 1.494 / 1.551 | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 0.272 / 0.454 | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 58.9 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 0.067 vs 0.144 | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 996 TR segments | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 896 / val 100 | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 27,776 | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: −10.0 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: −14.7 to −5.6 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 8 of 10 | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 211.7k | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: −33 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: +13 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 4.6 / 17.0 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | value present: 11.3 mm | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 48,411 rows (−6.20 %) | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 1,482 / 2,598 | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 99.7 / 99.5 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 45.2 / 52.2 % | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 1,854 / 1,487 | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: slots 10–17 | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: −0.05 / −0.03 | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: +0.81 / +0.77 | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 0.244 vs 0.945 | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 0.984 (55–60k, tie) | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 1.062 (p16–p84 0.959–1.274) | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 151 episodes / 20,319 rows | True | True | `README.md + docs/history.md` | PASS |
+| readme | v3 value present: 49,431 | True | True | `README.md + docs/history.md` | PASS |
+| readme | stale text absent: is running; no results yet | True | True | `README.md + docs/history.md` | PASS |
+| readme | stale text absent: 234 checks | True | True | `README.md + docs/history.md` | PASS |
+| readme | stale text absent: This repository reports no closed-loop robot results | True | True | `README.md + docs/history.md` | PASS |
+| readme | stale text absent: outcomes were not logged). | True | True | `README.md + docs/history.md` | PASS |
 
 736 claims checked, 0 failed.
