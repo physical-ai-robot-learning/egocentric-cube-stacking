@@ -2,8 +2,10 @@
 RELONLY_PREFLIGHT=N runs the plugin self-checks on the first N batches and adds a gradient hook on the action decoder that
 asserts rows 20:32 get exactly zero task gradient and rows 0:20 a non-zero one."""
 import os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import rel16_aux_relonly
+try:
+    from . import rel16_aux_relonly
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import rel16_aux_relonly
 rel16_aux_relonly.install()
 
 if int(os.environ.get("RELONLY_PREFLIGHT", "0")):

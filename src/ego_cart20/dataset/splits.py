@@ -5,16 +5,17 @@
     train = every other included episode;  test = empty (no third split was ever frozen; adding one would change train)
 ``hash_split``: deterministic sha1(episode_id) buckets for other sources.
 """
+from ego_paths import DATA_ROOT, HOME, UMI_BRIDGE  # machine-specific roots (env-overridable)
 import hashlib
 import json
 import pathlib
 
-H = pathlib.Path.home()
+H = HOME
 
 
 def frozen_handumi_split(episode_ids):
-    v1 = set(json.load(open(H / "c8/c8old_rows/index.json"))["val_episodes"])
-    hrl = json.load(open(H / "umi_bridge/track_c/v2k/hrl80_split_frozen.json"))
+    v1 = set(json.load(open(DATA_ROOT / "c8old_rows/index.json"))["val_episodes"])
+    hrl = json.load(open(UMI_BRIDGE / "track_c/v2k/hrl80_split_frozen.json"))
     val = v1 | set(hrl["val_source_episodes"])
     sp = {e: ("val" if e in val else "train") for e in episode_ids}
     return sp, dict(rule="frozen: val = C-old v1 26 (c8old_rows/index.json) + HRL80 round-block ep49-54; test empty",

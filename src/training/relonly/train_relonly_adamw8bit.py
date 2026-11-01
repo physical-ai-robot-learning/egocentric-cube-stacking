@@ -3,8 +3,9 @@
 Checkpoint fix: bnb keeps state['step'] as a python int, which lerobot's safetensors optimizer save rejects
 ("Key state/0/step ... expected torch.Tensor"). state_dict() returns COPIES of the per-param state with step as a 0-d int64
 tensor (the live state is not touched); load_state_dict() turns it back into an int before bnb loads it."""
+from ego_paths import SHARED_ROOT, prepend_sys_path  # machine-specific roots (env-overridable)
 import os, runpy, sys
-sys.path.insert(0, "/srv/data/johann/relonly/pylib_bnb")
+prepend_sys_path(str(SHARED_ROOT / "relonly/pylib_bnb"))
 import torch, bitsandbytes as bnb
 
 
@@ -43,5 +44,5 @@ class AdamW8bitShim(bnb.optim.AdamW8bit):
 
 
 torch.optim.AdamW = AdamW8bitShim
-sys.argv[0] = "/srv/data/johann/relonly/code/train_rel16_relonly.py"
+sys.argv[0] = str(SHARED_ROOT / "relonly/code/train_rel16_relonly.py")
 runpy.run_path(sys.argv[0], run_name="__main__")

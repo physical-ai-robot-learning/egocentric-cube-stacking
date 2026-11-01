@@ -20,16 +20,16 @@ constant gripper) gets mean = its value, std = 1, so normalisation never divides
 
 usage: export_lerobot_right_only.py <processed> <out> [--name ego_hra_red_rightonly_v1] [--workers 6]
 """
+from ego_paths import DATA_ROOT, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse, hashlib, json, pathlib, shutil, sys, time
 import numpy as np
 
 HERE = pathlib.Path(__file__).resolve()
-sys.path.insert(0, str(HERE.parents[2]))
 from ego_cart20.scripts import export_lerobot as EL          # noqa: E402  (decode224, stats, AGG, CAMS, agg plumbing)
 from ego_cart20.right_only import TASK_ID                    # noqa: E402
 from ego_cart20.scripts import export_lerobot_robotized as RX  # noqa: E402  (robot100's robotize(): KB8 -> C922-like pinhole, R = I)
 RX.ROBOTIZE_P = 1.0                                           # user 2026-10-03: this task's right wrist is 100 % robotized
-HE = json.load(open(pathlib.Path.home() / "c8/hra_red/handeye/robot_right_wrist_handeye.json"))
+HE = json.load(open(DATA_ROOT / "hra_red/handeye/robot_right_wrist_handeye.json"))
 KR = np.array(HE["K"], np.float64); DR = np.array(HE["dist"], np.float64)
 _MAPS = {}
 
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("processed"); ap.add_argument("out"); ap.add_argument("--name", default="ego_hra_red_rightonly_robotcam_v2")
     ap.add_argument("--workers", type=int, default=6); ap.add_argument("--splits", nargs="*", default=["train", "val"]); a = ap.parse_args()
     P, OUT = pathlib.Path(a.processed), pathlib.Path(a.out); SH = OUT / f"{a.name}_shards"; report = {}
-    sys.path.insert(0, str(EL.AGG)); import agg_patch; agg_patch.install()
+    prepend_sys_path(str(EL.AGG)); import agg_patch; agg_patch.install()
     from lerobot.datasets.aggregate import aggregate_datasets
     from concurrent.futures import ProcessPoolExecutor
     for s in a.splits:

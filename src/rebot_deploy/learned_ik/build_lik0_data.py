@@ -3,12 +3,15 @@
 Writes data/lik0_data.npz (q, rel, dq, ep, frame, split: 0 train / 1 val / 2 test) and data/lik0_stats.json (TRAIN only).
 Gate: FK(q_t + dq_gt) reproduces the GT REL position on every tuple (< 1 mm), with the same FK the loss uses.
 usage: build_lik0_data.py [dataset root]"""
+from ego_paths import HOLOBRAIN_DATA  # machine-specific roots (env-overridable)
 import glob, json, os, sys
 import numpy as np, pyarrow as pa, pyarrow.parquet as pq, torch
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import lik0_common as C
+try:
+    from . import lik0_common as C
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import lik0_common as C
 
-root = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser("~/holobrain-data/lerobot/r180_umi76_rel16_v3d")
+root = sys.argv[1] if len(sys.argv) > 1 else str(HOLOBRAIN_DATA / "lerobot/r180_umi76_rel16_v3d")
 out = C.DATA_DIR; os.makedirs(out, exist_ok=True)
 for f in ("lik0_data.npz", "lik0_stats.json"):
     if os.path.exists(os.path.join(out, f)):

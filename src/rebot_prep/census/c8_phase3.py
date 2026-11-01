@@ -33,14 +33,15 @@ Episode first-fail (before segments): sensor/gripper/sync from census_pre.json, 
 Writes ~/c8/phase3/<episode>.npz (per usable-or-not segment: frames, status, q, state32, gates) and ~/c8/phase3_census.json.
 Env: ~/xvla-mac/bin/python (mcap + eef_kin, same env as build_v3_dataset / census_pre).  Args: [episode ...] (default: every episode of the manifest with both sides run).
 """
+from ego_paths import DATA_ROOT, EGO_COLLECTOR_HOME, HOME, UMI_BRIDGE, prepend_sys_path  # machine-specific roots (env-overridable)
 import collections, json, os, pathlib, sys
 from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation as Rot
-H = pathlib.Path.home(); C8 = H / "c8"; TA = H / "umi_bridge/trackA_mast3r_pose_v1"; TC = H / "umi_bridge/track_c"
+H = HOME; C8 = DATA_ROOT; TA = UMI_BRIDGE / "trackA_mast3r_pose_v1"; TC = UMI_BRIDGE / "track_c"
 RUNS = pathlib.Path(os.environ.get("C8_RUNS", C8 / "runs_m3")); STAGE = C8 / "stage_p3"; OUT = C8 / "phase3"; OUT.mkdir(exist_ok=True)
-RAW = H / "ego_collector/datasets/human_handumi_raw/Hpilot"
+RAW = EGO_COLLECTOR_HOME / "datasets/human_handumi_raw/Hpilot"
 MAN = json.load(open(C8 / "c8_domain_manifest.json")); GRIP = json.load(open(C8 / "grip/grip_census.json"))["sides"]
 PRE = json.load(open(C8 / "census_pre.json"))
 SEG, DT_MS, G_BAND = 65, 20.0, (8.81, 10.81)
@@ -80,7 +81,7 @@ def init():
             except FileExistsError: pass
     os.environ["M3_BASE"] = str(STAGE); os.environ["M3_VARIANT"] = "ss1"
     cp6 = {}; _s = open(TA / "cp6_scale.py").read(); exec(_s[:_s.index("tags = [")], cp6)
-    sys.path.insert(0, str(TC)); import pseudo_joint_pipeline as P_; from state32 import build_state32 as b32
+    prepend_sys_path(str(TC)); import pseudo_joint_pipeline as P_; from state32 import build_state32 as b32
     P, build_state32 = P_, b32
     cfg = P.IKCfg(); ik = P.ContinuityIK(cfg); rt = P.Retarget(ik.kin, P.ANCHORS[cfg.anchor])
     d150 = np.load(TC / "data/r150_q_tcp.npz"); ix = np.random.default_rng(0).choice(len(d150["J"]), 6000, replace=False); ref = {0: [], 1: []}

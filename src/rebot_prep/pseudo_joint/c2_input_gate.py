@@ -20,13 +20,16 @@ Classification, fixed BEFORE the census ran (R150 ref = both arms, all 150 episo
 Step size alone is NOT a fail (a human may move faster than R150 teleop); it is kept as an outlier score.
 Outlier score per metric = R150 empirical CDF of the value (>= 0.99 means beyond the R150 p99).
 """
+from ego_paths import HOME  # machine-specific roots (env-overridable)
 import collections, csv, glob, json, pathlib, sys
 import numpy as np
 from scipy.spatial.transform import Rotation as Rot
 
 HERE = pathlib.Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE))
-import pseudo_joint_pipeline as P
+try:
+    from . import pseudo_joint_pipeline as P
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import pseudo_joint_pipeline as P
 from umi.common.pose_util import pose_to_mat
 
 import argparse
@@ -34,7 +37,7 @@ _ap = argparse.ArgumentParser(description="C2 input gate / OPEN-5 acceptance ben
 _ap.add_argument("--produce", default=str(HERE / "data/produce"),
                  help="dir of <episode>_<side>.npz with frame_idx, cam_pos, cam_quat (xyzw), seg_id, lost")
 _ap.add_argument("--tag", default="raw", help="output subdir under reports/c2 (raw | repaired_<name>)")
-_ap.add_argument("--grip", default=str(pathlib.Path.home() / ".claude/jobs/e649aef3/tmp/handumi_grip_corrected"))
+_ap.add_argument("--grip", default=str(HOME / ".claude/jobs/e649aef3/tmp/handumi_grip_corrected"))
 ARGS = _ap.parse_args()
 OUT = HERE / "reports" / "c2" / ARGS.tag; OUT.mkdir(parents=True, exist_ok=True)
 GRIP = pathlib.Path(ARGS.grip)

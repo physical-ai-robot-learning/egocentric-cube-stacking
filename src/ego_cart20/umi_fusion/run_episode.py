@@ -11,18 +11,18 @@ QA: coverage (mast3r / orbbec / both / either / full_6dof + longest gaps), align
 continuity on a 15 Hz common timeline, episode gate.
 usage: run_episode.py <episode dir> [--r-c-prior-json f]
 """
+from ego_paths import DATA_ROOT, HOME  # machine-specific roots (env-overridable)
 import argparse, csv, json, pathlib, re, sys
 
 import numpy as np
 from scipy.spatial.transform import Rotation as Rot
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from ego_cart20.sources.hfold_export import X_TOOL, x_cam_tcp, read_mcap                     # noqa: E402
 from ego_cart20.umi_fusion.fusion import SideInputs, fuse_side, _interp_body                # noqa: E402
 from ego_cart20.umi_fusion.qa import coverage, episode_gate, overlap_error                  # noqa: E402
 from ego_cart20.umi_fusion.relpose import inter_gripper_relative_pose, resample_poses       # noqa: E402
 
-H = pathlib.Path.home(); RR = H / "c8/robotlike/runs_restart"; EXP = H / "c8/robotlike/export"
+H = HOME; RR = DATA_ROOT / "robotlike/runs_restart"; EXP = DATA_ROOT / "robotlike/export"
 SWAP_FLAG_BITS = 0                                         # canonical flags are advisory; validity already excludes INVALID frames
 
 

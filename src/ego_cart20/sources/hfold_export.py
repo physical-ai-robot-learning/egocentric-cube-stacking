@@ -21,6 +21,7 @@ consolidated repo (~/bh-egocentric/pipeline):
 usage (~/xvla-mac/bin/python or ego_collector/.venv/bin/python):
   hfold_export.py --sessions <session dir> ... --out <raw_root> [--scale-json scales.json]
 """
+from ego_paths import DATA_ROOT, EGO_COLLECTOR_HOME, HOME  # machine-specific roots (env-overridable)
 import argparse, csv, json, pathlib, re, sys
 
 import numpy as np
@@ -28,7 +29,7 @@ import yaml
 from scipy.signal import savgol_filter
 from scipy.spatial.transform import Rotation as Rot
 
-H = pathlib.Path.home(); RL = H / "c8/robotlike"; REPO = H / "bh-egocentric/pipeline"
+H = HOME; RL = DATA_ROOT / "robotlike"; REPO = H / "bh-egocentric/pipeline"
 CAM_TCP_V2 = REPO / "calibration/camera_tcp/handumi_camera_tcp_v2.yaml"
 SIDES = ("left", "right"); W_VI = 15; G_BAND = (8.81, 10.81); S_GUARD = (0.1 * 0.3049, 10 * 0.9178)
 GRIP_ARC = {"left": 3232 - 2134, "right": 5677 - 4375}          # calibrated jaw arc (ticks), gripper_v014 (pre-reboot, both valid)
@@ -124,7 +125,7 @@ def calib_dir_arc(ep, side):
     import yaml as _y
     try:
         ver = json.loads((pathlib.Path(ep) / "episode_meta.json").read_text()).get("gripper_calibration_version")
-        c = _y.safe_load(open(pathlib.Path.home() / "ego_collector/configs/calibration" / f"{ver}.yaml"))["sides"][side]
+        c = _y.safe_load(open(EGO_COLLECTOR_HOME / "configs/calibration" / f"{ver}.yaml"))["sides"][side]
         d = float(c["ticks_open"]) - float(c["ticks_closed"])
         if abs(d) > 2048: d = d - np.sign(d) * 4096                    # shortest way round (pre-v015 seam convention)
         return (1.0 if d > 0 else -1.0), abs(d), ver
@@ -200,7 +201,6 @@ def export_episode(ep, out_root, scales, Xct, xct_path):
 
 
 if __name__ == "__main__":
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
     ap = argparse.ArgumentParser(); ap.add_argument("--sessions", nargs="+", required=True); ap.add_argument("--out", required=True)
     ap.add_argument("--scale-json"); a = ap.parse_args()
     scales = json.load(open(a.scale_json)) if a.scale_json else {}

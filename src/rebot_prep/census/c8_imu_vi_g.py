@@ -4,8 +4,9 @@ the gravity vector g_world = xs[1:4] (in that side's MASt3R world; model R_wb f_
 g = -R_wb f_b = physical gravity, pointing DOWN). The only textual change is the return line; s / g_norm / n / resid are
 verified bit-identical to cp6's imu_vi before use (run this file as a script: verification on given tags).
 Needs M3_BASE / M3_VARIANT set to a staging dir like c8_phase3.py's (stage_p3)."""
+from ego_paths import DATA_ROOT, UMI_BRIDGE  # machine-specific roots (env-overridable)
 import os, pathlib
-TA = pathlib.Path.home() / "umi_bridge/trackA_mast3r_pose_v1"
+TA = UMI_BRIDGE / "trackA_mast3r_pose_v1"
 RET = 'return dict(s=float(xs[0]), g_norm=float(np.linalg.norm(xs[1:4])), n=int(len(y) // 3),'
 
 
@@ -20,7 +21,7 @@ def load():
 
 if __name__ == "__main__":
     import sys, json, numpy as np
-    os.environ.setdefault("M3_BASE", str(pathlib.Path.home() / "c8/stage_p3")); os.environ.setdefault("M3_VARIANT", "ss1")
+    os.environ.setdefault("M3_BASE", str(DATA_ROOT / "stage_p3")); os.environ.setdefault("M3_VARIANT", "ss1")
     ns = load(); bad = 0
     for t in sys.argv[1:]:
         a, b = ns["imu_vi_ref"](t, 15, False), ns["imu_vi"](t, 15, False)

@@ -7,12 +7,13 @@ v1-only. Also: what share of the v2 tail (frames with NN > v1 p90) comes from re
 v2-Kr rescoring S + lambda * d_R150 would pick among the kept variants (<= 3 stored per segment) for a few lambdas.
 usage: v2k_tail.py <v2k out dir>
 """
+from ego_paths import HOME, UMI_BRIDGE  # machine-specific roots (env-overridable)
 import collections, glob, json, pathlib, sys
 import numpy as np
 from scipy.spatial import cKDTree
 
-H = pathlib.Path.home(); D = pathlib.Path(sys.argv[1])
-d = np.load(H / "umi_bridge/track_c/data/r150_q_tcp.npz"); R150 = np.radians(np.c_[d["J"][:, :6], d["J"][:, 7:13]]); TREE = cKDTree(R150[::3])
+H = HOME; D = pathlib.Path(sys.argv[1])
+d = np.load(UMI_BRIDGE / "track_c/data/r150_q_tcp.npz"); R150 = np.radians(np.c_[d["J"][:, :6], d["J"][:, 7:13]]); TREE = cKDTree(R150[::3])
 rows = []
 for p in sorted(glob.glob(str(D / "*.json"))):
     r = json.load(open(p)); f = D / f"{r['episode']}.npz"

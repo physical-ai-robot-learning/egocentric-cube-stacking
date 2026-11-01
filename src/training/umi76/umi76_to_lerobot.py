@@ -28,16 +28,17 @@ Episode edges are handled by dropping, never by inventing:
   * the FIRST frame has no t-1, so prev_rel is identity and `state_prev_valid` is 0 for that frame
 No identity action is ever written as if it were a real label.
 """
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse, json, os, pathlib, sys, time
 import numpy as np, zarr, av, cv2, pandas as pd, glob
 from scipy.spatial.transform import Rotation as Rot, Slerp
 from concurrent.futures import ThreadPoolExecutor
 _POOL = ThreadPoolExecutor(max_workers=2)
-sys.path.insert(0, "/home/bh-aiteam/umi_bridge")
+prepend_sys_path(str(NODE_HOME / "umi_bridge"))
 import umi_action as UA
 
-sys.path.insert(0, "/home/bh-aiteam/universal_manipulation_interface")
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+prepend_sys_path(str(NODE_HOME / "universal_manipulation_interface"))
+prepend_sys_path(str(pathlib.Path(__file__).resolve().parent))
 from diffusion_policy.codecs.imagecodecs_numcodecs import register_codecs
 register_codecs()
 from umi.common.pose_util import pose_to_mat, mat_to_pose10d
@@ -142,7 +143,7 @@ def _joints_all():
     global _JOINTS
     if _JOINTS is None:
         import pyarrow.parquet as _pq
-        srcd = "/home/bh-aiteam/holobrain-data/lerobot/rebot_3stack_R150_headview"
+        srcd = str(NODE_HOME / "holobrain-data/lerobot/rebot_3stack_R150_headview")
         _d = _pq.read_table(sorted(pathlib.Path(srcd, "data").rglob("*.parquet"))[0]).to_pandas()
         _JOINTS = np.stack([np.asarray(v, np.float64) for v in _d["observation.state"].values])
     return _JOINTS
@@ -294,7 +295,7 @@ def _parse_source(spec):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--zarr", default="/home/bh-aiteam/umi_bridge/r150_umi.zarr",
+    ap.add_argument("--zarr", default=str(NODE_HOME / "umi_bridge/r150_umi.zarr"),
                     help="single-source shorthand, paired with the default LeRobot root; "
                          "ignored when --source is given")
     ap.add_argument("--source", action="append", default=[],

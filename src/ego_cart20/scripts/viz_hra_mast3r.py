@@ -8,12 +8,13 @@ camera triad at the current frame.  Bottom: wrist-to-cube distance from PnP (met
 
 usage: viz_hra_mast3r.py <episode number e.g. 000150> [...] [--out ~/Desktop/mast3r_slam_viz] [--runs DIR]
 """
+from ego_paths import DATA_ROOT, EGO_COLLECTOR_HOME, HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse, json, pathlib, re, sys
 import numpy as np
 
-H = pathlib.Path.home(); sys.path[:0] = [str(H / "ego_cart20"), str(H / "ego_collector")]
-SESS = H / "ego_collector/datasets/human_handumi_raw/HRA_red/HRA_red_20261003_152502"
-EXP = H / "c8/robotlike/export"
+H = HOME; prepend_sys_path(str(H / "ego_cart20"), str(EGO_COLLECTOR_HOME))
+SESS = EGO_COLLECTOR_HOME / "datasets/human_handumi_raw/HRA_red/HRA_red_20261003_152502"
+EXP = DATA_ROOT / "robotlike/export"
 
 
 def quat_R(q):
@@ -38,7 +39,7 @@ def render(ep, runs, out_dir):
     from handumi_collector.pose.episode_io import RawEpisode
     tag = f"red_20261003_152502_{ep}_right"; ex = EXP / tag; epd = SESS / f"episode_{ep}"
     ss = pd.read_csv(runs / tag / "ss1.csv"); ok = ss.is_lost.astype(str).str.lower() == "false"
-    sc = json.load(open(H / "c8/hra_red/raw/_scale_qc" / f"HRA_red_20261003_152502_{ep}.json")) if (H / "c8/hra_red/raw/_scale_qc" / f"HRA_red_20261003_152502_{ep}.json").exists() else None
+    sc = json.load(open(DATA_ROOT / "hra_red/raw/_scale_qc" / f"HRA_red_20261003_152502_{ep}.json")) if (DATA_ROOT / "hra_red/raw/_scale_qc" / f"HRA_red_20261003_152502_{ep}.json").exists() else None
     if sc is None:
         sc = CP.episode_pnp_scale(ex / "raw_video.mp4", ex / "orbslam_setting.yaml", runs / tag / "ss1.csv")
     s_pnp = sc.get("s_pnp"); s_imu = sc.get("s_imu")
@@ -111,6 +112,6 @@ def render(ep, runs, out_dir):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("episodes", nargs="+")
-    ap.add_argument("--out", type=pathlib.Path, default=H / "Desktop/mast3r_slam_viz"); ap.add_argument("--runs", type=pathlib.Path, default=H / "c8/robotlike/runs_viz")
+    ap.add_argument("--out", type=pathlib.Path, default=H / "Desktop/mast3r_slam_viz"); ap.add_argument("--runs", type=pathlib.Path, default=DATA_ROOT / "robotlike/runs_viz")
     a = ap.parse_args(); a.out.mkdir(parents=True, exist_ok=True)
     for e in a.episodes: render(e, a.runs, a.out)

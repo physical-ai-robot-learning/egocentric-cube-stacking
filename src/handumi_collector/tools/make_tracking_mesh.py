@@ -17,6 +17,7 @@ not guess: a missing pose is an error, because a silently wrong assembly becomes
     python -m handumi_collector.tools.make_tracking_mesh --validate assets/handumi/left_tracking_body.obj
 """
 from __future__ import annotations
+from ego_paths import HOME  # machine-specific roots (env-overridable)
 import argparse
 import time
 from pathlib import Path
@@ -82,7 +83,7 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
 
     if a.template:
-        parts_dir = a.parts_dir or Path.home() / "handumi-hw" / "hardware" / "STL" / f"{a.template}_handumi"
+        parts_dir = a.parts_dir or HOME / "handumi-hw" / "hardware" / "STL" / f"{a.template}_handumi"
         out = a.out or REPO_ROOT / "assets" / "handumi" / f"{a.template}_tracking_body.yaml"
         p = write_template(a.template, Path(parts_dir).expanduser(), out)
         spec = yaml.safe_load(p.read_text())

@@ -4,7 +4,6 @@ differs: max_raw_gap_s 0.10 (Agilex logs ~35 ms with dropped samples up to ~70 m
 FOLDER-level split (val = whole recording sessions, never frames/episodes of a train session).
 usage: convert_dataset_softfold.py <raw_root> <out_root> [--val-folders F ...] [--workers N]"""
 import argparse, collections, hashlib, json, pathlib, sys, time
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 import ego_cart20.softfold_h32  # noqa: F401  (chunk 32; must precede the label imports)
 from ego_cart20.config import CONTRACT, Cart20Config
 from ego_cart20.scripts.convert_dataset import one

@@ -1,8 +1,11 @@
 """[2026-09-29] CPU unit test for rel16_aux: GT prediction -> fk_loss ~ 0; perturbed Δq -> fk_loss > 0 with gradients on both heads."""
 import os, sys, json, torch, numpy as np
 D = sys.argv[1]; os.environ["REL16_STATS"] = f"{D}/meta/stats.json"; os.environ["REL16_LOG_EVERY"] = "1"
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import rel16_aux; rel16_aux.install()
+try:
+    from . import rel16_aux
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import rel16_aux
+rel16_aux.install()
 import lerobot.policies.xvla.action_hub as H
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 ds = LeRobotDataset("rebot/v3d", root=D, video_backend="pyav")

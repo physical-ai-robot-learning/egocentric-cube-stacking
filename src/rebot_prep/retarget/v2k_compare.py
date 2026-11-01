@@ -9,17 +9,18 @@ Posture-manifold metrics use R150 as the reference (all 173,818 frames, 12 arm j
 v1 parity: v1 gate flags must equal robotlike_offline_check's for the same segment (old C8 only).
 usage: v2k_compare.py --group NAME=<v2k out dir> [...] [--parity-offline <baseline_offline dir>] --out <json>
 """
+from ego_paths import HOME, UMI_BRIDGE  # machine-specific roots (env-overridable)
 import argparse, glob, json, pathlib
 import numpy as np
 from scipy.cluster.vq import kmeans2
 from scipy.spatial import cKDTree
 
-H = pathlib.Path.home()
+H = HOME
 import sys as _sys
-d = np.load(H / "umi_bridge/track_c/data/r150_q_tcp.npz")
+d = np.load(UMI_BRIDGE / "track_c/data/r150_q_tcp.npz")
 _ref = _sys.argv[_sys.argv.index("--eval-ref") + 1] if "--eval-ref" in _sys.argv else "r150full"
 if _ref == "heldout120":        # R150 minus the R30 calibration episodes: postures the R30 contract never saw
-    _m = ~np.isin(d["ep"], json.load(open(H / "umi_bridge/track_c/v2k/r30_episodes.json"))["episodes"])
+    _m = ~np.isin(d["ep"], json.load(open(UMI_BRIDGE / "track_c/v2k/r30_episodes.json"))["episodes"])
 else:
     _m = np.ones(len(d["ep"]), bool)
 R150 = np.radians(np.c_[d["J"][_m, :6], d["J"][_m, 7:13]])
@@ -32,7 +33,7 @@ def _ep_diffs(mask):
     for e in np.unique(d["ep"][mask]):
         q = J[d["ep"] == e]; dv.append(np.abs(np.diff(q, axis=0))); da.append(np.abs(np.diff(q, 2, axis=0)))
     return np.concatenate(dv), np.concatenate(da)
-_r30m = np.isin(d["ep"], json.load(open(H / "umi_bridge/track_c/v2k/r30_episodes.json"))["episodes"])
+_r30m = np.isin(d["ep"], json.load(open(UMI_BRIDGE / "track_c/v2k/r30_episodes.json"))["episodes"])
 DYN_REF = {"R30": _ep_diffs(_r30m), "heldout120": _ep_diffs(~_r30m)}
 np.random.seed(0); CENT, _ = kmeans2(R150[::10], 200, seed=0, minit="++"); CTREE = cKDTree(CENT)
 

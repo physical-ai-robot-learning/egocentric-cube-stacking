@@ -16,6 +16,7 @@ Contract (generic, never by dataset name):
   * rel_loss (dims 0:20, gripper dims 9 / 19 included, as in the real v4 recipe) is never masked
 Env: as rel16_aux (REL16_STATS, REL16_LAMBDA_Q, REL16_LAMBDA_FK, REL16_LOG_EVERY).
 """
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import json, os, sys
 import torch
 
@@ -45,8 +46,11 @@ def sanitize_action(action, mdq):
 
 
 def install():
-    sys.path.insert(0, "/home/bh-aiteam/c8old/xvla")
-    import rebot_fk_torch
+    prepend_sys_path(str(NODE_HOME / "c8old/xvla"))
+    try:
+        import rebot_fk_torch
+    except ImportError:  # clean checkout: the repository copy (src/training/robot/rebot_fk_torch.py)
+        from training.robot import rebot_fk_torch
     import lerobot.policies.xvla.modeling_xvla as M
     import lerobot.policies.xvla.action_hub as H
     st = json.load(open(os.environ["REL16_STATS"]))["action"]

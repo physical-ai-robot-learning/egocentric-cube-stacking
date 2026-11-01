@@ -7,6 +7,7 @@ IMU + grayscale frames with their ORIGINAL timestamps (one clock; the offline pi
 clock, so timeshift_cam_imu starts at 0 and OpenVINS may refine it), and (3) turns the filter state into PoseEstimate:
 T_world_camera = T_G_I · T_I_C (current extrinsic estimate). Absence of the bridge/calibration => BackendUnavailable, never fake."""
 from __future__ import annotations
+from ego_paths import HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import os
 import sys
 import tempfile
@@ -16,7 +17,7 @@ import yaml
 from handumi_collector.pose.estimator import BackendInfo, BackendUnavailable, PoseEstimate, PoseEstimator, TrackingState
 from handumi_collector.pose.se3 import inv_T
 
-DEFAULT_BRIDGE_DIRS = (os.environ.get("OV_BRIDGE_DIR", ""), str(Path.home() / "vio/ov_bridge/build"))
+DEFAULT_BRIDGE_DIRS = (os.environ.get("OV_BRIDGE_DIR", ""), str(HOME / "vio/ov_bridge/build"))
 
 # ICM42688P placeholders (datasheet x~4 inflation, the usual VIO practice) until an Allan-variance run exists. Units: Kalibr.
 ICM42688P_NOISE = dict(gyroscope_noise_density=2.0e-4, gyroscope_random_walk=2.0e-5, accelerometer_noise_density=2.0e-3,
@@ -91,7 +92,7 @@ def write_openvins_config(out_dir: str | Path, *, intrinsics: dict, T_camera_imu
 
 def import_bridge(bridge_dir: str | None = None):
     for d in ([bridge_dir] if bridge_dir else []) + [x for x in DEFAULT_BRIDGE_DIRS if x]:
-        if d and Path(d).exists() and d not in sys.path: sys.path.insert(0, d)
+        if d and Path(d).exists() and d not in sys.path: prepend_sys_path(d)
     try:
         import ov_bridge  # type: ignore
         return ov_bridge

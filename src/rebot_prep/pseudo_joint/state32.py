@@ -5,10 +5,11 @@ Per arm, left (robot0) then right:  [prev_rel pos3 + rot6d (first two ROWS of R)
     prev_rel[t] = inv(T_t) @ T_{t-1}, T in the DATASET TCP frame; t = 0 uses itself (identity), prev_valid = 0
 Rows are float32. The caller decides which rows are stored (Track B drops the last frame, which has no t+1).
 """
+from ego_paths import HOLOBRAIN_MAC, prepend_sys_path  # machine-specific roots (env-overridable)
 import pathlib, sys
 import numpy as np
 
-sys.path.insert(0, str(pathlib.Path.home() / "holobrain-mac-model/umi_pkg"))
+prepend_sys_path(str(HOLOBRAIN_MAC / "umi_pkg"))
 from umi.common.pose_util import mat_to_pose10d          # same function Track B's converter uses
 
 PER_ARM = 16

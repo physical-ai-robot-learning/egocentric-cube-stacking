@@ -1,7 +1,9 @@
 """unit: masked_rel_loss == REL-only mean without a mask; masked dims carry 0 loss and 0 gradient; normalisation."""
 import os, sys, torch
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from rel16_relonly_lossmask import masked_rel_loss
+try:
+    from .rel16_relonly_lossmask import masked_rel_loss
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    from rel16_relonly_lossmask import masked_rel_loss
 
 def test_no_mask_equals_relonly_mean():
     p, t = torch.randn(4, 16, 20), torch.randn(4, 16, 20)

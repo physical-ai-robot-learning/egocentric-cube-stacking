@@ -2,7 +2,6 @@
 """raw ego episodes -> processed ego_cart20_v2 tree (spec 23): episodes/<id>/..., metadata.json, {train,val,test}_manifest.jsonl.
 usage: convert_dataset.py <raw_root> <out_root> [--split frozen_handumi|hash] [--workers N]"""
 import argparse, collections, hashlib, json, pathlib, sys, time
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from ego_cart20.config import CONTRACT, Cart20Config
 from ego_cart20.convert import convert_episode
 from ego_cart20.dataset.splits import frozen_handumi_split, hash_split

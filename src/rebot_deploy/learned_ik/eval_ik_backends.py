@@ -15,12 +15,15 @@ Thresholds (fixed now): spike = |second difference over k| > 0.1 rad on any join
 usage: eval_ik_backends.py gt <out.json> [--lik runs/LIK0-P12/best.pt ...]
        eval_ik_backends.py pred <v2eval npz> <out.json> [--lik ...]
 """
+from ego_paths import HOLOBRAIN_DATA, HOLOBRAIN_MAC, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse, json, os, sys, time
 import numpy as np, torch
 from scipy.spatial.transform import Rotation as Rot
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import lik0_common as C
-sys.path.insert(0, os.path.expanduser("~/holobrain-mac-model"))
+try:
+    from . import lik0_common as C
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import lik0_common as C
+prepend_sys_path(str(HOLOBRAIN_MAC))
 import infer_core_v4 as IC, eef_kin
 
 ap = argparse.ArgumentParser(); ap.add_argument("mode", choices=["gt", "pred"]); ap.add_argument("args", nargs="+")
@@ -161,7 +164,7 @@ else:
     D = C.load_data(); idx = {int(i): j for j, i in enumerate(np.arange(len(D["q"])))}
     # v2eval "pick" = dataset global index; lik0_data rows are in the same (parquet) order
     import glob, pyarrow as pa, pyarrow.parquet as pq
-    root = os.path.expanduser("~/holobrain-data/lerobot/r180_umi76_rel16_v3d")
+    root = str(HOLOBRAIN_DATA / "lerobot/r180_umi76_rel16_v3d")
     col = lambda t, c: (lambda x: x.storage if isinstance(x, pa.ExtensionArray) else x)(t.column(c).combine_chunks())
     IX = np.concatenate([col(pq.read_table(f, columns=["index"]), "index").to_numpy() for f in sorted(glob.glob(f"{root}/data/chunk-*/*.parquet"))])
     row = {int(v): j for j, v in enumerate(IX)}

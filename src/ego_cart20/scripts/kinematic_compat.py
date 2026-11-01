@@ -15,6 +15,7 @@ per arm independently, IK seeded at q0_r and then CONTINUOUSLY (q_t seeds t+1). 
 sensitivity check.  R312c reference = the same IK on R312c's own trajectories (T_abs = FK(q0) @ S_rel = FK(q_t)).
 Success: |dp| < 2 mm and rotation error < 2 deg (full); |dp| < 2 mm (position-only); 'converged' = the solver's own 0.5 / 0.5 stop.
 usage: kinematic_compat.py --ego <ego lerobot train> --robot <r312c lerobot> --output <dir> [--episodes 40] [--seed 1000]"""
+from ego_paths import DATA_ROOT, HOLOBRAIN_MAC, HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse
 import collections
 import json
@@ -25,9 +26,9 @@ import time
 
 import numpy as np
 
-H = pathlib.Path.home()
-sys.path[:0] = [str(pathlib.Path(__file__).resolve().parents[2]), str(H / "holobrain-mac-model"), str(H / "c8/c8old")]
-os.environ.setdefault("REBOT_URDF", str(H / "holobrain-mac-model/reBot_B601_DM_dualarm.urdf"))
+H = HOME
+prepend_sys_path(str(HOLOBRAIN_MAC), str(DATA_ROOT / "c8old"))
+os.environ.setdefault("REBOT_URDF", str(HOLOBRAIN_MAC / "reBot_B601_DM_dualarm.urdf"))
 from ego_cart20.geometry.rotation6d import rotation_angle  # noqa: E402
 from ego_cart20.geometry.transforms import pose9, pose9_to_T  # noqa: E402
 from ego_cart20.scripts.compare_ego_r312c import load, pct  # noqa: E402

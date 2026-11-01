@@ -20,7 +20,6 @@ from collections import Counter
 import numpy as np
 from scipy.spatial.transform import Rotation as Rot, Slerp
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from ego_cart20.robotize import core                                     # noqa: E402
 from ego_cart20.robotize.rebot import (SAFETY, ReBotChecker, c922_R_map, ready_pose, robot_task_frame)  # noqa: E402
 

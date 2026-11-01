@@ -7,10 +7,11 @@
                             (the C7/V3 segment length) exists
 Writes ~/c8/census_pre.json (per-episode record) and prints the funnel.
 """
+from ego_paths import DATA_ROOT, EGO_COLLECTOR_HOME, HOME  # machine-specific roots (env-overridable)
 import collections, json, pathlib, sys
 import numpy as np
 from mcap.reader import make_reader
-H = pathlib.Path.home(); C8 = H / "c8"; RAW = H / "ego_collector/datasets/human_handumi_raw/Hpilot"
+H = HOME; C8 = DATA_ROOT; RAW = EGO_COLLECTOR_HOME / "datasets/human_handumi_raw/Hpilot"
 man = json.load(open(C8 / "c8_domain_manifest.json")); grip = json.load(open(C8 / "grip/grip_census.json"))["sides"]
 eps = sorted({v["episode"]: v["domain"] for v in man.values()}.items())
 SEG = 65; rec = {}

@@ -49,7 +49,6 @@ def encode_video(frames_bytes, out_mp4):
 def export_one(h5path, out_root, delete_source=False):
     import h5py
     from scipy.spatial.transform import Rotation
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
     from ego_cart20.geometry.rotation6d import matrix_to_quaternion
     from ego_cart20.io.raw_episode_loader import save_raw_episode
     e = episode_id(h5path); out = pathlib.Path(out_root) / e

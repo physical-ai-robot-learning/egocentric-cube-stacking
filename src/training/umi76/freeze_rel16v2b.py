@@ -7,10 +7,11 @@
  RECIPE.json             the launcher's exact training arguments (+ the smoke run's startup config, if found)
 usage: freeze_rel16v2b.py            (node, holobrain env)
 """
+from ego_paths import NODE_HOME  # machine-specific roots (env-overridable)
 import glob, hashlib, json, os, pathlib, re, subprocess, sys
 import numpy as np, pyarrow as pa, pyarrow.parquet as pq
 
-H = pathlib.Path("/home/bh-aiteam"); DS = H / "holobrain-data/lerobot/r380_umi94_rel16_v2B"
+H = NODE_HOME; DS = H / "holobrain-data/lerobot/r380_umi94_rel16_v2B"
 BASE = H / "xvla_base_umi94"; BASE_A = H / "xvla_base_umi76"; OUT = H / "umi_bridge/rel16v2b_freeze"
 LAUNCH = H / "train_umi_v2.sh"; WIDEN = H / "umi_bridge/umi76/widen_append94.py"; DERIVE = H / "umi_bridge/umi76/derive_v2.py"
 SRC = H / "lerobot-seeed/src/lerobot"

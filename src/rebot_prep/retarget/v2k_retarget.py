@@ -20,13 +20,14 @@ Nothing here was tuned on v2 results (weights, K, radii fixed before the first r
 usage: v2k_retarget.py --episodes-json <json "episodes": [C8 ids]> --raw-root <dataset dir with <prefix>_<sess>/episode_N>
                        --runs <dir> --export <dir> --out <dir> [--prefix Hpilot]
 """
+from ego_paths import EGO_COLLECTOR_HOME, HOME, UMI_BRIDGE  # machine-specific roots (env-overridable)
 import argparse, importlib.util, json, pathlib, sys, time
 import numpy as np
 from scipy.spatial.transform import Rotation as Rot
 from scipy.spatial import cKDTree
 
-H = pathlib.Path.home()
-spec = importlib.util.spec_from_file_location("rlc", H / "ego_collector/scripts/robotlike_offline_check.py"); RLC = importlib.util.module_from_spec(spec); spec.loader.exec_module(RLC)
+H = HOME
+spec = importlib.util.spec_from_file_location("rlc", EGO_COLLECTOR_HOME / "scripts/robotlike_offline_check.py"); RLC = importlib.util.module_from_spec(spec); spec.loader.exec_module(RLC)
 P3 = RLC.P3; P = None
 K_ROLL, VARIANT_RAD, MAX_VARIANTS, WS_MIN, D_HARD = 8, 0.5, 3, 0.95, 0.075
 BANK = np.load(pathlib.Path(__file__).resolve().parent / "seedbank_q12.npy")
@@ -231,7 +232,7 @@ def main():
     t0 = time.time(); P3.init(); P = P3.P; t1 = time.time(); clr = RLC.Clearance(P3.ik.kin)
     BANK_T0 = np.array([np.stack(fk_T(q)) for q in BANK]); print(f"init {t1 - t0:.1f}s, bank FK {time.time() - t1:.1f}s", flush=True)
     from scipy.spatial import cKDTree
-    d150 = np.load(H / "umi_bridge/track_c/data/r150_q_tcp.npz"); Q_TREE = cKDTree(np.radians(np.c_[d150["J"][:, :6], d150["J"][:, 7:13]])[::3])
+    d150 = np.load(UMI_BRIDGE / "track_c/data/r150_q_tcp.npz"); Q_TREE = cKDTree(np.radians(np.c_[d150["J"][:, :6], d150["J"][:, 7:13]])[::3])
     BANK_D = Q_TREE.query(BANK)[0]
     MODE = a.mode
     if MODE in ("r30", "tr"):

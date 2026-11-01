@@ -21,11 +21,12 @@ difference is scale-induced only):
   UMI displacement   d_k = translation of inv(T_tcp(t)) @ T_tcp(t + k) on the 15 Hz grid, k = 1, 4, 8, 16, 32;
                      error |d_k(s_est) - d_k(s_gt)| in mm and relative to |d_k(s_gt)|, p50 / p90
 """
+from ego_paths import SHARED_ROOT  # machine-specific roots (env-overridable)
 import csv, json, os, pathlib, re
 import numpy as np, yaml
 from scipy.signal import savgol_filter
 from scipy.spatial.transform import Rotation as Rot
-BASE = pathlib.Path(os.environ.get("M3_BASE", "/srv/data/johann/trackA_mast3r_pose_v1"))
+BASE = pathlib.Path(os.environ.get("M3_BASE", str(SHARED_ROOT / "trackA_mast3r_pose_v1")))
 VAR = os.environ.get("M3_VARIANT", "ss1")   # [2026-09-23] C8: ss1_5080 = the same benchmark re-run on the RTX 5080
 QA = json.load(open(BASE / "qa/qa_all.json"))
 CT = yaml.safe_load(open(BASE / "handumi_camera_tcp_v2.yaml"))

@@ -25,7 +25,6 @@ import base64, math, os, sys, threading, time
 import numpy as np, cv2
 from flask import Flask, Response, jsonify, request
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 MOCK = os.environ.get("MIT_MOCK", "0") == "1"
 PORT = int(os.environ.get("MIT_PORT", "8021"))
 TICK_HZ = float(os.environ.get("MIT_TICK_HZ", "100"))
@@ -88,7 +87,10 @@ def leader_vec_to_goals(act):
 def _arm_ports():
     if MOCK:
         return {"left": "mock-left", "right": "mock-right"}
-    from usb_arm_ports import arm_ports
+    try:
+        from .usb_arm_ports import arm_ports
+    except ImportError:  # run as a flat script (its folder is sys.path[0])
+        from usb_arm_ports import arm_ports
     m = arm_ports(); L = os.environ.get("LEFT_LOC"); R = os.environ.get("RIGHT_LOC")
     if not (L and R):
         raise RuntimeError("set LEFT_LOC and RIGHT_LOC (USB locationIDs, see usb_arm_ports.py) -- ports are never guessed here")

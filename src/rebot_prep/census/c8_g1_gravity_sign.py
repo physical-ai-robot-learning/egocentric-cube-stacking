@@ -9,12 +9,16 @@ angle between the mean tilt directions (and the median per-sample NN angle) unde
 single sign / frame flip (g sign, F omitted, C omitted, C^-1). PASS = the frozen chain is the clear best and close.
 Human samples: every 15th valid row of every usable (bimanual E) segment of the integrity-filtered census.
 """
+from ego_paths import DATA_ROOT, HOME, UMI_BRIDGE, prepend_sys_path  # machine-specific roots (env-overridable)
 import json, os, pathlib, sys
 import numpy as np
 from scipy.spatial import cKDTree
-H = pathlib.Path.home(); C8 = H / "c8"; sys.path.insert(0, str(H / "umi_bridge/track_c")); sys.path.insert(0, str(C8))
+H = HOME; C8 = DATA_ROOT; prepend_sys_path(str(UMI_BRIDGE / "track_c")); prepend_sys_path(str(C8))
 os.environ["M3_BASE"] = str(C8 / "stage_p3"); os.environ["M3_VARIANT"] = "ss1"
-import c8_imu_vi_g, pseudo_joint_pipeline as P
+try:
+    import c8_imu_vi_g, pseudo_joint_pipeline as P
+except ImportError:  # clean checkout: the repository copy
+    from . import c8_imu_vi_g; from rebot_prep.pseudo_joint import pseudo_joint_pipeline as P
 ns = c8_imu_vi_g.load(); X = ns["X"]; F3, C3 = P.F[:3, :3], P.C[:3, :3]
 d = json.load(open(C8 / "phase3_census.json"))["episodes"]; Q = set(json.load(open(C8 / "c8_quarantine.json"))["sessions"])
 man = json.load(open(C8 / "c8_domain_manifest.json")); grip = json.load(open(C8 / "grip/grip_census.json"))["sides"]
@@ -34,7 +38,7 @@ for e, r in d.items():
             for i in rows:
                 if ok[i]: hum[side].append((T[i, :3, :3] @ X[:3, :3]).T @ g)
 hum = {k: np.array(v) for k, v in hum.items()}; print("human tilt samples", {k: len(v) for k, v in hum.items()})
-kin = P.ContinuityIK(P.IKCfg()).kin; d150 = np.load(H / "umi_bridge/track_c/data/r150_q_tcp.npz"); J = d150["J"]
+kin = P.ContinuityIK(P.IKCfg()).kin; d150 = np.load(UMI_BRIDGE / "track_c/data/r150_q_tcp.npz"); J = d150["J"]
 ix = np.random.default_rng(0).choice(len(J), 4000, replace=False); rob = {"left": [], "right": []}
 from scipy.spatial.transform import Rotation as Rot
 for i in ix:

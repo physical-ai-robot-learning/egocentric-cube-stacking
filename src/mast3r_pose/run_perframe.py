@@ -14,9 +14,10 @@ single_thread = True (deterministic ordering with the backend). Output CSV uses 
 same QA runs on both, plus kf_ref, sim3_scale, match_frac, mode. Pose = T_WC (camera -> world), t in world units,
 quaternion xyzw -- verified by test_convention.py, not assumed.
 """
+from ego_paths import HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse, json, os, pathlib, sys, time, hashlib, types
-ROOT = pathlib.Path(os.environ.get("M3_REPO", pathlib.Path.home() / "mast3r_slam_official"))
-sys.path.insert(0, str(ROOT))
+ROOT = pathlib.Path(os.environ.get("M3_REPO", HOME / "mast3r_slam_official"))
+prepend_sys_path(str(ROOT))
 import numpy as np, torch, lietorch, yaml
 # torch >= 2.6 defaults torch.load(weights_only=True); the official naver checkpoints pickle an argparse.Namespace.
 # They are trusted (md5 in checkpoints/MD5SUMS), so restore the pre-2.6 default here -- module top level, so the

@@ -13,14 +13,18 @@ FROZEN before any v2 retarget result exists (user, 2026-09-28): rule + params + 
   5. bimanual clearance d_min >= 0.075 m (c8_collision_v1, contract D_HARD)
   6. greedy dedup in 12-D joint space: keep a sample only if >= DEDUP_RAD from every kept one
 """
+from ego_paths import DATA_ROOT, HOME, UMI_BRIDGE, prepend_sys_path  # machine-specific roots (env-overridable)
 import hashlib, json, pathlib, sys, time
 import numpy as np
 from scipy.spatial import cKDTree
 from scipy.spatial.transform import Rotation as Rot
 from scipy.stats import qmc
 
-H = pathlib.Path.home(); sys.path.insert(0, str(H / "c8")); sys.path.insert(0, str(H / "umi_bridge/track_c"))
-import pseudo_joint_pipeline as P                                                   # noqa: E402
+H = HOME; prepend_sys_path(str(DATA_ROOT)); prepend_sys_path(str(UMI_BRIDGE / "track_c"))
+try:
+    import pseudo_joint_pipeline as P  # noqa: E402
+except ImportError:  # clean checkout: the repository copy
+    from rebot_prep.pseudo_joint import pseudo_joint_pipeline as P
 from c8_collision_v1 import Clearance                                              # noqa: E402
 OUT = pathlib.Path(__file__).resolve().parent
 SOBOL_M, SEED, DEDUP_RAD, FLOOR_MARGIN_M, WS_POS_M, WS_ORI_DEG, D_HARD = 17, 20260928, 0.25, 0.010, 0.05, 20.0, 0.075
@@ -32,7 +36,7 @@ def main():
     # (r30_episodes.json = nested set_id < 5); the other 120 R150 episodes are never read. Default = legacy full R150.
     ref_name = sys.argv[sys.argv.index("--ref") + 1] if "--ref" in sys.argv else "r150full"
     t0 = time.time(); kin = P.eef_kin.Kin(dict(ori_weight=20.0, max_joint_delta=0.35)); clr = Clearance(kin)
-    d = np.load(H / "umi_bridge/track_c/data/r150_q_tcp.npz")
+    d = np.load(UMI_BRIDGE / "track_c/data/r150_q_tcp.npz")
     keep_rows = np.isin(d["ep"], json.load(open(OUT / "r30_episodes.json"))["episodes"]) if ref_name == "r30" else np.ones(len(d["ep"]), bool)
     d = {k: d[k][keep_rows] for k in ("J", "tcp")}
     J = np.radians(np.c_[d["J"][:, :6], d["J"][:, 7:13]])

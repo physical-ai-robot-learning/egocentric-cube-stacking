@@ -7,8 +7,10 @@ Test episodes are never loaded here. Recipe fixed before training (not tuned on 
 usage: train_lik0.py <out dir under runs/> [--smoke] [--device mps|cpu]"""
 import argparse, json, math, os, sys, time
 import numpy as np, torch
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import lik0_common as C
+try:
+    from . import lik0_common as C
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import lik0_common as C
 
 ap = argparse.ArgumentParser(); ap.add_argument("run"); ap.add_argument("--smoke", action="store_true")
 ap.add_argument("--device", default="mps" if torch.backends.mps.is_available() else "cpu")

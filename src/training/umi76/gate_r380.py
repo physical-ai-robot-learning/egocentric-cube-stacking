@@ -6,12 +6,13 @@ G3 FRONT eps 180-279: count 100, order == selection order, task == R675 pool ins
 G4 FRONT global == rot180 of the source center675 global at the same (episode, frame), sampled; wrist == zarr
 G5 FRONT state/action finite, shapes 76 / 16x20, current self term identity; stats cover 280 episodes
 """
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import json, glob, sys, pathlib, numpy as np, pandas as pd
-sys.path.insert(0, "/home/bh-aiteam/lerobot-seeed/src")
+prepend_sys_path(str(NODE_HOME / "lerobot-seeed/src"))
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
-D = "/home/bh-aiteam/holobrain-data/lerobot"
+D = str(NODE_HOME / "holobrain-data/lerobot")
 NEW, OLD = f"{D}/r380_umi76_rel16_v1", f"{D}/r180_umi76_rel16_v1"
-SEL = json.load(open("/home/bh-aiteam/umi_bridge/umi76/r380_front200_v1.json"))
+SEL = json.load(open(str(NODE_HOME / "umi_bridge/umi76/r380_front200_v1.json")))
 fails = []
 def check(name, ok, info=""):
     print(("PASS  " if ok else "FAIL  ") + name + (f"  {info}" if info else ""), flush=True)
@@ -62,7 +63,7 @@ check("G2 HEAD decoded video frames identical to r180 (12 frames x 3 cams)", mx 
 nf = n[n.episode_index >= 180]
 eps = sorted(nf.episode_index.unique())
 check("G3 FRONT episode count == 200", len(eps) == 200 and eps == list(range(180, 380)))
-inv = pd.read_csv("/home/bh-aiteam/umi_bridge/qa_b663/inventory.csv").set_index("episode")
+inv = pd.read_csv(str(NODE_HOME / "umi_bridge/qa_b663/inventory.csv")).set_index("episode")
 want = [inv.loc[e, "task"] for e in SEL["r663_episodes"]]
 got = list(nf.groupby("episode_index").task_index.first().map(t_new).values)
 check("G3 FRONT task per episode == selection (R663 inventory task)", got == want)
@@ -100,7 +101,7 @@ ok = all(r[0] < 0.02 and r[2] > 5 * r[0] for r in rows) and len(rows) == 8
 check("G4 FRONT global == B663 rot180 FRONT frame, and re-rotating it is far worse (8 eps)", ok,
       "best(mean|d|, frame offset, d if rotated again) = " + str([(round(r[0], 4), r[1], round(r[2], 4)) for r in rows]))
 # G6 superset: every R280 FRONT episode is bit-identical (state, action, frame count) inside R380
-S280 = json.load(open("/home/bh-aiteam/umi_bridge/umi76/r280_front100_v1.json"))["zarr_episodes"]
+S280 = json.load(open(str(NODE_HOME / "umi_bridge/umi76/r280_front100_v1.json")))["zarr_episodes"]
 r280 = load(f"{D}/r280_umi76_rel16_v1"); pos380 = {z: 180 + i for i, z in enumerate(SEL["zarr_episodes"])}
 bad6 = []
 for i, z in enumerate(S280):

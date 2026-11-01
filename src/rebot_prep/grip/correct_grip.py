@@ -22,12 +22,13 @@ were read off the wrist camera for all 5 sessions x 2 arms, and the median over 
 anchors is 67.5 mm. Uncertainty ~±5 mm; it is a single global scale on this one channel, so a later
 caliper measurement can be applied by changing this number alone.
 """
+from ego_paths import EGO_COLLECTOR_HOME, HOME  # machine-specific roots (env-overridable)
 import argparse, glob, json, pathlib, collections
 import numpy as np
 
 APERTURE_M = 0.0675
 APERTURE_UNCERTAINTY_M = 0.005
-RAW = pathlib.Path.home() / "ego_collector/datasets/human_handumi_raw/Hpilot"
+RAW = EGO_COLLECTOR_HOME / "datasets/human_handumi_raw/Hpilot"
 # 140419-left: session_meta says (6943, 5389) but regressing stored normalized on raw returns this pair
 # with R^2 = 1.0, so the metadata is wrong and the recovered pair is what the recording actually used.
 RECOVERED = {("20260916_140419", "left"): (2847, 1293)}
@@ -52,8 +53,8 @@ def session_meta_ticks():
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--grip", default=str(pathlib.Path.home() / ".claude/jobs/e649aef3/tmp/handumi_grip"))
-    ap.add_argument("--out", default=str(pathlib.Path.home() / ".claude/jobs/e649aef3/tmp/handumi_grip_corrected"))
+    ap.add_argument("--grip", default=str(HOME / ".claude/jobs/e649aef3/tmp/handumi_grip"))
+    ap.add_argument("--out", default=str(HOME / ".claude/jobs/e649aef3/tmp/handumi_grip_corrected"))
     a = ap.parse_args()
     src, out = pathlib.Path(a.grip), pathlib.Path(a.out)
     out.mkdir(parents=True, exist_ok=True)

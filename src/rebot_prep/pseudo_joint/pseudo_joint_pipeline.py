@@ -10,16 +10,20 @@ Frames (C1 gate + OPEN-1, never re-derived here):
 IK never holds silently: a failed row keeps its target, gets a status and reason, and the last good q is kept
 in a separate field. Nothing is interpolated.
 """
+from ego_paths import EGO_COLLECTOR_HOME, HOLOBRAIN_MAC, prepend_sys_path  # machine-specific roots (env-overridable)
 import dataclasses, json, pathlib, sys
 import numpy as np
 import yaml
 from scipy.spatial.transform import Rotation as Rot
 
 HOME = pathlib.Path.home()
-sys.path[:0] = [str(HOME / "holobrain-mac-model"), str(HOME / "holobrain-mac-model/umi_pkg")]
-import eef_kin
+prepend_sys_path(str(HOLOBRAIN_MAC), str(HOLOBRAIN_MAC / "umi_pkg"))
+try:
+    import eef_kin
+except ImportError:  # clean checkout: the repository copy
+    from . import eef_kin
 
-CAM_TCP_V2 = HOME / "ego_collector/configs/calibration/camera_tcp/handumi_camera_tcp_v2.yaml"
+CAM_TCP_V2 = EGO_COLLECTOR_HOME / "configs/calibration/camera_tcp/handumi_camera_tcp_v2.yaml"
 TRAIN_START_DEG14 = [-4.5, -2.0, -8.3, 30.4, -6.9, -5.2, 0.0, 4.2, -14.8, -1.1, 6.0, 3.2, -3.2, 0.0]
 Q_R0 = np.radians([TRAIN_START_DEG14[i] for i in range(14) if i not in (6, 13)])
 ARM_J = list(range(0, 6)) + list(range(8, 14))           # solver full-q indices of the 12 arm joints

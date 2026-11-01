@@ -28,6 +28,7 @@ channels mean 0 / std 1 (the gcal1 placeholder convention, never std 0); aux.q_t
 Resumable: one shard per episode (+ .complete marker), then lerobot aggregate_datasets with the pyarrow agg_patch.
 usage (env ~/xvla-mac/bin/python): export_lerobot.py <processed_root> <out_root> [--name ego_cart20_v2] [--workers 6]
 """
+from ego_paths import DATA_ROOT, EGO_COLLECTOR_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse
 import hashlib
 import json
@@ -39,8 +40,7 @@ import time
 import numpy as np
 
 HERE = pathlib.Path(__file__).resolve()
-sys.path.insert(0, str(HERE.parents[2]))
-AGG = pathlib.Path.home() / "c8/rel16ego"
+AGG = DATA_ROOT / "rel16ego"
 CAMS = (("head", "observation.images.global"), ("left_wrist", "observation.images.left_wrist"), ("right_wrist", "observation.images.right_wrist"))
 STAT_KEYS = ("min", "max", "mean", "std", "count", "q01", "q10", "q50", "q90", "q99")
 
@@ -71,7 +71,7 @@ _KB = {}
 def _kb(side):
     import yaml
     if side not in _KB:
-        y = yaml.safe_load(open(pathlib.Path.home() / f"ego_collector/configs/calibration/fisheye_{side}_v002.yaml"))
+        y = yaml.safe_load(open(EGO_COLLECTOR_HOME / f"configs/calibration/fisheye_{side}_v002.yaml"))
         _KB[side] = (np.array(y["K"], np.float64), np.array(y["D"], np.float64).reshape(4, 1))
     return _KB[side]
 
@@ -178,7 +178,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("processed"); ap.add_argument("out"); ap.add_argument("--name", default="ego_cart20_v2")
     ap.add_argument("--workers", type=int, default=6); ap.add_argument("--splits", nargs="*", default=["train", "val"]); a = ap.parse_args()
     P, OUT = pathlib.Path(a.processed), pathlib.Path(a.out); SH = OUT / f"{a.name}_shards"; report = {}
-    sys.path.insert(0, str(AGG)); import agg_patch; agg_patch.install()
+    prepend_sys_path(str(AGG)); import agg_patch; agg_patch.install()
     from lerobot.datasets.aggregate import aggregate_datasets
     from concurrent.futures import ProcessPoolExecutor
     for s in a.splits:

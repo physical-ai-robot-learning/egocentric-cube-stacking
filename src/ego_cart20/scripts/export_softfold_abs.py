@@ -13,6 +13,7 @@
 fps is declared 30 (rows are raw frames, ~28.6 Hz); timestamps are only used to index the videos.
 usage: export_softfold_abs.py <raw_root> <out_root> --name softfold_abs30_v1 [--val-folders F ...] [--workers N]
 """
+from ego_paths import DATA_ROOT, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse
 import hashlib
 import json
@@ -24,8 +25,7 @@ import time
 import numpy as np
 
 HERE = pathlib.Path(__file__).resolve()
-sys.path.insert(0, str(HERE.parents[2]))
-AGG = pathlib.Path.home() / "c8/rel16ego"
+AGG = DATA_ROOT / "rel16ego"
 X = np.array([[0., 0., 1.], [0., -1., 0.], [1., 0., 0.]])        # sources/softfold_export.py tool frame (T_raw = T_agilex @ X)
 NUM_ACTIONS, QDUR, MARGIN = 30, 2.0, 60
 CAMS = (("head", "observation.images.global"), ("left_wrist", "observation.images.left_wrist"), ("right_wrist", "observation.images.right_wrist"))
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     ap.add_argument("--limit", type=int, default=0); a = ap.parse_args()
     RAW, OUT = pathlib.Path(a.raw_root), pathlib.Path(a.out); SH = OUT / f"{a.name}_shards"; report = {}
     import os
-    if os.environ.get("AGG_PATCH", "1") == "1": sys.path.insert(0, str(AGG)); import agg_patch; agg_patch.install()
+    if os.environ.get("AGG_PATCH", "1") == "1": prepend_sys_path(str(AGG)); import agg_patch; agg_patch.install()
     from lerobot.datasets.aggregate import aggregate_datasets
     from concurrent.futures import ProcessPoolExecutor
     raws = sorted(p for p in RAW.iterdir() if (p / "raw_episode.json").exists())

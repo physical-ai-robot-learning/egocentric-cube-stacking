@@ -55,6 +55,8 @@ packages = [
     "src/rebot_prep",
     "src/rebot_deploy",
     "src/training",
+    "src/ego_paths",
+    "src/umi",
 ]
 
 [tool.pytest.ini_options]

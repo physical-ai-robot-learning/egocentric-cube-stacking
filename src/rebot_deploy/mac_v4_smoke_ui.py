@@ -14,6 +14,7 @@ its limits once.
 
 Env: V4_* (see infer_core_v4), V4_UI_PORT (8016), V4_ROBOT (http://localhost:8020).
 """
+from ego_paths import CKPT_ROOT, DATA_ROOT, HOLOBRAIN_MAC, NODE_HOME, UMI_BRIDGE  # machine-specific roots (env-overridable)
 import os, math, time, threading, base64, itertools
 import numpy as np, requests, torch
 from flask import Flask, jsonify, request
@@ -1371,7 +1372,7 @@ def hra_start_pose():
         if request.args.get("saved") == "1":          # [10-06] the pose saved as "robot = HandUMI start" (umi_start_pose.json, offset-free frame)
             import json as _j, infer_core_v4 as _IC
             _nm = os.path.basename(request.args.get("pose", ""))      # [2026-10-07 user "새 시작점 추가"] choose from ~/c8/hra_red/start_poses/
-            _pf = os.path.expanduser(f"~/c8/hra_red/start_poses/{_nm}") if _nm else os.path.expanduser("~/c8/hra_red/umi_start_pose.json")
+            _pf = str(DATA_ROOT / f"hra_red/start_poses/{_nm}") if _nm else str(DATA_ROOT / "hra_red/umi_start_pose.json")
             if not os.path.exists(_pf):
                 return jsonify({"error": f"no start pose file {_pf}"})
             Ts = np.array(_j.load(open(_pf))["T_base_tcp"])
@@ -1379,7 +1380,7 @@ def hra_start_pose():
             # back = -optical axis, both projected on the horizontal plane; down = base -z. Orientation unchanged.
             _r, _b, _d = (float(request.args.get(k_, 0.0)) / 1000.0 for k_ in ("right_mm", "back_mm", "down_mm"))
             if _r or _b or _d:
-                _X = np.array(_j.load(open(os.path.expanduser("~/c8/hra_red/handeye/robot_right_wrist_handeye.json")))["X_tcp_cam"]["park"])
+                _X = np.array(_j.load(open(str(DATA_ROOT / "hra_red/handeye/robot_right_wrist_handeye.json")))["X_tcp_cam"]["park"])
                 _C = Ts @ _X; _up = np.array([0.0, 0.0, 1.0])
                 _ex = _C[:3, 0] - (_C[:3, 0] @ _up) * _up; _ex /= np.linalg.norm(_ex)
                 _ez = _C[:3, 2] - (_C[:3, 2] @ _up) * _up; _ez /= np.linalg.norm(_ez)
@@ -1455,7 +1456,7 @@ def wrist_zoom_route():
             return jsonify({"error": "s must be 0.7 .. 3.0"})
         _IC.WRIST_ZOOM["s"] = v
         try:
-            open(os.path.expanduser(f"~/umi_bridge/.auto_ui_d20_e5/{os.environ.get('V4_UI_PORT', '8056')}.wristzoom"), "w").write(f"{v}\n")
+            open(str(UMI_BRIDGE / f".auto_ui_d20_e5/{os.environ.get('V4_UI_PORT', '8056')}.wristzoom"), "w").write(f"{v}\n")
         except Exception:
             pass
     return jsonify({"wrist_zoom": _IC.WRIST_ZOOM["s"]})
@@ -1466,7 +1467,7 @@ def start_poses():
     """[2026-10-07] saved start poses (~/c8/hra_red/start_poses/*.json) for the UMI start button."""
     import json as _j, glob as _g
     out = []
-    for f in sorted(_g.glob(os.path.expanduser("~/c8/hra_red/start_poses/*.json"))):
+    for f in sorted(_g.glob(str(DATA_ROOT / "hra_red/start_poses/*.json"))):
         try:
             T = np.array(_j.load(open(f))["T_base_tcp"]); out.append({"name": os.path.basename(f), "tcp_mm": [round(float(x) * 1000, 1) for x in T[:3, 3]]})
         except Exception:
@@ -1480,7 +1481,7 @@ def cube_stop_route():
     if "px" in request.args:
         CUBE_STOP["px"] = max(0.0, float(request.args["px"])); CUBE_STOP["hits"] = 0
         try:
-            open(os.path.expanduser(f"~/umi_bridge/.auto_ui_d20_e5/{os.environ.get('V4_UI_PORT', '8056')}.cubestop"), "w").write(f"{CUBE_STOP['px']}\n")
+            open(str(UMI_BRIDGE / f".auto_ui_d20_e5/{os.environ.get('V4_UI_PORT', '8056')}.cubestop"), "w").write(f"{CUBE_STOP['px']}\n")
         except Exception:
             pass
     try:
@@ -1506,7 +1507,7 @@ def wrist_snap():
         return jsonify({"error": "observe failed / no right image"})
     bgr = cv2.imdecode(np.frombuffer(base64.b64decode(o["images"]["right"]), np.uint8), cv2.IMREAD_COLOR)
     z = cv2.resize(_IC.wrist_zoom(bgr, _IC.WRIST_ZOOM["s"]), (224, 224), interpolation=cv2.INTER_AREA)
-    d = os.path.expanduser("~/c8/hra_a100/wrist_snaps"); os.makedirs(d, exist_ok=True); t = time.strftime("%H%M%S")
+    d = str(DATA_ROOT / "hra_a100/wrist_snaps"); os.makedirs(d, exist_ok=True); t = time.strftime("%H%M%S")
     cv2.imwrite(f"{d}/{t}_raw.png", bgr); cv2.imwrite(f"{d}/{t}_in224_s{_IC.WRIST_ZOOM['s']:.2f}.png", z)
     m, _ = INF.tcp_now(o["joints14"])
     _j.dump({"t": t, "zoom": _IC.WRIST_ZOOM["s"], "T_base_tcp_right": m[1].tolist()}, open(f"{d}/{t}.json", "w"))
@@ -2604,7 +2605,7 @@ def replay2x2():
     body = request.get_json(silent=True) or {}
     n_frames = int(body.get("frames", 6))
     KS = [int(x) for x in body.get("ks", [1, 4, 16])]
-    path = os.path.expanduser(body.get("pack", "~/holobrain-mac-model/replay_frames.npy"))
+    path = os.path.expanduser(body.get("pack", str(HOLOBRAIN_MAC / "replay_frames.npy")))
     if not os.path.isfile(path):
         return jsonify({"error": f"no frame pack at {path}"})
     pack = list(_np.load(path, allow_pickle=True))[:n_frames]
@@ -2829,14 +2830,14 @@ def _replay_loop(mode, n_action, stride, max_queries, use_grip, anchor="source",
     """
     import numpy as _np
     from scipy.spatial.transform import Rotation as _Rot
-    path = os.path.expanduser(f"~/holobrain-mac-model/chunks_ep{ep}.npz")
+    path = str(HOLOBRAIN_MAC / f"chunks_ep{ep}.npz")
     d = _np.load(path, allow_pickle=True)
     SRC = d["src"]
     JOINTS = None
     if mode == "joints":
         # the recorded joint trajectory: what the robot physically did during the demo, with no IK, no FK and
         # no frame convention in the way. The purest possible reference for the other three modes.
-        jp = os.path.expanduser(f"~/holobrain-mac-model/joints_ep{ep}.npz")
+        jp = str(HOLOBRAIN_MAC / f"joints_ep{ep}.npz")
         JOINTS = _np.load(jp)["joints"]                      # (frames+1, 2, 4, 4) absolute source TCP poses, the teleop itself
     C = d["delta"] if mode == "delta" else (d["umi"] if mode == "umi" else d["delta"])
     if JOINTS is not None:
@@ -3611,11 +3612,11 @@ trsum();
 # [2026-10-03 user] "ckpoint 쌓인거 내가 ui에서 선택할수 있게 해줘": pick any archived step of this UI's run. A pick PINS the port
 # (auto_ui_d20_e5.sh skips pinned ports) and re-runs load_relonly_run_ckpt_to_ui.sh with this process's env (same deploy contract),
 # which restarts this UI on the chosen weights (~30-60 s). "auto" removes the pin and makes the swapper load the newest again.
-CKSEL_SSD = "/Volumes/PortableSSD/rebot_ckpts_archive"
-CKSEL_ST = os.path.expanduser("~/umi_bridge/.auto_ui_d20_e5")
+CKSEL_SSD = str(CKPT_ROOT)
+CKSEL_ST = str(UMI_BRIDGE / ".auto_ui_d20_e5")
 
 
-CKSEL_LOADER = os.environ.get("CKSEL_LOADER", os.path.expanduser("~/umi_bridge/load_relonly_run_ckpt_to_ui.sh"))
+CKSEL_LOADER = os.environ.get("CKSEL_LOADER", str(UMI_BRIDGE / "load_relonly_run_ckpt_to_ui.sh"))
 CKSEL_NODE = os.environ.get("CKSEL_NODE", "")          # 5090 runs: "<ssh host>:<checkpoints dir>" (no SSD archive, list the node)
 _CKSEL_CACHE = {"t": 0.0, "v": set()}
 
@@ -3632,7 +3633,7 @@ def _cksel_steps():
     if run and os.path.isdir(d):
         out |= {s for s in os.listdir(d) if s.isdigit() and len(s) == 6 and os.path.isfile(os.path.join(d, s, ".archived"))}
     # [2026-10-03 user "새 체크포인트 나올때마다 드롭다운 업데이트"]: list the training node too (4090 runs before SSD archiving)
-    node = CKSEL_NODE or f"bh-aiteam@100.64.0.2:/home/bh-aiteam/holobrain-data/trainB/{run}/checkpoints"
+    node = CKSEL_NODE or f"bh-aiteam@100.64.0.2:{NODE_HOME}/holobrain-data/trainB/{run}/checkpoints"
     jump = [] if CKSEL_NODE else ["-J", "head-lp"]
     if run:
         if time.time() - _CKSEL_CACHE["t"] > 25:
@@ -3646,7 +3647,7 @@ def _cksel_steps():
             except Exception:
                 pass
         out |= _CKSEL_CACHE["v"]
-    hm = os.path.expanduser("~/holobrain-mac-model"); pre = f"ckpt_UI_{run}_"
+    hm = str(HOLOBRAIN_MAC); pre = f"ckpt_UI_{run}_"
     for n in os.listdir(hm):
         st = _cksel_local_step(n, run) if run else None
         if st and os.path.isfile(os.path.join(hm, n, "model.safetensors")): out.add(st)
@@ -3715,7 +3716,7 @@ def ckpt_select(sel):
         with open(pd, "a") as f: f.write(f"{run} {cs}\n")
     log = os.path.expanduser(f"~/ckpt_select_{UI_PORT}.log")
     _pl = subprocess.Popen(["/bin/bash", CKSEL_LOADER, str(int(sel)), str(UI_PORT)],
-                     cwd=os.path.expanduser("~/umi_bridge"), env=dict(os.environ), stdout=open(log, "w"), stderr=subprocess.STDOUT,
+                     cwd=str(UMI_BRIDGE), env=dict(os.environ), stdout=open(log, "w"), stderr=subprocess.STDOUT,
                      stdin=subprocess.DEVNULL, start_new_session=True)
     with open(lk, "w") as f: f.write(f"{_pl.pid} {sel}\n")
     return jsonify({"ok": True, "msg": f"loading {run} {sel} (pinned) -- UI restarts in ~30-60 s, log {log}"})

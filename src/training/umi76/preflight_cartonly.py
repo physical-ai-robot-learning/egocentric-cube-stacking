@@ -11,13 +11,19 @@ make_pre_post_processors with the dataset stats) with rel16_aux_masked installed
   P6 action_decoder grad for output dims 20:32 exactly 0 in every domain, dims 0:20 non-zero
 usage: preflight_cartonly.py <dataset root> <base dir> <state dim>     (env REL16_STATS = <dataset root>/meta/stats.json)
 """
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import glob, os, sys
 import numpy as np, pyarrow as pa, pyarrow.parquet as pq, torch
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import rel16_aux_masked as RM
+try:
+    from . import rel16_aux_masked as RM
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import rel16_aux_masked as RM
 RM.install()
-sys.path.insert(0, "/home/bh-aiteam/c8old/xvla")
-import rebot_fk_torch
+prepend_sys_path(str(NODE_HOME / "c8old/xvla"))
+try:
+    import rebot_fk_torch  # the node / Mac copy on the path above (unchanged behaviour)
+except ImportError:  # clean checkout: the repository copy, src/training/robot/rebot_fk_torch.py
+    from training.robot import rebot_fk_torch
 import lerobot.policies.factory as F
 from lerobot.configs.policies import PreTrainedConfig
 from lerobot.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatasetMetadata

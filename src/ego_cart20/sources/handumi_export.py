@@ -15,6 +15,7 @@ Cameras: head / left_wrist / right_wrist (capture_ns, video_frame) from frame_me
 usage (env ~/xvla-mac/bin/python):
   handumi_export.py --out ~/c8/ego_cart20_v2_raw [--episodes ID ...] [--workers 4]
 """
+from ego_paths import DATA_ROOT, EGO_COLLECTOR_HOME, HOME, UMI_BRIDGE, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse
 import importlib.util
 import json
@@ -25,8 +26,8 @@ import time
 
 import numpy as np
 
-H = pathlib.Path.home(); C8 = H / "c8"; V2K = H / "umi_bridge/track_c/v2k"; RL = C8 / "robotlike"
-RAW_OLD = H / "ego_collector/datasets/human_handumi_raw/Hpilot"; RAW_HRL = H / "ego_collector/datasets/human_handumi_raw/HRL80"
+H = HOME; C8 = DATA_ROOT; V2K = UMI_BRIDGE / "track_c/v2k"; RL = C8 / "robotlike"
+RAW_OLD = EGO_COLLECTOR_HOME / "datasets/human_handumi_raw/Hpilot"; RAW_HRL = EGO_COLLECTOR_HOME / "datasets/human_handumi_raw/HRL80"
 HRL_SESSION = "20260928_101010"
 SIDES = ("left", "right")
 
@@ -37,7 +38,7 @@ def _load(name, path):
 
 def _init():
     global V, P3, RLC, P, X, GCAL, OLD_RUNS, OLD_EXPORT
-    sys.path[:0] = [str(C8), str(C8 / "c8old"), str(C8 / "rel16ego/rebot_ee"), str(H / "umi_bridge/umi76"), str(H / "umi_bridge")]
+    prepend_sys_path(str(C8), str(C8 / "c8old"), str(C8 / "rel16ego/rebot_ee"), str(UMI_BRIDGE / "umi76"), str(UMI_BRIDGE))
     os.environ.setdefault("REBOT_URDF", str(C8 / "rel16ego/rebot_ee/reBot_B601_DM_dualarm.urdf"))
     V = _load("v2k", V2K / "v2k_retarget.py"); RLC, P3 = V.RLC, V.P3; P3.init(); P = P3.P; V.P = P
     CT4 = np.eye(4); CT4[:3, :3] = P.C[:3, :3].T
@@ -96,7 +97,6 @@ def export_one(e, out_root):
                                          source="old: ~/c8/grip/<tag>.npz open_fraction" if not hrl else "HRL80: sensors.mcap /<side>/gripper normalized via extract_grip.align"),
                 provenance=dict(raw_dir=str(epd), pose_stack="c8_phase3.side" if not hrl else "robotlike_offline_check.side_nogrip",
                                 arms=grip_src, exporter=str(pathlib.Path(__file__).resolve()), exported=time.strftime("%Y-%m-%d %H:%M:%S")))
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
     from ego_cart20.io.raw_episode_loader import save_raw_episode
     save_raw_episode(out, meta, arrays)
     return dict(episode=e, status="ok", era=era, n={s: int(S[s]["n"]) for s in SIDES})
@@ -126,7 +126,6 @@ def _worker(args):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--out", required=True); ap.add_argument("--episodes", nargs="*")
     ap.add_argument("--workers", type=int, default=1); a = ap.parse_args()
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
     eps = a.episodes or source_list(); pathlib.Path(a.out).mkdir(parents=True, exist_ok=True)
     print(f"export {len(eps)} episodes -> {a.out}", flush=True)
     if a.workers > 1:

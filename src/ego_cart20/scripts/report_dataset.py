@@ -2,7 +2,6 @@
 """usage: report_dataset.py <processed_root> <out_dir> [n_samples=4]  -> trajectory_samples.png + order / split table (stdout)"""
 import json, pathlib, sys
 import numpy as np
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from ego_cart20.io.processed_writer import load_episode
 from ego_cart20.validation.visualize_trajectory import plot_samples
 root, out = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]); n = int(sys.argv[3]) if len(sys.argv) > 3 else 4; out.mkdir(parents=True, exist_ok=True)

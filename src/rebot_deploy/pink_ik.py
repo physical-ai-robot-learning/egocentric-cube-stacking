@@ -8,6 +8,7 @@ PostureTask toward the SEED (measured q), cost 1e-3 (weak tie-break only); Confi
 Solver: quadprog, dt 0.05, up to 200 iterations, stop when both arms < 0.5 mm and < 0.5 deg.
 q12 order = [L j1..j6, R j1..j6] (eef_kin arm joint order, follower frame).
 """
+from ego_paths import DATA_ROOT, HOLOBRAIN_MAC, prepend_sys_path  # machine-specific roots (env-overridable)
 import os
 import numpy as np
 import pinocchio as pin
@@ -15,7 +16,7 @@ import pink
 from pink.tasks import FrameTask, PostureTask
 from pink.limits import ConfigurationLimit
 
-URDF = os.path.expanduser(os.environ.get("REBOT_URDF", "~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf"))
+URDF = os.path.expanduser(os.environ.get("REBOT_URDF", str(HOLOBRAIN_MAC / "reBot_B601_DM_dualarm.urdf")))
 TIP_X = 0.07
 
 
@@ -178,7 +179,7 @@ class PinkIK:
 
 def selftest():
     import sys, torch
-    sys.path.insert(0, os.path.expanduser("~/c8/c8old")); import rebot_fk_torch
+    prepend_sys_path(str(DATA_ROOT / "c8old")); import rebot_fk_torch
     import eef_kin
     k = eef_kin.Kin(); names = [k._names[j] for j in k._arm["left"]] + [k._names[j] for j in k._arm["right"]]
     ik = PinkIK(names); fkt = rebot_fk_torch.ReBotFKTorch(dtype=torch.float64)

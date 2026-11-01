@@ -5,10 +5,11 @@ Reads ~/c8/robotlike/tr_old (TR, key v2) and ~/c8/robotlike/r30_old (v1 + Kr, ke
 Writes ~/c8/robotlike/hybrid_master/<episode>.json + .npz in the v2k_retarget layout (key "v2" = the hybrid choice, "v1"
 kept for comparison), so v2k_compare.py reads it unchanged. No rollout is recomputed.
 """
+from ego_paths import DATA_ROOT, HOME  # machine-specific roots (env-overridable)
 import collections, glob, json, pathlib, sys
 import numpy as np
 
-H = pathlib.Path.home(); R = H / "c8/robotlike"
+H = HOME; R = DATA_ROOT / "robotlike"
 # paths only (rule unchanged): HM_TR / HM_KR / HM_OUT, defaults = the old259 inputs / master
 import os; TR, KR, OUT = (pathlib.Path(os.environ.get(k, R / d)) for k, d in (("HM_TR", "tr_old"), ("HM_KR", "r30_old"), ("HM_OUT", "hybrid_master")))
 OUT.mkdir(exist_ok=True); cnt = collections.Counter(); reasons = collections.Counter()

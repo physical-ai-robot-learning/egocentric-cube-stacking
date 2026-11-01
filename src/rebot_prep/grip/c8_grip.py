@@ -8,12 +8,16 @@ Frame mapping: val frame i = stream frame (N_stream - n_val + i), verified by CO
 Regression: for sides whose episode is in handumi_grip_corrected (the 104 reference), the new width must equal the legacy
 width_m at the same video_frame. Env: ~/xvla-mac. Writes ~/c8/grip/<tag>.npz, grip_census.json.
 """
+from ego_paths import DATA_ROOT, EGO_COLLECTOR_HOME, HOME, UMI_BRIDGE, prepend_sys_path  # machine-specific roots (env-overridable)
 import collections, json, pathlib, sys
 import numpy as np
-sys.path.insert(0, str(pathlib.Path.home() / "umi_bridge"))
-from extract_grip import read_episode, align, SIDE_STREAM
-H = pathlib.Path.home(); C8 = H / "c8"; OUT = C8 / "grip"; OUT.mkdir(exist_ok=True)
-RAW = H / "ego_collector/datasets/human_handumi_raw/Hpilot"; LEG = H / ".claude/jobs/e649aef3/tmp/handumi_grip_corrected"
+prepend_sys_path(str(UMI_BRIDGE))
+try:
+    from extract_grip import read_episode, align, SIDE_STREAM
+except ImportError:  # clean checkout: the repository copy
+    from .extract_grip import read_episode, align, SIDE_STREAM
+H = HOME; C8 = DATA_ROOT; OUT = C8 / "grip"; OUT.mkdir(exist_ok=True)
+RAW = EGO_COLLECTOR_HOME / "datasets/human_handumi_raw/Hpilot"; LEG = H / ".claude/jobs/e649aef3/tmp/handumi_grip_corrected"
 CON = json.load(open(LEG / "gripper_contract.json")); APER = CON["aperture_m"]; SPAN = {"left": 1136.6, "right": 1248.2}
 STORED = {(a["session"], a["side"]): (a["closed_raw"], a["open_raw"], a["direction"]) for a in CON["anchors"]}
 man = json.load(open(C8 / "c8_domain_manifest.json"))

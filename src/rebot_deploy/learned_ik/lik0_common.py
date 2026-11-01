@@ -1,14 +1,18 @@
 """[2026-09-29] LearnedIK-v0 shared pieces: FK (rebot_fk_torch = dataset TCP), tensor contract, model, loss.
 Contract: LEARNEDIK_V0_CONTRACT.md. Input q_t (12, rad, follower frame) + rel (16, 18) = per arm pos3 + rot6d (first two ROWS
 of R) of A_k = inv(T_t) T_{t+(k+1)dt}; output dq (16, 12) rad. No vision, language or gripper."""
+from ego_paths import DATA_ROOT, HOLOBRAIN_MAC, prepend_sys_path  # machine-specific roots (env-overridable)
 import os, sys, json
 import numpy as np, torch, torch.nn as nn
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-os.environ.setdefault("REBOT_URDF", os.path.expanduser("~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf"))
-sys.path.insert(0, os.path.expanduser("~/holobrain-mac-model"))          # rebot_fk.py (URDF parser)
-sys.path.insert(0, os.path.expanduser("~/c8/c8old"))                     # rebot_fk_torch.py, sha f85f8121 == node copy
-import rebot_fk_torch  # noqa: E402
+os.environ.setdefault("REBOT_URDF", str(HOLOBRAIN_MAC / "reBot_B601_DM_dualarm.urdf"))
+prepend_sys_path(str(HOLOBRAIN_MAC))          # rebot_fk.py (URDF parser)
+prepend_sys_path(str(DATA_ROOT / "c8old"))                     # rebot_fk_torch.py, sha f85f8121 == node copy
+try:
+    import rebot_fk_torch  # the node / Mac copy on the path above (unchanged behaviour)
+except ImportError:  # clean checkout: the repository copy, src/training/robot/rebot_fk_torch.py
+    from training.robot import rebot_fk_torch
 
 H, NJ = 16, 12
 REL_COLS = list(range(0, 9)) + list(range(10, 19))                       # action dims -> rel18 (gripper 9, 19 dropped)

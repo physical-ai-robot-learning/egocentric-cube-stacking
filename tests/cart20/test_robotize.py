@@ -88,7 +88,8 @@ def test_project_line_search_keeps_feasible_and_shared_alpha():
 
 
 def test_safety_numbers_match_deployment():
-    sys.path.insert(0, str(pathlib.Path.home() / "laundry_system"))
+    from ego_paths import LAUNDRY_SYSTEM, prepend_sys_path
+    prepend_sys_path(LAUNDRY_SYSTEM)
     try:
         from deployment.run_rebot import rebot_safety
     except Exception as ex:  # noqa: BLE001

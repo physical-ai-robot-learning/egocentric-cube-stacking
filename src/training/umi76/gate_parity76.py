@@ -10,13 +10,14 @@ up as a robot moving somewhere odd.
 The deploy path works from JOINTS, so the replay feeds joints and lets it FK; the dataset was built from
 the zarr's TCP. Where a difference is expected it is stated rather than hidden.
 """
+from ego_paths import HOLOBRAIN_MAC, HOME, NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import sys, os, numpy as np
-sys.path.insert(0, os.path.expanduser("~/holobrain-mac-model"))
-for _c in (os.path.expanduser("~/holobrain-mac-model/umi_pkg"),
-           os.path.expanduser("~/universal_manipulation_interface"),
-           "/home/bh-aiteam/universal_manipulation_interface"):
+prepend_sys_path(str(HOLOBRAIN_MAC))
+for _c in (str(HOLOBRAIN_MAC / "umi_pkg"),
+           str(HOME / "universal_manipulation_interface"),
+           str(NODE_HOME / "universal_manipulation_interface")):
     if os.path.isfile(os.path.join(_c, "umi", "common", "pose_util.py")):
-        sys.path.insert(0, _c); break
+        prepend_sys_path(_c); break
 os.environ["V4_STATE_MODE"] = "umi76"
 from scipy.spatial.transform import Rotation as Rot, Slerp
 from umi.common.pose_util import mat_to_pose10d, pose10d_to_mat

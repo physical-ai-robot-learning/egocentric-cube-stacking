@@ -8,17 +8,18 @@ draw by a fixed RNG (seed 20260928). FRONT66 repeats the same procedure on FRONT
 Writes r312c_front132_v1.json / r246c_front66_v1.json in the converter's select= format (zarr_episodes = r675rbp
 zarr numbering, i.e. the index into r675_rbp.json "episodes").
 """
+from ego_paths import HOLOBRAIN_DATA, NODE_HOME, UMI_BRIDGE  # machine-specific roots (env-overridable)
 import hashlib, json, os, re, collections
 import numpy as np, pandas as pd
 
-HERE = os.path.expanduser("~/umi_bridge/rel16_audit/r380"); OUT = os.path.expanduser("~/umi_bridge/umi76")
+HERE = str(UMI_BRIDGE / "rel16_audit/r380"); OUT = str(UMI_BRIDGE / "umi76")
 pool = pd.read_csv(f"{HERE}/front_pool_pan.csv")                  # zarr_ep, src_ep, pan, grade
 sm = json.load(open(f"{HERE}/set_map.json")); SET, KEYS = sm["episode_sets"], sm["set_keys"]
 import glob
 t = pd.concat([pd.read_parquet(f, columns=["episode_index", "task_index"]) for f in
-               glob.glob(os.path.expanduser("~/holobrain-data/lerobot/src_rebot_3stack_center675_s96/data/**/*.parquet"), recursive=True)])
+               glob.glob(str(HOLOBRAIN_DATA / "lerobot/src_rebot_3stack_center675_s96/data/**/*.parquet"), recursive=True)])
 ti = t.groupby("episode_index").task_index.first()
-TS = {int(v): k for k, v in pd.read_parquet(os.path.expanduser("~/holobrain-data/lerobot/src_rebot_3stack_center675_s96/meta/tasks.parquet"))["task_index"].items()}
+TS = {int(v): k for k, v in pd.read_parquet(str(HOLOBRAIN_DATA / "lerobot/src_rebot_3stack_center675_s96/meta/tasks.parquet"))["task_index"].items()}
 pool["order"] = ["".join(c[0].upper() for c in re.findall(r"(\w+) cube", TS[int(ti[s])])) for s in pool.src_ep]
 pool["set_key"] = [KEYS[str(SET[s])] for s in pool.src_ep]
 pool["session"] = pool.set_key.str.split("|").str[0]
@@ -62,7 +63,7 @@ for name, sel, parent in (("r312c_front132_v1", f132, None), ("r246c_front66_v1"
     doc = dict(schema=f"{name.split('_')[0]}/v1", created="2026-09-28",
                rule="pan=center (explicit, phase2_episodes.jsonl) only, phase1 excluded, QA-v2 grade A, exactly "
                     f"{len(sel)//6} per order, session round-robin then set round-robin, rng 20260928" + (f"; nested in {parent}" if parent else ""),
-               global_transform="rot180", zarr="/home/bh-aiteam/umi_bridge/r675rbp_umi.zarr",
+               global_transform="rot180", zarr=str(NODE_HOME / "umi_bridge/r675rbp_umi.zarr"),
                zarr_episodes=[int(x) for x in sel], r675_pool_episodes=[int(rbp[x]) for x in sel],
                order_counts=S.order.value_counts().sort_index().to_dict(),
                session_counts=S.session.value_counts().to_dict(), n_sessions=int(S.session.nunique()), n_sets=int(S.set_key.nunique()),

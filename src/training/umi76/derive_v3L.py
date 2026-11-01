@@ -13,11 +13,18 @@ Gates: per-source leader/follower frame check (slope > 0.5 on every arm joint); 
 action dims 9/19 byte-identical.
 usage: derive_v3L.py --parent <v3d dir> --out <dir>      (node, holobrain env)
 """
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse, glob, json, os, pathlib, shutil, sys
 import numpy as np, pyarrow as pa, pyarrow.parquet as pq, torch
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import derive_v2 as DV
-sys.path.insert(0, "/home/bh-aiteam/c8old/xvla"); import rebot_fk_torch
+try:
+    from . import derive_v2 as DV
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import derive_v2 as DV
+prepend_sys_path(str(NODE_HOME / "c8old/xvla"))
+try:
+    import rebot_fk_torch  # the node / Mac copy on the path above (unchanged behaviour)
+except ImportError:  # clean checkout: the repository copy, src/training/robot/rebot_fk_torch.py
+    from training.robot import rebot_fk_torch
 from umi.common.pose_util import mat_to_pose10d
 
 ARM = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]

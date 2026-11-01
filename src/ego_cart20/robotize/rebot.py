@@ -8,11 +8,12 @@ Reuses the deployment stack, so the projected trajectory is what the robot loop 
   laundry_system/deployment/rebot_ui.py  READY: jaw tips L (0.28, 0.22, 0.15), R (0.28, -0.22, 0.15) m, contract x pitched 55 deg down
 Every number is in the robot base frame (x forward, y left, z up), for the PHYSICAL JAW TIP.
 """
+from ego_paths import LAUNDRY_DIT_DATASETS, LAUNDRY_SYSTEM, prepend_sys_path  # machine-specific roots (env-overridable)
 import pathlib, sys
 
 import numpy as np
 
-sys.path.insert(0, str(pathlib.Path.home() / "laundry_system")); sys.path.insert(0, str(pathlib.Path.home() / "laundry_dit_training/datasets"))
+prepend_sys_path(str(LAUNDRY_SYSTEM)); prepend_sys_path(str(LAUNDRY_DIT_DATASETS))
 from .core import make_T, task_frame  # noqa: E402
 
 READY = dict(left=(0.28, 0.22, 0.15), right=(0.28, -0.22, 0.15), pitch_deg=55.0)

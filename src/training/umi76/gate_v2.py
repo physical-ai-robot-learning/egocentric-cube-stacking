@@ -8,9 +8,10 @@ G4 gripper label is binary {0,1}; open fraction; per-episode open->close transit
 G5 (B) TCP18 consistent with state76: inv(T_other) @ T_self rebuilt from TCP18 == state76 cross-arm current term
 G6 LeRobotDataset loads; sample shapes; A and B identical except state tail
 """
+from ego_paths import HOLOBRAIN_MAC, prepend_sys_path  # machine-specific roots (env-overridable)
 import glob, json, os, sys
 import numpy as np, pyarrow as pa, pyarrow.parquet as pq
-sys.path.insert(0, os.environ.get("UMI_ROOT", os.path.expanduser("~/holobrain-mac-model/umi_pkg")))
+prepend_sys_path(os.environ.get("UMI_ROOT", str(HOLOBRAIN_MAC / "umi_pkg")))
 from umi.common.pose_util import pose10d_to_mat
 
 P, A = sys.argv[1], sys.argv[2]; B = sys.argv[3] if len(sys.argv) > 3 else None

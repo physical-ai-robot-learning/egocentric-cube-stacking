@@ -10,9 +10,9 @@ unit : U1 real v4 batch, no mask columns -> masked plugin losses AND grads bit-i
 model: M1 full X-VLA (base, launcher overrides) forward+backward on 2 ego batches: total loss finite, dq_loss == fk_loss == 0,
           action_decoder weight / bias grads for output dims 20:32 exactly 0 in every domain, dims 0:20 non-zero
 """
+from ego_paths import NODE_HOME  # machine-specific roots (env-overridable)
 import glob, importlib, json, os, sys
 import numpy as np, pyarrow as pa, pyarrow.parquet as pq, torch
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 FAILS = []
 
 
@@ -30,7 +30,7 @@ def ego_loader(root, n):
     from lerobot.configs.policies import PreTrainedConfig
     from lerobot.datasets.lerobot_dataset import LeRobotDataset, LeRobotDatasetMetadata
     from lerobot.datasets.factory import resolve_delta_timestamps
-    cfg = PreTrainedConfig.from_pretrained("/home/bh-aiteam/xvla_base_cart20v3")
+    cfg = PreTrainedConfig.from_pretrained(str(NODE_HOME / "xvla_base_cart20v3"))
     for k, v in dict(chunk_size=16, n_action_steps=16, max_state_dim=20, max_action_dim=32, action_mode="auto", use_proprio=True).items(): setattr(cfg, k, v)
     meta = LeRobotDatasetMetadata("rebot/ego", root=root); dts = resolve_delta_timestamps(cfg, meta)
     need("action" not in (dts or {}), "loader: action not re-expanded by delta timestamps")
@@ -48,8 +48,16 @@ def ego_loader(root, n):
 def unit(ego_root, real_root):
     import lerobot.policies.xvla.action_hub as H
     os.environ["REL16_STATS"] = f"{real_root}/meta/stats.json"
-    import rel16_aux; rel16_aux.install(); co = H.AutoActionSpace.compute_loss
-    import rel16_aux_masked as RM; RM.install(); cm = H.AutoActionSpace.compute_loss
+    try:
+        from . import rel16_aux
+    except ImportError:  # run as a flat script (its folder is sys.path[0])
+        import rel16_aux
+    rel16_aux.install(); co = H.AutoActionSpace.compute_loss
+    try:
+        from . import rel16_aux_masked as RM
+    except ImportError:  # run as a flat script (its folder is sys.path[0])
+        import rel16_aux_masked as RM
+    RM.install(); cm = H.AutoActionSpace.compute_loss
     sp = H.AutoActionSpace(32, 32)
     st = json.load(open(f"{real_root}/meta/stats.json"))["action"]; mu, sd = torch.tensor(st["mean"]), torch.tensor(st["std"])
     t = pq.read_table(sorted(glob.glob(f"{real_root}/data/chunk-*/*.parquet"))[0], columns=["action", "aux.q_t"])
@@ -87,7 +95,11 @@ def unit(ego_root, real_root):
 
 def model(ego_root, base):
     os.environ["REL16_STATS"] = f"{ego_root}/meta/stats.json"
-    import rel16_aux_masked as RM; RM.install()
+    try:
+        from . import rel16_aux_masked as RM
+    except ImportError:  # run as a flat script (its folder is sys.path[0])
+        import rel16_aux_masked as RM
+    RM.install()
     import lerobot.policies.factory as F
     from lerobot.configs.policies import PreTrainedConfig
     ds, items, meta = ego_loader(ego_root, 4)

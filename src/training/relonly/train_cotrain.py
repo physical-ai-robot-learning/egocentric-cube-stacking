@@ -4,6 +4,7 @@ COTRAIN_EGO_ROOT = the ego dataset (ego_cart20_v2b_robot100_train), same CART20 
 Sampling: every batch is exactly COTRAIN_EGO_PER_BATCH ego + rest robot rows (default 4 + 4 at batch 8), each source drawn
 uniformly without replacement (reshuffled when exhausted) -> dataset-level 50/50, NOT frame-count proportional.
 Items are cut to the keys both datasets share (+ task); ego aux.q_t is NaN but unused by the REL-only loss."""
+from ego_paths import SHARED_ROOT  # machine-specific roots (env-overridable)
 import copy, os, random, runpy, sys
 import torch
 import lerobot.scripts.lerobot_train as LT
@@ -68,5 +69,5 @@ class DataLoader(_DL):
 
 LT.make_dataset = make_dataset
 LT.torch.utils.data.DataLoader = DataLoader
-sys.argv[0] = "/srv/data/johann/relonly/code_8bit/train_rel16_relonly.py"
+sys.argv[0] = str(SHARED_ROOT / "relonly/code_8bit/train_rel16_relonly.py")
 runpy.run_path(sys.argv[0], run_name="__main__")

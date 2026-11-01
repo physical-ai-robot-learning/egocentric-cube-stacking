@@ -9,11 +9,18 @@ Everything else (state76, videos hard-linked, prompts, episode order) is bit-ide
 Gate built in: FK(q_t + Δq_k) expressed in the T_t frame == REL16 A_k position (the FK-consistency loss is ~0 at GT).
 usage: derive_v3d.py --parent <v3c dir> --out <dir>      (node, holobrain env, PYTHONPATH lerobot-seeed + UMI)
 """
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse, glob, json, os, pathlib, shutil, sys
 import numpy as np, pyarrow as pa, pyarrow.parquet as pq, torch
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import derive_v2 as DV
-sys.path.insert(0, "/home/bh-aiteam/c8old/xvla"); import rebot_fk_torch
+try:
+    from . import derive_v2 as DV
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import derive_v2 as DV
+prepend_sys_path(str(NODE_HOME / "c8old/xvla"))
+try:
+    import rebot_fk_torch  # the node / Mac copy on the path above (unchanged behaviour)
+except ImportError:  # clean checkout: the repository copy, src/training/robot/rebot_fk_torch.py
+    from training.robot import rebot_fk_torch
 from umi.common.pose_util import pose10d_to_mat
 
 ARM = [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]

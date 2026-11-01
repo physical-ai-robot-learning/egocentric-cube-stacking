@@ -25,6 +25,7 @@ Row -> source mapping (converter umi76_to_lerobot.py): sources in provenance ord
 usage: derive_v2.py --parent <dir> --out <dir> --variant A|B [--source-root <lerobot dir>] [--rbp <json>]
        derive_v2.py --parent <dir> --selftest       recompute the parent's stats and compare (no writes)
 """
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse, glob, json, os, pathlib, shutil, sys
 import numpy as np, pyarrow as pa, pyarrow.parquet as pq
 
@@ -84,7 +85,7 @@ def row_sources(parent, rbp_override=None):
         else:
             zeps = [int(x) for x in sel]
             epmap = json.load(open(rbp_override or s.get("episodes_json") or
-                                   "/home/bh-aiteam/umi_bridge/r675_rbp.json"))["episodes"]
+                                   str(NODE_HOME / "umi_bridge/r675_rbp.json")))["episodes"]
         for z in zeps:
             mapping[e] = (root, z if epmap is None else int(epmap[z]), s["zarr"], z); e += 1
     return mapping
@@ -118,7 +119,7 @@ def main():
     need = ["action"]
     src = {r: load_src(remap.get(r, r), need) for r in roots}
     if a.variant == "B":
-        sys.path.insert(0, os.environ.get("UMI_ROOT", "/home/bh-aiteam/universal_manipulation_interface"))
+        prepend_sys_path(os.environ.get("UMI_ROOT", str(NODE_HOME / "universal_manipulation_interface")))
         from umi.common.pose_util import mat_to_pose10d
         from scipy.spatial.transform import Rotation as Rot
         import zarr

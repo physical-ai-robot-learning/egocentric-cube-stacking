@@ -6,12 +6,12 @@ already in the table world), wrist IMU (gyro + accel), Kalibr camera<-IMU rotati
 Two passes: pass 1 robust; pass 2 drops Orbbec frames with |res| > gate (LEFT_RIGHT_MISMATCH / outlier) and re-solves.
 usage: run_smoother.py <episode dir> [--sides left right]
 """
+from ego_paths import EGO_COLLECTOR_HOME  # machine-specific roots (env-overridable)
 import argparse, dataclasses, json, pathlib, sys, time
 
 import numpy as np
 from scipy.spatial.transform import Rotation as Rot, Slerp
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from ego_cart20.sources.hfold_export import X_TOOL, x_cam_tcp, read_mcap            # noqa: E402
 from ego_cart20.umi_fusion.run_episode import R_cb_kalibr, load_restart, tag_of     # noqa: E402
 from ego_cart20.umi_fusion.smoother import SmootherCfg, smooth_side                 # noqa: E402
@@ -133,7 +133,7 @@ def main():
     ap.add_argument("--sigma-rc", type=float, default=None)
     ap.add_argument("--tag-gate", action="store_true", help="drop canonical frames flagged by ego_collector/scripts/umi_fusion/orbbec_tag_gate.py"); a = ap.parse_args()
     if a.rcb != "kalibr":
-        cal = pathlib.Path.home() / "ego_collector/configs/calibration"
+        cal = EGO_COLLECTOR_HOME / "configs/calibration"
         RCB.update({s: np.load(cal / f"camera_imu_{s}_Rcb_{a.rcb}.npy") for s in ("left", "right")})
     ep = pathlib.Path(a.episode).resolve(); out = ep / "derived" / a.out_name; out.mkdir(parents=True, exist_ok=True)
     fm, _ = read_mcap(ep); cz = np.load(ep / "derived/body_track/canonical.npz", allow_pickle=True); cfg = SmootherCfg()

@@ -9,11 +9,12 @@ reBot stored width (video-confirmed 2026-09-22: raw 0 = jaws touching, -118 = ho
 Gripper runs at ~95 Hz and video at 30, so each frame takes the nearest sample; the alignment error is
 reported rather than assumed.
 """
+from ego_paths import EGO_COLLECTOR_HOME, HOME  # machine-specific roots (env-overridable)
 import argparse, json, pathlib, sys
 import numpy as np
 from mcap.reader import make_reader
 
-RAW = pathlib.Path.home() / "ego_collector/datasets/human_handumi_raw/Hpilot"
+RAW = EGO_COLLECTOR_HOME / "datasets/human_handumi_raw/Hpilot"
 SIDE_STREAM = {"left": "left_wrist", "right": "right_wrist"}
 
 
@@ -59,9 +60,9 @@ def align(frames, grip):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--manifest", default=str(pathlib.Path.home() /
+    ap.add_argument("--manifest", default=str(HOME /
                     ".claude/jobs/e649aef3/tmp/handumi_vla_manifest.json"))
-    ap.add_argument("--out", default=str(pathlib.Path.home() / ".claude/jobs/e649aef3/tmp/handumi_grip"))
+    ap.add_argument("--out", default=str(HOME / ".claude/jobs/e649aef3/tmp/handumi_grip"))
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
     out = pathlib.Path(a.out); out.mkdir(parents=True, exist_ok=True)

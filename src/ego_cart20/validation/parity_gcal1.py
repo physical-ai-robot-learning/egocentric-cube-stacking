@@ -5,16 +5,16 @@ At the SAME physical instants (gcal1 row = left-clock raw frame start+idx), comp
                interpolate R on its own clock -> sub-frame differences only)
   state 0:20   (RELCART20 task anchor)                        same, plus the anchor-instant difference
 usage: parity_gcal1.py <raw_root> <episode_id> [...]"""
+from ego_paths import DATA_ROOT  # machine-specific roots (env-overridable)
 import glob, json, pathlib, sys
 import numpy as np, pyarrow.parquet as pq
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from ego_cart20.io.raw_episode_loader import load_raw_episode
 from ego_cart20.convert import convert_episode
 from ego_cart20.labels.build_cart20 import build_cart20_chunk
 from ego_cart20.labels.build_state20 import build_state20_relcart20
 from ego_cart20.geometry.transforms import pose9_to_T
 from ego_cart20.geometry.rotation6d import rotation_angle
-G1 = pathlib.Path.home() / "c8/rel16ego/ego_relcart20task_rel16_v4_nopseudoq_gcal1"; SH = pathlib.Path.home() / "c8/rel16ego/rel16ego_shards"
+G1 = DATA_ROOT / "rel16ego/ego_relcart20task_rel16_v4_nopseudoq_gcal1"; SH = DATA_ROOT / "rel16ego/rel16ego_shards"
 
 
 def gcal1_rows(src):

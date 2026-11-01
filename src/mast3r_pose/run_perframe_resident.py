@@ -13,9 +13,10 @@ passed in, `runner="resident_v1"` is added to the provenance json. Validation vs
 Usage: run_perframe_resident.py --list <tags> --in-root <dir> --out-dir <dir> [--name ss1] [--mem-stop-mib 15872]
 Input dir per tag = <in-root>/<tag> (or <in-root>/<tag with first '_' -> '/'>), video-direct mode only.
 """
+from ego_paths import HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse, json, os, pathlib, subprocess, sys, threading, time, hashlib, types
-ROOT = pathlib.Path(os.environ.get("M3_REPO", pathlib.Path.home() / "mast3r_slam_official"))
-sys.path.insert(0, str(ROOT))
+ROOT = pathlib.Path(os.environ.get("M3_REPO", HOME / "mast3r_slam_official"))
+prepend_sys_path(str(ROOT))
 import numpy as np, torch, lietorch, yaml
 import functools as _ft
 torch.load = _ft.partial(torch.load, weights_only=False)

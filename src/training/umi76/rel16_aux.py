@@ -15,6 +15,7 @@ rebot_fk_torch.tcp, which equals the dataset TCP (0.000 mm / 0.00 deg, 2026-09-2
 Env: REL16_STATS (dataset meta/stats.json, required), REL16_LAMBDA_Q (1.0), REL16_LAMBDA_FK (20), REL16_LOG_EVERY (200).
 Install before lerobot_train builds the policy: `import rel16_aux; rel16_aux.install()` (train_rel16aux.py does this).
 """
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import json, os, sys
 import torch
 
@@ -25,8 +26,11 @@ _S = {"n": 0, "fk_mm": []}
 
 
 def install():
-    sys.path.insert(0, "/home/bh-aiteam/c8old/xvla")
-    import rebot_fk_torch
+    prepend_sys_path(str(NODE_HOME / "c8old/xvla"))
+    try:
+        import rebot_fk_torch
+    except ImportError:  # clean checkout: the repository copy (src/training/robot/rebot_fk_torch.py)
+        from training.robot import rebot_fk_torch
     import lerobot.policies.xvla.modeling_xvla as M
     import lerobot.policies.xvla.action_hub as H
     st = json.load(open(os.environ["REL16_STATS"]))["action"]

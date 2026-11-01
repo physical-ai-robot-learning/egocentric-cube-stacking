@@ -9,6 +9,7 @@ baselines (robot->robot, ego->ego split halves) so a distance has a reference sc
 
 usage: compare_ego_r312c.py --ego <ego_cart20_v2_train> --robot <r312c_relcart20_rel16_v4> --output <dir> [--seed 1000]
        [--n-joint 20000] [--n-images 5000]   (env ~/xvla-mac/bin/python)"""
+from ego_paths import DATA_ROOT, HOLOBRAIN_MAC, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse
 import collections
 import csv
@@ -25,7 +26,6 @@ import pyarrow.parquet as pq
 from scipy.spatial import cKDTree
 from scipy.stats import wasserstein_distance
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from ego_cart20.geometry.rotation6d import rotation_6d_to_matrix, rotation_angle  # noqa: E402
 
 KS = (1, 4, 8, 16); ARMS = ("L", "R")
@@ -377,8 +377,8 @@ def right_boundary(D, F, rng):
     x >= 172 mm for 99 % (boundary_bias_eval.py).  Ego has NO robot base frame: the comparison is in TASK-RELATIVE state xyz only."""
     d = D["robot"]
     if d["q"] is None: return "robot aux.q_t missing"
-    import os; os.environ.setdefault("REBOT_URDF", str(pathlib.Path.home() / "c8/rel16ego/rebot_ee/reBot_B601_DM_dualarm.urdf"))
-    sys.path[:0] = [str(pathlib.Path.home() / "c8/c8old"), str(pathlib.Path.home() / "holobrain-mac-model")]; import torch, rebot_fk_torch
+    import os; os.environ.setdefault("REBOT_URDF", str(DATA_ROOT / "rel16ego/rebot_ee/reBot_B601_DM_dualarm.urdf"))
+    prepend_sys_path(str(DATA_ROOT / "c8old"), str(HOLOBRAIN_MAC)); import torch, rebot_fk_torch
     fk = rebot_fk_torch.ReBotFKTorch(device="cpu", dtype=torch.float64); Ts = []
     for i in range(0, len(d["q"]), 20000): Ts.append(fk.tcp(torch.tensor(d["q"][i:i + 20000])).numpy())
     T = np.concatenate(Ts); xr = T[:, 1, 0, 3] * 1e3

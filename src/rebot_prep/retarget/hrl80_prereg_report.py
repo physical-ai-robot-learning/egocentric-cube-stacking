@@ -5,12 +5,17 @@
   T0: exact reproduction of the old259 -0.009 (live over_frac_ang_w vs v1 offline-check full-pass fraction, argsort ranks)
   T1: U_e = TR segments / candidate (v1-record) segments per episode in the master; scipy spearmanr (average ties)
 Usage: ~/xvla-mac/bin/python hrl80_prereg_report.py --eval-ref heldout120"""
+from ego_paths import DATA_ROOT, EGO_COLLECTOR_HOME, HOME, UMI_BRIDGE, prepend_sys_path  # machine-specific roots (env-overridable)
 import glob, json, pathlib, sys
 import numpy as np
 from scipy.stats import spearmanr
-H = pathlib.Path.home(); V2 = H / "umi_bridge/track_c/v2k"; RL = H / "c8/robotlike"
-sys.path.insert(0, str(V2)); import v2k_compare as C                     # reads --eval-ref heldout120 at import
-RAW = H / "ego_collector/datasets/human_handumi_raw/HRL80/HRL80_20260928_101010"
+H = HOME; V2 = UMI_BRIDGE / "track_c/v2k"; RL = DATA_ROOT / "robotlike"
+prepend_sys_path(str(V2))
+try:
+    import v2k_compare as C                     # reads --eval-ref heldout120 at import
+except ImportError:  # clean checkout: the repository copy
+    from . import v2k_compare as C
+RAW = EGO_COLLECTOR_HOME / "datasets/human_handumi_raw/HRL80/HRL80_20260928_101010"
 
 
 def tr_segments(master):

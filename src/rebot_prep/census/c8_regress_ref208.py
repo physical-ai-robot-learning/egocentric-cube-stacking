@@ -25,11 +25,12 @@ Functions are exec'd from the frozen sources (cp6_scale.py up to the FIT/EVAL se
 on a staging dir of symlinks (~/c8/stage), so nothing is re-implemented. Writes ~/c8/regress_ref208.json.
 Env: ~/handumi-sw/.venv/bin/python. Inputs synced from the NFS: ~/c8/runs_m3/<tag>/ss1.{csv,json}, <tag>.log, <tag>.vram.
 """
+from ego_paths import DATA_ROOT, HOME, UMI_BRIDGE  # machine-specific roots (env-overridable)
 import collections, json, os, pathlib, sys
 import numpy as np, cv2
 from scipy.spatial.transform import Rotation as Rot
-H = pathlib.Path.home(); C8 = H / "c8"; TA = H / "umi_bridge/trackA_mast3r_pose_v1"; STAGE = C8 / "stage"
-RUNS = pathlib.Path(os.environ.get("C8_RUNS", C8 / "runs_m3")); PRODUCE = H / "umi_bridge/track_c/data/produce"
+H = HOME; C8 = DATA_ROOT; TA = UMI_BRIDGE / "trackA_mast3r_pose_v1"; STAGE = C8 / "stage"
+RUNS = pathlib.Path(os.environ.get("C8_RUNS", C8 / "runs_m3")); PRODUCE = UMI_BRIDGE / "track_c/data/produce"
 TAGS = sys.argv[1:] or open(C8 / "ref104ep_208sides.txt").read().split()
 GRIP = json.load(open(C8 / "grip/grip_census.json"))["sides"]
 MAN = json.load(open(C8 / "c8_domain_manifest.json"))

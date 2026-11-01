@@ -37,9 +37,10 @@ Env: V4_CKPT, V4_DEVICE (mps), V4_ACTION_MODE (delta|umi), V4_CLAMP_MM (3), V4_C
      V4_N_ACTION (1), V4_GRIPPER (hold|predict), V4_DQ_MAX (0.6), V4_FK_MAX_MM (60), V4_TASK,
      V4_GLOBAL_ROT180 (0) -- rotate the GLOBAL feed 180 deg to match the training convention.
 """
+from ego_paths import HOLOBRAIN_MAC, UMI_BRIDGE, prepend_sys_path  # machine-specific roots (env-overridable)
 import collections, json, os, sys, base64, math, time, numpy as np, cv2, torch
 
-sys.path.insert(0, os.path.expanduser("~/holobrain-mac-model/umi_pkg"))
+prepend_sys_path(str(HOLOBRAIN_MAC / "umi_pkg"))
 from scipy.spatial.transform import Rotation as Rot, Slerp
 import eef_kin
 from umi.common.pose_util import pose_to_mat, mat_to_pose10d, pose10d_to_mat
@@ -50,14 +51,14 @@ from umi.common.pose_util import pose_to_mat, mat_to_pose10d, pose10d_to_mat
 # Off by default: joint/FK checkpoints are unaffected. Such checkpoints must be run with pure Pink (the dq head is unsupervised).
 RELONLY = os.environ.get("V4_RELONLY", "0") == "1"
 if RELONLY:
-    sys.path.insert(0, os.path.expanduser("~/umi_bridge/rel16_audit/relonly"))
+    prepend_sys_path(str(UMI_BRIDGE / "rel16_audit/relonly"))
     import rel16_aux_relonly as _RO
     _RO.install_zero_mask()
     if os.environ.get("IK_BACKEND", "numerical") in ("pinkdq", "policydq"):
         raise SystemExit("[infer_core_v4] V4_RELONLY=1 with IK_BACKEND=pinkdq/policydq: the dq head is unsupervised -- use pink")
 
 DEVICE = os.environ.get("V4_DEVICE", "mps")
-CKPT = os.environ.get("V4_CKPT", os.path.expanduser("~/holobrain-mac-model/ckpt_v4base_of3000"))
+CKPT = os.environ.get("V4_CKPT", str(HOLOBRAIN_MAC / "ckpt_v4base_of3000"))
 # The chunk length is not carried by any weight -- X-VLA uses it only to size the initial flow sample and to
 # pad targets -- so a checkpoint will happily emit any number of rows. That is not permission to ask a
 # 16-trained checkpoint for 32: rows past its training horizon are extrapolation with nothing to check them
@@ -939,8 +940,8 @@ class V4Inferencer:
         Guard: NaN or |FK(q_t + dq) - target| > FK_MAX_MM -> None (the caller falls back to numerical IK and logs it)."""
         try:
             if not hasattr(self, "_lik"):
-                sys.path.insert(0, os.path.expanduser("~/umi_bridge/learned_ik")); import lik0_common as _LC
-                ck = torch.load(os.path.expanduser(os.environ.get("V4_LIK_CKPT", "~/umi_bridge/learned_ik/runs/LIK0-P12/best.pt")), map_location="cpu", weights_only=False)
+                prepend_sys_path(str(UMI_BRIDGE / "learned_ik")); import lik0_common as _LC
+                ck = torch.load(os.path.expanduser(os.environ.get("V4_LIK_CKPT", str(UMI_BRIDGE / "learned_ik/runs/LIK0-P12/best.pt"))), map_location="cpu", weights_only=False)
                 self._lik = _LC.LIK0(ck["stats"]); self._lik.load_state_dict(ck["model"]); self._lik.eval()
                 print(f"[v4] learned IK loaded ({os.environ.get('V4_LIK_CKPT', 'LIK0-P12/best.pt')}, step {ck['step']})", flush=True)
             L = self.last; m_meas, _ = self._tcp_mat(joints14_now)

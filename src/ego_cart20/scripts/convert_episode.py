@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """usage: convert_episode.py <raw_episode_dir> <out_episode_dir>   (one episode; same code path as convert_dataset)"""
 import json, pathlib, sys
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 from ego_cart20.convert import convert_episode
 from ego_cart20.io.processed_writer import write_episode
 from ego_cart20.io.raw_episode_loader import load_raw_episode

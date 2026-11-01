@@ -21,8 +21,10 @@ import sys
 
 import torch
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import rel16_aux_relonly as R   # noqa: E402  (install_zero_mask, the pinned zero contract)
+try:  # noqa: E402  (install_zero_mask, the pinned zero contract)
+    from . import rel16_aux_relonly as R
+except ImportError:  # run as a flat script (its folder is sys.path[0])
+    import rel16_aux_relonly as R
 
 MASK_KEY = "aux.loss_mask"
 LOG_EVERY = int(os.environ.get("REL16_LOG_EVERY", "200"))

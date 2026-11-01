@@ -1,9 +1,13 @@
 """[2026-09-08] Batched, differentiable reBot FK in torch (URDF-parsed via rebot_fk.ReBotFK). Used by humanik_delta for the
 EE auxiliary target (C) and the FK-consistency loss (D). TCP = {side}_gripper_link @ T(TIP_X along +x) (pinch centre, TIP_X=0.07 m)."""
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 import os, sys, math, torch, numpy as np
-sys.path.insert(0, "/home/bh-aiteam/rebot_ee")
-os.environ.setdefault("REBOT_URDF", "/home/bh-aiteam/rebot_ee/reBot_B601_DM_dualarm.urdf")
-import rebot_fk  # noqa: E402
+prepend_sys_path(str(NODE_HOME / "rebot_ee"))
+os.environ.setdefault("REBOT_URDF", str(NODE_HOME / "rebot_ee/reBot_B601_DM_dualarm.urdf"))
+try:
+    import rebot_fk  # noqa: E402  (the node copy next to the URDF, unchanged behaviour)
+except ImportError:  # clean checkout: the repository copy next to this file
+    from . import rebot_fk
 
 TIP_X = float(os.environ.get("REBOT_TIP_X", "0.07"))
 

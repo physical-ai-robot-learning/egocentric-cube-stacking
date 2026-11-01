@@ -16,6 +16,7 @@ deliberately not used.
 
 This is a thin wrapper around one external tool. It is not a capture backend and it never opens the camera."""
 from __future__ import annotations
+from ego_paths import HOME  # machine-specific roots (env-overridable)
 import os
 import re
 import shutil
@@ -25,7 +26,7 @@ from pathlib import Path
 # uvc-util has no Homebrew formula; build it from https://github.com/jtfrey/uvc-util:
 #   gcc -o uvc-util -framework IOKit -framework Foundation uvc-util.m UVCController.m UVCType.m UVCValue.m
 SEARCH = ("uvc-util",)
-FALLBACK_PATHS = ("/usr/local/bin/uvc-util", "/opt/homebrew/bin/uvc-util", str(Path.home() / "bin" / "uvc-util"))
+FALLBACK_PATHS = ("/usr/local/bin/uvc-util", "/opt/homebrew/bin/uvc-util", str(HOME / "bin" / "uvc-util"))
 
 
 class UvcUtilUnavailable(RuntimeError):

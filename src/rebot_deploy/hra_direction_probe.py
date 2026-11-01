@@ -19,10 +19,11 @@ a REAL robot scene?  Read-only on the robot: /observe only, nothing is ever sent
 Same cube position for all poses of a scene; move only the robot's start pose (far-left / center / far-right).
 Direction gate: > 0.7 strong, 0.4-0.7 worth a robot trial, 0.2-0.4 weak, < 0.2 transfer failing, < 0 wrong direction.
 """
+from ego_paths import DATA_ROOT, HOME  # machine-specific roots (env-overridable)
 import argparse, csv, json, math, os, pathlib, sys, time
 import numpy as np
 
-OUT = pathlib.Path.home() / "hra_probe"; SCENES = OUT / "scenes"; RES = OUT / "results.csv"
+OUT = HOME / "hra_probe"; SCENES = OUT / "scenes"; RES = OUT / "results.csv"
 ROBOT = os.environ.get("V4_ROBOT", "http://localhost:8020")
 TASK = "Approach to the red cube"
 # HRA training motion reference (0.8 s right translation); overwritten from the QC summary when it exists
@@ -38,8 +39,10 @@ def observe():
 
 def right_tcp(joints14):
     """FK of the right TCP (base frame position; the same _tcp_mat the UI uses), without loading a model"""
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-    import infer_core_v4 as IC, eef_kin
+    try:
+        from . import infer_core_v4 as IC, eef_kin
+    except ImportError:  # run as a flat script (its folder is sys.path[0])
+        import infer_core_v4 as IC, eef_kin
     k = object.__new__(IC.V4Inferencer); k.kin = eef_kin.Kin({"max_joint_delta": None})
     m, _ = k._tcp_mat(joints14); return m[1]
 
@@ -55,7 +58,7 @@ def touch(a):
 
 
 def train_ref():
-    q = pathlib.Path.home() / "c8/hra_red/scale_qc_summary.json"
+    q = DATA_ROOT / "hra_red/scale_qc_summary.json"
     try:
         p50, p95 = json.loads(q.read_text())["action_0p8s_right_translation_cm_p50_p95"]; return float(p50), float(p95)
     except Exception:
@@ -68,8 +71,11 @@ def probe(a):
                       V4_CHUNK="16", V4_N_ACTION="1", V4_IK_MAX_JOINT_DELTA="none", IK_BACKEND="pink",
                       V4_ARM_ONLY_MAX_PRED_MM="100000", V4_ARM_ONLY_MAX_PRED_DEG="1000",     # diagnostic: record, never refuse
                       V4_IK_LOG=str(OUT / "probe_ik.jsonl"))
-    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-    import importlib, torch, infer_core_v4 as IC
+    import importlib, torch
+    try:
+        from . import infer_core_v4 as IC
+    except ImportError:  # run as a flat script (its folder is sys.path[0])
+        import infer_core_v4 as IC
     IC = importlib.reload(IC)                                    # module-level V4_* settings are read at import: apply the ones above
     assert IC.ARM_ONLY == "right" and IC.STATE_MODE == "relcart20" and IC.LIMITS["mm"] == 0, "probe contract not applied"
     sc = json.loads((SCENES / f"{a.scene}.json").read_text()); p_tgt = np.array(sc["p_target"])

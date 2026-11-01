@@ -22,6 +22,7 @@ channels mean 0 / std 1 (the gcal1 placeholder convention, never std 0); aux.q_t
 Resumable: one shard per episode (+ .complete marker), then lerobot aggregate_datasets with the pyarrow agg_patch.
 usage (env ~/xvla-mac/bin/python): export_lerobot.py <processed_root> <out_root> [--name ego_cart20_v2] [--workers 6]
 """
+from ego_paths import DATA_ROOT, prepend_sys_path  # machine-specific roots (env-overridable)
 import argparse
 import hashlib
 import json
@@ -33,8 +34,7 @@ import time
 import numpy as np
 
 HERE = pathlib.Path(__file__).resolve()
-sys.path.insert(0, str(HERE.parents[2]))
-AGG = pathlib.Path.home() / "c8/rel16ego"
+AGG = DATA_ROOT / "rel16ego"
 CAMS = (("head", "observation.images.global"), ("left_wrist", "observation.images.left_wrist"), ("right_wrist", "observation.images.right_wrist"))
 STAT_KEYS = ("min", "max", "mean", "std", "count", "q01", "q10", "q50", "q90", "q99")
 
@@ -130,7 +130,7 @@ if __name__ == "__main__":
                     "episodes can then be deleted; a rerun skips .complete shards and only aggregates)"); a = ap.parse_args()
     P, OUT = pathlib.Path(a.processed), pathlib.Path(a.out); SH = OUT / f"{a.name}_shards"; report = {}
     import os
-    if os.environ.get("AGG_PATCH", "1") == "1": sys.path.insert(0, str(AGG)); import agg_patch; agg_patch.install()   # Mac lerobot 0.5.2 only
+    if os.environ.get("AGG_PATCH", "1") == "1": prepend_sys_path(str(AGG)); import agg_patch; agg_patch.install()   # Mac lerobot 0.5.2 only
     from lerobot.datasets.aggregate import aggregate_datasets
     from concurrent.futures import ProcessPoolExecutor
     for s in a.splits:
