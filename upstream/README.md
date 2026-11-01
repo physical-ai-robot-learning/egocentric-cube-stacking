@@ -83,6 +83,8 @@ Bambu slicer `result.json`, and neither was exported. Our print package (`../har
 
 ## Universal Manipulation Interface (`umi.common.pose_util`) → `src/umi/`
 
+> **Since 2026-11-01** `src/umi/` is in the shared package [`egocentric`](https://github.com/physical-ai-vla/egocentric) (same path, same md5; its `upstream/` has the MIT text and this note); this repository installs it. The table below is the record of the original copy.
+
 Several modules (`rebot_prep.pseudo_joint`, `training.umi76`, `rebot_deploy.infer_core_v4`, `scripts/rebot/eval/rel16_audit`)
 import `umi.common.pose_util`, the pose / rot6d helpers of the Universal Manipulation Interface
 (<https://github.com/real-stanford/universal_manipulation_interface>, MIT, `LICENSE-umi-mit.txt`; upstream `main` was at
