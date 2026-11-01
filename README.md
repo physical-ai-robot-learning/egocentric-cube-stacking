@@ -1,5 +1,19 @@
 # Egocentric Human Demonstrations for Robot Manipulation
 
+Bimanual human demonstrations recorded with a hand-worn UMI-style gripper (HandUMI), converted into training data for a
+reBot B601 dual-arm robot and used to pretrain X-VLA, with every reported number re-checkable from this repository.
+
+[![CI](https://github.com/physical-ai-vla/egocentric-cube-stacking/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+
+**Technical report:** [`report/report_en.pdf`](report/report_en.pdf) ([한국어](report/report_ko.pdf)) ·
+**Claims check:** `python analysis/verify_claims.py` → `736 claims checked, 0 failed.` ([how](#results-and-how-to-verify)) ·
+**Hardware:** HandUMI is **BrikHMP18's open-source design** ([murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw)), **not ours**
+([details](#hardware-source-handumi-is-not-our-design))
+
+![Three human demonstrations, head camera, 2x speed](docs/media/demo_three_orders.gif)
+
+## Overview
+
 Research code, calibration, processing records and a small data sample from one experiment. We collected bimanual
 human demonstrations with a hand-worn UMI-style gripper ([HandUMI](https://github.com/murobotics-ai/handumi-hw), not our
 design; see [Hardware source](#hardware-source-handumi-is-not-our-design)), converted them into pseudo-joint trajectories
@@ -12,20 +26,140 @@ into **one technical report**: [`report/report_en.pdf`](report/report_en.pdf) ([
 covering hardware, every pipeline stage, all results and their limits, with no result changed. Earlier states are tagged
 `report-v2-2026-09-30` and `report-v3-2026-10-04`.
 
-### Hardware source: HandUMI is not our design
+- **Data path.** 349 recorded bimanual three-cube stacking episodes (6 stacking orders) go through sync, pose (MASt3R-SLAM +
+  per-episode IMU visual–inertial scale), gripper and gate filtering and are turned into robot training data: first as
+  pseudo-joint trajectories (Gen-1), then, from version 3, directly in the robot's relative-Cartesian action contract (Gen-2).
+- **Offline result (Gen-1).** On 26 held-out episodes the 300k ego-pretrained model has a median TCP error of 1.5 / 5.7 mm
+  (k=1 / k=30); the stacking instruction changes predictions but does not make them more accurate.
+- **Ego pretrain → robot fine-tuning.** After 250k steps of R150 fine-tuning, the ego-initialised model beats scratch on most
+  offline metrics (geo −10.0 %), but all 10 evaluation episodes are inside both fine-tuning sets, so this measures fit, not generalisation.
+- **Transfer diagnostics (Gen-2).** Ego initialisation lowers early robot fine-tuning loss, and the advantage disappears
+  with more steps; the ego-only policy does not transfer to robot camera images, and the gap is visual.
+- **No closed-loop success rate** is reported anywhere in this repository (see [What this repository does not show](#what-this-repository-does-not-show)).
 
-The capture device is **HandUMI**, an open-source hand-worn UMI variant designed and published by **BrikHMP18**
-(Apache-2.0). It is **not** our own UMI design.
+**Status: offline evaluation and training diagnostics.** Version-3 checkpoints were executed on the robot, and an
+ego-initialized model fine-tuned on 312 robot episodes completed full three-cube stacks in closed loop (operator
+observation; trials not counted, no video). This repository reports **no closed-loop success rate**.
 
-| what | where | role |
+## System at a glance
+
+```mermaid
+flowchart LR
+  HW["hardware/<br/>HandUMI units (upstream design)<br/>+ firmware/"] --> C["handumi_collector<br/>Stage 0: collect"]
+  C --> P["mast3r_pose<br/>Stage 1: pose + metric scale"]
+  P --> G1["rebot_prep<br/>Gen-1: grip, census,<br/>pseudo-joint, retarget v2"]
+  P --> G2["ego_cart20<br/>Gen-2: CART20 conversion,<br/>validation, LeRobot export"]
+  G1 --> D1["scripts/rebot/dataset_v2<br/>C-old datasets"]
+  G2 --> T["training (+ scripts/training)<br/>Stage 4: X-VLA pretrain / fine-tune"]
+  D1 --> T
+  T --> DEP["rebot_deploy<br/>Stage 5: inference UI, IK,<br/>robot service"]
+  T --> EV["scripts/rebot/eval + analysis/<br/>offline evaluation, claims check"]
+  C -.-> X["ego_teleop / visual_teleop<br/>(experimental)"]
+```
+
+## Components
+
+| Component | Path | Stage | Status | Description |
+|---|---|---|---|---|
+| hardware | [`hardware/`](hardware/), [`firmware/`](firmware/) | device | current | HandUMI print package from upstream (not our design), our 3 modified parts, wrist-IMU firmware (Teensy 4.1 / XIAO nRF52840) |
+| handumi_collector | [`src/handumi_collector/`](src/handumi_collector/) | 0 collect | current | Raw recorder: head C922 + wrist fisheye/IMU/jaw → mp4 + `sensors.mcap`; calibration and QA tools; `robot_like_v1` protocol |
+| configs | [`configs/`](configs/) | all | current | Versioned calibrations, collector profiles, teleop configs; `dataset_calibration/` = the calibrations the reported dataset uses |
+| mast3r_pose | [`src/mast3r_pose/`](src/mast3r_pose/) | 1 pose | current | Per-frame MASt3R-SLAM wrist pose and IMU-VI metric scale |
+| rebot_prep | [`src/rebot_prep/`](src/rebot_prep/) | 2–3 dataset, retarget | superseded (by ego_cart20) | Gen-1: gripper width, census and gates, pseudo-joint continuity IK, retarget v2 with frozen contracts |
+| ego_cart20 | [`src/ego_cart20/`](src/ego_cart20/) | 2 dataset | current | Gen-2: CART20 / RELCART20 conversion, jump filter, validators, LeRobot exporters, cube-PnP scale, right-only (HRA), robotize, UMI fusion |
+| training | [`src/training/`](src/training/), [`scripts/training/`](scripts/training/) | 4 train | current | REL-only X-VLA plugin, UMI76/RELCART20 derivation and gates, reBot FK; node launchers and archivers; Gen-1 trainer in `scripts/training/c8old/` (superseded) |
+| rebot_deploy | [`src/rebot_deploy/`](src/rebot_deploy/), [`scripts/rebot/loaders/`](scripts/rebot/loaders/) | 5 deploy | current | Inference core, robot web UI (PLAN / RTC / trial logger), Pink IK, MIT robot service, checkpoint loaders |
+| evaluation | [`scripts/rebot/eval/`](scripts/rebot/eval/), [`analysis/`](analysis/) | 5 evaluate | current | Offline checkpoint evaluation and audits; `analysis/verify_claims.py` recomputes every reported number |
+| hra | [`scripts/rebot/hra/`](scripts/rebot/hra/) | 1–5 (single arm) | current (sub-study) | Separate sub-study: right-arm approach to a cube (HRA_red, HRA_A100) — Part II of the report |
+| ego_teleop, visual_teleop | [`src/ego_teleop/`](src/ego_teleop/), [`src/visual_teleop/`](src/visual_teleop/) | teleop | experimental | Wearable VIO teleop and visual RGB-D teleop research; not deployed |
+| ego_collector | [`src/ego_collector/`](src/ego_collector/) | 0 collect | superseded (by handumi_collector) | V0 AprilTag-glove collector; its `camera` layer is still imported |
+| laundry, parity | [`scripts/rebot/laundry/`](scripts/rebot/laundry/), [`scripts/rebot/parity/`](scripts/rebot/parity/) | 1–3 | cross-project | Belong to the laundry (T-shirt flattening) project: UMIalign pose + visual gripper; UMI TCP calibration and UMI → reBot replay parity |
+| report, results | [`report/`](report/), [`results/`](results/), [`docs/`](docs/) | — | current | Technical report (EN/KO, PDF + LaTeX), result records, guides and provenance |
+| upstream | [`upstream/`](upstream/) | — | third-party | Licences, NOTICE and our patch on top of HandUMI software |
+
+Each component has a README with its inputs/outputs, entry points and layout. The old → new path table for the
+2026-11-01 restructure is in [`docs/provenance/README.md`](docs/provenance/README.md).
+
+## Installation
+
+```bash
+git clone https://github.com/physical-ai-vla/egocentric-cube-stacking.git
+cd egocentric-cube-stacking
+pip install -e ".[collector,experimental,dev]"     # or: uv pip install -e ".[collector,experimental,dev]"
+pytest tests/cart20 tests/experimental/teleop tests/experimental/v0 -q
+python analysis/verify_claims.py                   # needs only pyyaml
+```
+
+The root `pyproject.toml` (src layout) declares the packages under `src/`; extras: `collector` (devices, mcap, PySide6),
+`experimental` (mediapipe), `apriltag`, `viz`, `aero`, `dev`. Training and MASt3R-SLAM run in separate environments on GPU
+nodes (LeRobot with X-VLA, MASt3R-SLAM checkout); see [Where each part ran](#running-it).
+
+## Pipeline
+
+The stages below are the ones that produced the reported data. Commands are the existing entry points; most stage
+scripts read and write the data roots of the machine they ran on (`~/c8`, `~/umi_bridge`, node paths).
+
+| Stage | What | Entry points |
 |---|---|---|
-| Original hardware design | [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw) (first published as `robonet-ai/handumi-hw`, which now redirects) | the source of the design; we printed it from commit `e58de33` |
-| Original software | [murobotics-ai/handumi-sw](https://github.com/murobotics-ai/handumi-sw) (formerly `robonet-ai/handumi-sw`) | we forked it at `33cc437` for an early path; the reported data were not recorded with it |
-| Our build copy | [physical-ai-vla/umihand](https://github.com/physical-ai-vla/umihand) | the upstream print files and STEP/BOM as we used them, plus our own changes: 3 modified parts (`mods/`) and the wrist-IMU firmware |
-| In this repository | [`hardware/`](hardware/), [`upstream/`](upstream/) (licence, NOTICE, our patch) | same build copy; the technical report, Sec. III, describes the upstream design and what we changed |
+| 0 Collect | record HandUMI episodes (head C922 + wrist units) | `python -m handumi_collector.collect --hardware handumi_v1 --dataset Hpilot` (`--protocol robot_like_v1` for HRL80) |
+| 1 Pose | export → per-frame MASt3R-SLAM → metric scale | `scripts/rebot/c8/c8_export.sh` (`scripts/umi_export_orbslam.py`), `scripts/rebot/mast3r/c8_run_5080.sh <side list> <out dir>` (`src/mast3r_pose/run_perframe.py`), scale `src/mast3r_pose/cp6_scale.py` (IMU-VI) or `src/ego_cart20/cube_pnp.py` (cube PnP) |
+| 2 Dataset, Gen-2 | raw episodes → CART20 rows → validation → LeRobot | `python src/ego_cart20/sources/handumi_export.py --out <raw>`, `src/ego_cart20/scripts/convert_dataset.py <raw> <out>`, `validate_dataset.py <out>`, `export_lerobot.py <out> <lerobot>` |
+| 2 Dataset, Gen-1 | gripper, census, Phase-3 segments, C-old builders | `src/rebot_prep/grip/c8_grip.py`, `src/rebot_prep/census/c8_census_pre.py`, `c8_phase3.py`, `scripts/rebot/dataset_v2/` builders and validators |
+| 3 Retarget (Gen-1) | pseudo-joint continuity IK; multi-seed retarget v2 | `src/rebot_prep/pseudo_joint/pseudo_joint_pipeline.py`, `src/rebot_prep/retarget/v2k_retarget.py`, chains in `src/rebot_prep/retarget/chains/` |
+| 4 Train | X-VLA pretrain on ego data, fine-tune on robot data | Gen-2: `scripts/training/ego_cart20/submit_ego_cart20v2.sh <gpu>`, `scripts/training/node4090/*.sh`, `scripts/training/node5090/*.sh` (`src/training/relonly/`); Gen-1: `scripts/training/c8old/c8old_chain.sh` |
+| 5 Deploy / evaluate | serve a checkpoint on the robot; offline evaluation | `scripts/rebot/loaders/load_relonly_run_ckpt_to_ui.sh <step> [port]` (starts `src/rebot_deploy/mac_v4_smoke_ui.py`), `src/rebot_deploy/robot_service/robot_service_mit.py`; offline `scripts/rebot/eval/c8old/c8old_mac_eval.py`, `scripts/rebot/eval/rel16_audit/` |
 
-Our own contributions on the hardware side are limited to the three modified parts (connector, camera mount, servo
-cover), the added Teensy 4.1 + ICM-42688-P wrist IMU that replaces upstream VR tracking, and the fixed head camera.
+Component guides with the full command lines: [`docs/collector/`](docs/collector/README.md),
+[`docs/cart20/`](docs/cart20/README.md), [`docs/training/`](docs/training/README.md), [`docs/deploy/`](docs/deploy/README.md),
+[`docs/hra/`](docs/hra/README.md).
+
+## Codebase guide
+
+**The split.** Importable code lives in `src/` as one package per concern (`handumi_collector`, `mast3r_pose`,
+`rebot_prep`, `ego_cart20`, `training`, `rebot_deploy`, plus the experimental `ego_teleop`, `visual_teleop` and the
+superseded `ego_collector`). Command-line tools and machine-specific run bundles live in `scripts/`; configs and
+calibrations in `configs/`; result records in `results/`; the claims checker and post-hoc analyses in `analysis/`.
+Scripts that ran on GPU nodes or against data roots keep their original sibling imports and absolute data paths.
+
+**The interfaces.**
+
+| interface | definition | where it is defined |
+|---|---|---|
+| raw episode | per-stream mp4 + `sensors.mcap` (IMU, gripper, per-frame camera metadata, sync events), `episode_meta.json`, `events.json` | [`docs/collector/README.md`](docs/collector/README.md), [Sample data](#sample-data) |
+| Gen-2 action (CART20) | 16 future poses `inv(T(t)) @ T(t + k·UMI_DT)`, k = 1..16, `UMI_DT` = 3/59.94 s (50.05 ms), so 0.80 s; per arm `[xyz, rot6d, g]`, LEFT first, grippers at dims 9 and 19; model action `[16, 32]` = CART20 + 12 exact zeros (AUX12) | [`src/ego_cart20/config.py`](src/ego_cart20/config.py), [`docs/cart20/README.md`](docs/cart20/README.md) |
+| Gen-2 state (RELCART20) | each arm's pose relative to its task start, `[L pose9, R pose9, gL, gR]` (20-D); rows stored at 15 Hz | same |
+| rotation | rot6d = first two **rows** of R (UMI `mat_to_rot6d`); quaternions are wxyz | same |
+| gripper (ego labels) | continuous aperture, 0 = closed, 1 = open (aperture / 80 mm) | same |
+| gripper (reBot raw) | raw 0 = CLOSED, −270 = OPEN; commands 0..45 with raw = −6·cmd | [`docs/OPERATIONS_NOTES.md`](docs/OPERATIONS_NOTES.md) |
+| Gen-1 action | Δq_pseudo chunk `q[t+5+i] − q[t]`, i = 0..29 (LEAD 5, 30 steps), on 65-frame segments | [`scripts/training/c8old/humanik_delta.py`](scripts/training/c8old/humanik_delta.py) |
+| frames | dataset TCP and the `eef_kin` FK TCP differ by R_y(90°); the IK TCP is `gripper_link` + 0.07 m along x | [`docs/OPERATIONS_NOTES.md`](docs/OPERATIONS_NOTES.md) |
+| X-VLA domain id | only base slots 10–17 were pretrained; our embodiment uses slot 20 | [`docs/OPERATIONS_NOTES.md`](docs/OPERATIONS_NOTES.md) |
+| data contracts (node side) | UMI76 and RELCART20 contracts | [`src/training/umi76/UMI76_CONTRACT.md`](src/training/umi76/UMI76_CONTRACT.md), [`RELCART20_CONTRACT.md`](src/training/umi76/RELCART20_CONTRACT.md), [`docs/training/UMI_XVLA_CONTRACT.md`](docs/training/UMI_XVLA_CONTRACT.md) |
+
+## Results and how to verify
+
+`analysis/verify_claims.py` recomputes every number in the report and in this README from files in this repository and
+fails on any mismatch:
+
+```bash
+python analysis/verify_claims.py      # prints "736 claims checked, 0 failed."; exits 1 on any mismatch
+python analysis/verify_claims.py --md analysis/out/claim_audit.md   # also writes the per-claim table
+```
+
+The per-claim table (section, claim, report value, recomputed value, evidence file, status) is
+[`analysis/out/claim_audit.md`](analysis/out/claim_audit.md). Other reproduction commands:
+
+```bash
+python3 analysis/verify_claims.py --md analysis/out/claim_audit.md   # needs pyyaml; exits 1 on any mismatch
+python3 analysis/paired_bootstrap_r150.py                            # R150 250k episode-level bootstrap
+python3 analysis/v3/ego_init_loss_compare.py                         # v3 matched initialization comparison
+python3 analysis/v4_r30_ablation.py && python3 analysis/v4_hra_summary.py   # v4 numbers + Figs. 8-9 (need matplotlib)
+python3 report/figures/make_figures.py && python3 report/figures/make_figures_v3.py
+cd report && for f in part1_stacking_en part1_stacking_ko part2_approach_en part2_approach_ko methods_en methods_ko; do tectonic $f.tex; done   # full versions: cd archive
+# the Korean reports use xeCJK with the macOS fonts AppleMyungjo / Apple SD Gothic Neo
+```
+
+### Reports
 
 | Report | English | 한국어 | Full-length version |
 |---|---|---|---|
@@ -33,24 +167,6 @@ cover), the added Teensy 4.1 + ICM-42688-P wrist IMU that replaces upstream VR t
 | Part I: three-cube stacking (bimanual), 4 pp | [`report/part1_stacking_en.pdf`](report/part1_stacking_en.pdf) | [`report/part1_stacking_ko.pdf`](report/part1_stacking_ko.pdf) | `report/archive/part1_stacking_{en,ko}_full.pdf` (11 pp, v4.1) |
 | Part II: single-arm approach to a cube, 2 pp | [`report/part2_approach_en.pdf`](report/part2_approach_en.pdf) | [`report/part2_approach_ko.pdf`](report/part2_approach_ko.pdf) | `report/archive/part2_approach_{en,ko}_full.pdf` (5 pp) |
 | Methods and pipeline (how every stage works), 6 pp | [`report/methods_en.pdf`](report/methods_en.pdf) | [`report/methods_ko.pdf`](report/methods_ko.pdf) | — |
-
-### Update 2026-10-20: servo-less HandUMI, visual gripper, T-shirt flattening data, UMI→robot calibration
-
-After the v5 report the work moved to T-shirt flattening for the laundry project. Summary in
-[`docs/UPDATE_2026-10-20.md`](docs/UPDATE_2026-10-20.md) ([한국어](docs/UPDATE_2026-10-20_ko.md)); the report itself is unchanged.
-
-- **Hardware:** jaw servos removed (10-13); red tape on the jaw tips; AprilTag rigs (200–202 / 210–212) per unit; XIAO
-  nRF52840 wrist IMUs replace the Teensy ([`hardware/README.md`](hardware/README.md)).
-- **Gripper open/close from the wrist video:** red-tape tip distance per frame (`jaw_track.py`) → hysteresis binary
-  (closed ≤ 200 px / open ≥ 260 px) in `src/ego_cart20/sources/jaw_visual.py`; 16/16 spot checks, corr 0.93 vs the servo.
-- **UMIalign pose pipeline** ([`scripts/rebot/laundry/`](scripts/rebot/laundry/)): MASt3R restart_v1, Orbbec canonical
-  tracker, smoother with corrected camera↔IMU rotation + fixed jaw-tip lever + AprilTag gate (TCP error p50 25–36 cm →
-  38–59 mm), 65-episode corrected dataset. The fine-tune on it was stopped at ~11k steps; no result.
-- **UMI → robot** ([`scripts/rebot/parity/`](scripts/rebot/parity/), `src/ego_cart20/robotize/`):
-  robotization (IK-ok p50 0.79, amplitude ~0.81), UMI TCP calibration by corner touch (1–4 mm static), robot camera
-  calibration and replay-parity tools built but **not yet run on the robot**.
-- **UMI as teleop device** (`src/visual_teleop/`): DPVO / mono VIO NO-GO, stereo VIO first robot teleop then
-  dropped (10-16).
 
 The v5 technical report is the main document. The earlier split documents remain: short versions in `report/`, full-length
 versions in `report/archive/`. LaTeX
@@ -63,11 +179,7 @@ C922), our three modified parts (Fig. 2, `report/figures/make_fig10_handumi_mods
 files are in `hardware/` and in our build copy [`physical-ai-vla/umihand`](https://github.com/physical-ai-vla/umihand); the design itself is
 upstream [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw).
 
-**Status: offline evaluation and training diagnostics.** Version-3 checkpoints were executed on the robot, and an
-ego-initialized model fine-tuned on 312 robot episodes completed full three-cube stacks in closed loop (operator
-observation; trials not counted, no video). This repository reports **no closed-loop success rate**.
-
-## Demonstration videos
+### Demonstration videos
 
 ![Three human demonstrations, head camera, 2x speed](docs/media/demo_three_orders.gif)
 
@@ -92,7 +204,7 @@ trace. Details in [MASt3R-SLAM trajectory videos](#mast3r-slam-trajectory-videos
 These are human demonstrations recorded with the hand-worn rig, not robot rollouts. Wrist-camera videos are not
 published (see [Sample data](#sample-data)).
 
-## Dataset
+### Dataset
 
 - **Task:** stacking three cubes (red, blue, purple) on a plate, in 6 stacking orders (RBP, RPB, BRP, BPR, PRB, PBR).
   The instruction text is `Stack the {bottom} cube on the bottom, {middle} cube in the middle, and {top} cube on the top, on the plate.`
@@ -124,7 +236,29 @@ published (see [Sample data](#sample-data)).
 The held-out set is a random 10% of source episodes. It is not balanced by order or by session, and the cube layouts
 were not systematically randomised. None of the results here are claims about generalisation.
 
-## Key results (offline, 26 held-out episodes, final 300k checkpoint)
+### Sample data
+
+`sample_data/<session>_<episode>/` holds three episodes from session `Hpilot_20260917_150545`:
+
+| id | order | split |
+|---|---|---|
+| `20260917_150545_000010` | BPR | held-out (val) |
+| `20260917_150545_000001` | RBP | train |
+| `20260917_150545_000005` | PRB | train |
+
+Each episode directory contains:
+
+- `episode_meta.json`, `events.json`
+- `sensors.mcap`: IMU, gripper, per-frame camera metadata and sync events
+- `head.mp4`: head camera, re-muxed video-only
+- `derived/pose_mast3r_filtered/`: per-side camera/TCP pose parquet files, canonical table and pose QA
+- `segments_<id>.npz`: the processed 65-frame segments. Keys are `starts, st, ac, tcp_tgt, vfL, vfR, vfH, epd, instr, val`. `epd` is the episode path relative to the raw dataset root (`Hpilot/<session>/<episode>`).
+- `right_wrist_frame.jpg`: one 640 px frame from the right wrist camera. It was checked by eye to show only the tabletop, cubes, plate and HandUMI hardware.
+
+The sample episodes ship the head video only; wrist fisheye views of three HRL80 takes are shown in the
+[MASt3R-SLAM trajectory videos](#mast3r-slam-trajectory-videos).
+
+### Key results (offline, 26 held-out episodes, final 300k checkpoint)
 
 | | all arm-samples (798) | moving, TCP ≥ 20 mm by k=30 (187) |
 |---|---|---|
@@ -137,7 +271,7 @@ were not systematically randomised. None of the results here are claims about ge
   and the true instruction is no closer to the recorded motion than a wrong one (mean rank 3.55 of 6, chance 3.5).
   The instruction measurably changes predictions but does not make them more accurate.
 
-## Update v2: multi-seed retargeting, robot-like collection, combined dataset
+### Update v2: multi-seed retargeting, robot-like collection, combined dataset
 
 The first release used a single-anchor retarget ("v1"). Every segment started from one robot posture, so v1 lost
 most segments at the workspace gate and collapsed the pseudo-joint starts onto one posture. v2 changes the retargeting
@@ -147,7 +281,7 @@ and adds a second, robot-like collection. Nothing in the first-release dataset w
 steps; the 100k (primary) and 200k checkpoints are kept (`results/finetune/C_OLD_TR_HANDOFF.json`). No robot
 fine-tuning result from them is reported. The fine-tuning comparison below uses the **v1** ego pretrain.
 
-### Retarget v2 under an R30-only contract
+#### Retarget v2 under an R30-only contract
 
 Every quantity taken from real robot data (seed-bank bounds, workspace gate, manifold penalty, TR window library) comes
 from 30 robot episodes (R30) only. R30 is part of every later fine-tuning subset. Evaluation uses the remaining 120
@@ -169,7 +303,7 @@ robot episodes (held-out R120). Results on the old 259 source episodes (1,229 ca
 
 Code: `src/rebot_prep/retarget/`. Frozen contracts: `src/rebot_prep/retarget/contracts/`. Results: `results/retarget_v2/`.
 
-### Robot-like collection (protocol `robot_like_v1`, dataset HRL80)
+#### Robot-like collection (protocol `robot_like_v1`, dataset HRL80)
 
 The protocol runs inside the existing collector (`--protocol robot_like_v1`). It uses 30 s AUTO episodes and a live
 panel of wrist rotation speed and acceleration against reBot R150 p95 levels, and tracks grasp stages. After each
@@ -189,7 +323,7 @@ first release.
 Code: `src/handumi_collector/robotlike/`, `scripts/robotlike_*`, `configs/handumi/robot_like_v1.yaml`,
 `docs/collector/ROBOT_LIKE_PROTOCOL.md`. Results: `results/hrl80/`.
 
-### C-old v2 dataset (final, frozen)
+#### C-old v2 dataset (final, frozen)
 
 - 996 TR segments of 65 frames each: old 689 plus HRL80 307.
 - Split: train 896 / val 100, taken by source episode (284 / 32).
@@ -201,7 +335,7 @@ Code: `src/handumi_collector/robotlike/`, `scripts/robotlike_*`, `configs/handum
 
 Builders and validators: `scripts/rebot/dataset_v2/`. Metadata and manifests (no video or parquet data): `results/dataset_v2/`.
 
-### Ego pretrain → robot fine-tuning (v1 ego pretrain)
+#### Ego pretrain → robot fine-tuning (v1 ego pretrain)
 
 At 250k steps of R150 fine-tuning, the model initialised from the v1 ego pretrain beats scratch (`lerobot/xvla-base`,
 same recipe) by a small margin on most metrics:
@@ -221,17 +355,8 @@ same recipe) by a small margin on most metrics:
 
 Records: `results/finetune/`. The v2 pretrain launch record is `results/finetune/FINAL_TR300K_LAUNCH.json`.
 
-### Repository map additions
 
-| dir | contents |
-|---|---|
-| `src/rebot_prep/retarget/` | seed bank, v2-K / v2-Kr / v2-TR retarget, held-out comparison, hybrid merge, HRL80 prereg report, chain scripts; `contracts/` = frozen rules, R30 list, splits, prereg, gripper contract, seed banks |
-| `scripts/rebot/dataset_v2/` | TR / hybrid / HRL80 LeRobot builders, final append, validators, append-invariant checker, env-driven `write_stage.py` |
-| `collection/…/robotlike/`, `scripts/`, `tests/collector/`, `docs/collector/` | robot-like protocol monitor, offline check and group comparison, tests, protocol doc |
-| `results/retarget_v2/`, `results/hrl80/`, `results/dataset_v2/`, `results/finetune/` | comparison JSONs, frozen master manifests, HRL80 census and prereg report, dataset manifests and gates, fine-tuning evals and summaries |
-| `docs/NUMBERS_v2.md`, `docs/SOURCES_v2.md`, `docs/FINAL_CLAIMS.md` | every v2 number with its file and key; source mapping; headline claim table with evidence and status |
-
-## Update v3: Cartesian ego pretraining and transfer
+### Update v3: Cartesian ego pretraining and transfer
 
 Retargeting to robot joints removed a third to a half of the human motion and produced a joint-space target that our robot
 policies are not trained in. Version 3 converts whole human episodes directly into the robot's own relative-Cartesian
@@ -244,7 +369,7 @@ outcome. The operator observed complete three-cube stacks with the ego-initializ
 75k–205k). Trials were not counted and there is no video, so this is a demonstration, not a success rate, and no scratch
 model on the same data was tested the same way.
 
-### Data contract and dataset (`cart20/`)
+#### Data contract and dataset (`src/ego_cart20/`)
 
 - Rows at 15 Hz. Action = 16 future poses `inv(T(t)) @ T(t + k·50.05 ms)`, k = 1..16 (0.80 s), interpolated on the raw
   30 Hz track. Per arm xyz + 6-D rotation + gripper = CART20; the model's 32-D action is padded with 12 exact zeros.
@@ -260,7 +385,7 @@ model on the same data was tested the same way.
 
 Evidence: `results/v3/ego_cart20/`, `results/v3/state_jump/`.
 
-### MASt3R-SLAM trajectory videos
+#### MASt3R-SLAM trajectory videos
 
 Bimanual HRL80 takes. Left: head camera and both wrist fisheye cameras. Right: gravity-aligned MASt3R-SLAM wrist
 trajectories (z up, each arm's origin at its start, current tool axes drawn) with IMU visual–inertial metric scale, and
@@ -274,7 +399,7 @@ both grippers below (1 = open). Click a preview for the MP4 (960×540).
 Renderer: `analysis/v3/viz_mast3r_episode.py`.
 
 
-### Ego vs robot, and the soft-prompt audit
+#### Ego vs robot, and the soft-prompt audit
 
 - Robot IK reaches 99.7 / 99.5 % of ego positions (L / R) and 72.3 / 74.6 % of full ego poses. The deployed IK
   (one wrist joint locked) reproduces only 45.2 / 52.2 % of the robot's **own** poses.
@@ -284,7 +409,7 @@ Renderer: `analysis/v3/viz_mast3r_episode.py`.
   earlier runs, were untrained. Initial loss on R312c: slot 0 1.11, 6 1.12, 15 1.61, 10 2.35, 16 2.65, 17 4.07, 11 22.80.
   All v3 runs use unused slot 20. Evidence: `results/v3/domain_slots/`.
 
-### Transfer diagnostics
+#### Transfer diagnostics
 
 | test | result | evidence |
 |---|---|---|
@@ -303,7 +428,7 @@ Renderer: `analysis/v3/viz_mast3r_episode.py`.
   Co-training (4 ego + 4 robot per batch, `src/training/relonly/train_cotrain.py`) was stopped at 88.6k without evaluation. The
   The ROBOT100 300k pretrain finished on 10-05 (loss 0.007); its 100k and 300k checkpoints initialize the R30 ablation (v4).
 
-### HRA_red: right-hand approach with cube-based scale
+#### HRA_red: right-hand approach with cube-based scale
 
 - 200 right-hand takes of "approach the red cube". The IMU visual–inertial scale is unobservable on these slow motions: median
   0.012, ≤ 0 in 95 of 200 episodes.
@@ -317,9 +442,10 @@ Renderer: `analysis/v3/viz_mast3r_episode.py`.
 
 Evidence: `results/v3/hra_red/`.
 
-## Update v4: two reports, R30 ablation and single-arm approach
 
-### Part I: low-data ablation on 30 robot episodes
+### Update v4: two reports, R30 ablation and single-arm approach
+
+#### Part I: low-data ablation on 30 robot episodes
 
 Three otherwise identical fine-tuning runs on **R30** (R312c episodes 150–179, 17,600 frames), 600k cosine schedule, from
 the base model (scratch) and from the ROBOT100 ego pretrain at 100k and 300k steps. Training loss only, one seed per arm;
@@ -338,7 +464,7 @@ checkpoint has been run on the robot and there is no held-out robot evaluation**
 trial logger in the deployment UI exists but has recorded no trial. Evidence: `results/v4/loss_curves/`,
 `results/v4/r30_ablation_summary.json`, `results/v4/RUN_STATUS_v4.json`.
 
-### Part II: single-arm approach (HRA_red → robot camera rendering → HRA_A100)
+#### Part II: single-arm approach (HRA_red → robot camera rendering → HRA_A100)
 
 - **Robot-side calibration:** head C922 (checkerboard, RMS 1.05 px), robot right-wrist hand-eye (13 views, 0.16 px RMS; camera
   169.5 mm behind the TCP, optical axis 33° below TCP x). The IK stack's TCP lies ~82 mm ahead of the physical jaw tip; contact
@@ -355,81 +481,26 @@ trial logger in the deployment UI exists but has recorded no trial. Evidence: `r
 
 Evidence: `results/v4/hra/` (validation losses, calibration files, table-aware reports, start poses, plan-session summary).
 
-### Code added on 2026-10-07 (repository now private)
 
-The full working code of the project was added, so the repository is no longer only the audited subset:
+### Update 2026-10-20: servo-less HandUMI, visual gripper, T-shirt flattening data, UMI→robot calibration
 
-| path | contents |
-|---|---|
-| `collection/` | latest `handumi_collector` (robot_like_v1, HRA_red, HRA_A100 origin protocol, C922-view tile), firmware, calibration configs; depends on `experimental/` (uv path dependency) |
-| `hra/` | single-arm approach pipeline: base-frame linking, robot camera and hand-eye calibration, robotcam v2 rendering, origin-plane scale, origin yaw, G frame, table-aware QP, held-out evaluation |
-| `deploy/` | inference core, robot UI (PLAN/RTC/cube-size stop/trial logger), Pink IK, checkpoint loaders, MIT robot service |
-| `hardware/` | HandUMI print package (3MF/STL) from upstream [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw) (not our design), our modified parts (`mods/`) and build notes; our build copy is [physical-ai-vla/umihand](https://github.com/physical-ai-vla/umihand) |
-| `experimental/` | wearable teleop (VIO), AprilTag V0 collector, RGB-D body tracking, (10-20) `visual_teleop` HandUMI teleop and wrist-tracking evaluations |
-| `scripts/rebot/laundry/`, `scripts/rebot/parity/` | (10-20) UMIalign pose + visual-gripper pipeline; UMI TCP tag-rig calibration, Kalibr, UMI → reBot replay parity |
-| `upstream/` | patch and new files on top of murobotics-ai/handumi-sw (formerly robonet-ai; Apache-2.0) |
-| `scripts/training/`, `scripts/training/archivers/`, `src/training/umi76/` | node launchers (4090 / 5090), archivers, base widening |
-| `docs/OPERATIONS_NOTES.md` | conventions and pitfalls (gripper signs, TCP frames, PLAN settings, GPU rules) |
+After the v5 report the work moved to T-shirt flattening for the laundry project. Summary in
+[`docs/UPDATE_2026-10-20.md`](docs/UPDATE_2026-10-20.md) ([한국어](docs/UPDATE_2026-10-20_ko.md)); the report itself is unchanged.
 
-Path placeholders that had been substituted for the public release were restored to the real working paths, and the reBot
-URDF and MASt3R build patch are included. Many scripts hard-code the roots they ran from; each folder's `MANIFEST.md` lists
-the source of every file. Datasets and checkpoints are still not included. `physical-ai-vla/umihand` holds the hardware only (print files, modified parts,
-STEP, BOM, IMU firmware).
+- **Hardware:** jaw servos removed (10-13); red tape on the jaw tips; AprilTag rigs (200–202 / 210–212) per unit; XIAO
+  nRF52840 wrist IMUs replace the Teensy ([`hardware/README.md`](hardware/README.md)).
+- **Gripper open/close from the wrist video:** red-tape tip distance per frame (`jaw_track.py`) → hysteresis binary
+  (closed ≤ 200 px / open ≥ 260 px) in `src/ego_cart20/sources/jaw_visual.py`; 16/16 spot checks, corr 0.93 vs the servo.
+- **UMIalign pose pipeline** ([`scripts/rebot/laundry/`](scripts/rebot/laundry/)): MASt3R restart_v1, Orbbec canonical
+  tracker, smoother with corrected camera↔IMU rotation + fixed jaw-tip lever + AprilTag gate (TCP error p50 25–36 cm →
+  38–59 mm), 65-episode corrected dataset. The fine-tune on it was stopped at ~11k steps; no result.
+- **UMI → robot** ([`scripts/rebot/parity/`](scripts/rebot/parity/), `src/ego_cart20/robotize/`):
+  robotization (IK-ok p50 0.79, amplitude ~0.81), UMI TCP calibration by corner touch (1–4 mm static), robot camera
+  calibration and replay-parity tools built but **not yet run on the robot**.
+- **UMI as teleop device** (`src/visual_teleop/`): DPVO / mono VIO NO-GO, stereo VIO first robot teleop then
+  dropped (10-16).
 
-### Repository map additions (v4)
-
-| path | contents |
-|---|---|
-| `report/part{1,2}_*_{en,ko}.{tex,pdf}` | the four v4 short reports; `report/archive/` = full-length v4 versions and v3 |
-| `analysis/v4_r30_ablation.py` | R30 matched-step comparison + Fig. 8 |
-| `analysis/v4_hra_summary.py` | Part II numbers (validation loss, table-aware tallies, G frame, hand-eye) + Fig. 9 |
-| `results/v4/` | loss curves (ROBOT100 pretrain, three R30 arms), R30 summary, run status, `hra/` evidence |
-
-### Repository map additions (v3)
-
-| dir | contents |
-|---|---|
-| `cart20/` | Cartesian ego package: contract (`config.py`), geometry, interpolation, jump filter, label builders, converter, validators, LeRobot exporters (plain, robotized-wrist, right-only), cube PnP scale, right-only conversion + sanity gate, ego-vs-robot and IK compatibility reports; `tests/` (contract, cube scale, right-only) |
-| `src/training/relonly/` | REL-only loss plugin (dims 20:32 zeroed), per-dim loss-mask variant + tests, AdamW8bit wrapper with a checkpoint-save shim, exact 4 + 4 ego/robot co-training sampler |
-| `analysis/v3/` | loss-curve extraction and the matched init comparison, direction-cosine and image/state-swap diagnostics, wrist optical-flow axis check, soft-prompt slot audit + init-loss probe, wrist sharpness, HRL80 PnP-vs-IMU validation, HRA held-out loss, hardware cycle counts |
-| `results/v3/` | dataset metadata and integrity reports, jump root cause, ego-vs-robot statistics, slot audit, robotized export records, loss curves, diagnostics, HRA QC (per-episode scale records), run status |
-| `report/figures/make_figures_v3.py` | Figs. 4–5 of the report |
-
-v3 code imports some internal packages that are not included: the HandUMI raw-episode exporter (`sources/handumi_export.py`),
-the deployment/inference client (`infer_core_v4`) used by the diagnostics, and the robot datasets. HRA_red videos and frames are not published.
-
-## Repository map
-
-| dir | contents |
-|---|---|
-| `collection/` | HandUMI collector (`handumi_collector/`: devices, recorder, session/auto-loop, PySide6 UI, calibration and QA tools) and `configs/handumi/{tasks,hardware_handumi_v1}.yaml` |
-| `calibration/` | Calibrations used for this dataset: fisheye intrinsics (L v002, R v003), camera-IMU extrinsics (L v001, R v002, plus the Kalibr result files in `kalibr/`), head C922 intrinsics v003, `camera_tcp/handumi_camera_tcp_v2.yaml`, the TCP convention and the gripper tick calibrations that the episodes reference (`gripper/`) |
-| `scripts/rebot/c8/` | Episode export to the raw_video + imu_data layout (`umi_export_orbslam.py`, `c8_export*.sh`) |
-| `src/mast3r_pose/` | Per-frame MASt3R-SLAM wrapper (`run_perframe*.py`), the sm_120 build patch, the pinned upstream commit and checkpoint MD5s, run scripts, and IMU-VI metric scale (`cp6_scale.py`) |
-| `src/rebot_prep/grip/` | Gripper width from raw jaw ticks (aperture 0.0675 m): `extract_grip.py`, `correct_grip.py`, `c8_grip.py` |
-| `src/rebot_prep/census/` | Census and gates: `c8_census_pre.py` (sensor/sync), `c8_phase3.py` (pose -> metric TCP -> pseudo-q, 65-frame segments), collision, gravity-sign and regression checks |
-| `src/rebot_prep/pseudo_joint/` | Retarget + continuity IK core (`pseudo_joint_pipeline.py`), state layout, input-quality gate, IK wrapper `eef_kin.py` |
-| `scripts/rebot/dataset/` | Segment rows -> LeRobot v3 dataset (`c8old_build_dataset.py`, `write_stage.py`), post-build and gripper-semantics gates |
-| `training/` | `train_bi.py` (LeRobot X-VLA entry point with install hooks), `humanik_delta.py` (Δq target, EEF aux and FK losses), `c8old_chain.sh` (smoke -> 300k pretrain -> integrity -> robot fine-tune), `c8old_launch.sh`, and `robot/` (reBot URDF, numpy/torch FK) |
-| `evaluation/` | Offline checkpoint evaluator (`c8old_mac_eval.py`), frame cache and checkpoint selection |
-| `results/` | `episode_manifest.csv` (349 episodes: session, order, time, domain, funnel outcome, split), `model_config/` (X-VLA `config.json`, `train_config.json`), `pose_benchmark/`, census/funnel JSONs, domain manifest, quarantine list, gripper census, split index, run provenance/summary, per-checkpoint eval JSONs (`eval/`, `eval_gated/`) and `selection.json` |
-| `sample_data/` | 3 episodes (see below) |
-| `analysis/` | `verify_claims.py` recomputes every number in the report and this README from the files in this repo (see `analysis/out/claim_audit.md` for the count; table in `analysis/out/claim_audit.md`). Post-hoc analyses of the final checkpoint: `prompt_swap.py` (6 order instructions, same noise seed, + 2 extra seeds), `summarize_prompt_swap.py`, `per_order_breakdown.py`; summaries in `analysis/out/*.json` |
-| `report/` | Technical reports (Part I stacking, Part II approach; English + Korean; PDF + LaTeX) and figure scripts |
-
-## Verifying the numbers
-
-```bash
-python3 analysis/verify_claims.py --md analysis/out/claim_audit.md   # needs pyyaml; exits 1 on any mismatch
-python3 analysis/paired_bootstrap_r150.py                            # R150 250k episode-level bootstrap
-python3 analysis/v3/ego_init_loss_compare.py                         # v3 matched initialization comparison
-python3 analysis/v4_r30_ablation.py && python3 analysis/v4_hra_summary.py   # v4 numbers + Figs. 8-9 (need matplotlib)
-python3 report/figures/make_figures.py && python3 report/figures/make_figures_v3.py
-cd report && for f in part1_stacking_en part1_stacking_ko part2_approach_en part2_approach_ko methods_en methods_ko; do tectonic $f.tex; done   # full versions: cd archive
-# the Korean reports use xeCJK with the macOS fonts AppleMyungjo / Apple SD Gothic Neo
-```
-
-## What this repository does not show
+### What this repository does not show
 
 - No closed-loop success rate (three-cube stacking was observed with B300, but trials were not counted or recorded).
 - No held-out or closed-loop comparison of ego-initialized vs scratch v3 models; the matched comparisons are training loss
@@ -440,23 +511,127 @@ cd report && for f in part1_stacking_en part1_stacking_ko part2_approach_en part
 - No benefit on disjoint robot test data: the 10 % R150 gain is measured on episodes inside both fine-tuning sets.
 - No transfer to other operators or scenes (one operator, one scene).
 
-## Not included
+## Current vs superseded
 
-- `src/training/robot/reBot_B601_DM_dualarm.urdf` (vendor robot model) and `src/mast3r_pose/build_compat_5090.patch`
-  (a diff against MASt3R-SLAM) are withheld until their licences are confirmed. The FK code in `src/training/robot/`
-  expects the URDF at that path.
-- Part II (v4) processing code for HRA_A100 (origin-plane scale, origin-yaw matching, G-frame calibration, the table-aware
-  conversion and the robot-camera re-rendering) lives in internal tooling and is not included; its outputs and per-take
-  reports are in `results/v4/hra/`.
+| current | superseded (kept in the repository) |
+|---|---|
+| Gen-2 Cartesian CART20 / RELCART20 data (`src/ego_cart20/`, report v3+) | Gen-1 pseudo-joint retargeting (`src/rebot_prep/pseudo_joint/`, `census/c8_phase3.py`) |
+| retarget v2-TR + frozen hybrid master (`src/rebot_prep/retarget/`) | v1 single-anchor retarget; v2-K / v2-Kr variants |
+| C-old v2 dataset builders (`scripts/rebot/dataset_v2/`) | C-old v1 builder (`scripts/rebot/dataset/`) |
+| REL-only X-VLA training (`src/training/relonly/`) | Gen-1 trainer and chain (`scripts/training/c8old/`, `scripts/rebot/eval/c8old/`) |
+| `src/handumi_collector/` | V0 AprilTag collector `src/ego_collector/` (camera layer still used) |
+| `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` | `scripts/rebot/loaders/legacy/` |
+| one technical report `report/report_{en,ko}` (v5) | split reports `report/part*`, `report/methods_*`, `report/archive/` |
 
-## Running it
+`src/ego_teleop/`, `src/visual_teleop/` and `scripts/umi_teleop_eval/` are experimental (not deployed). `scripts/rebot/laundry/`
+and `scripts/rebot/parity/` belong to the laundry project and are kept here because they reuse this pipeline.
+Item-by-item table: [`docs/provenance/README.md`](docs/provenance/README.md#superseded-items-kept-not-deleted).
+
+Conventions: lengths in the CART20 contract are metres (`*_m` fields in `src/ego_cart20/config.py`); frames, gripper signs and other
+pitfalls are collected in [`docs/OPERATIONS_NOTES.md`](docs/OPERATIONS_NOTES.md).
+
+### Repository maps by release (historical)
+
+What each release added, with paths updated to the current layout.
+
+#### v2 additions
+
+| dir | contents |
+|---|---|
+| `src/rebot_prep/retarget/` | seed bank, v2-K / v2-Kr / v2-TR retarget, held-out comparison, hybrid merge, HRL80 prereg report, chain scripts; `contracts/` = frozen rules, R30 list, splits, prereg, gripper contract, seed banks |
+| `scripts/rebot/dataset_v2/` | TR / hybrid / HRL80 LeRobot builders, final append, validators, append-invariant checker, env-driven `write_stage.py` |
+| `src/handumi_collector/robotlike/`, `scripts/robotlike_*`, `tests/collector/`, `docs/collector/` | robot-like protocol monitor, offline check and group comparison, tests, protocol doc |
+| `results/retarget_v2/`, `results/hrl80/`, `results/dataset_v2/`, `results/finetune/` | comparison JSONs, frozen master manifests, HRL80 census and prereg report, dataset manifests and gates, fine-tuning evals and summaries |
+| `docs/NUMBERS_v2.md`, `docs/SOURCES_v2.md`, `docs/FINAL_CLAIMS.md` | every v2 number with its file and key; source mapping; headline claim table with evidence and status |
+
+#### Code added on 2026-10-07
+
+The full working code of the project was added, so the repository is no longer only the audited subset:
+
+| path | contents |
+|---|---|
+| `src/handumi_collector/`, `firmware/`, `configs/` | latest `handumi_collector` (robot_like_v1, HRA_red, HRA_A100 origin protocol, C922-view tile), firmware, calibration configs; imports `ego_collector.camera` |
+| `scripts/rebot/hra/` | single-arm approach pipeline: base-frame linking, robot camera and hand-eye calibration, robotcam v2 rendering, origin-plane scale, origin yaw, G frame, table-aware QP, held-out evaluation |
+| `src/rebot_deploy/`, `scripts/rebot/loaders/` | inference core, robot UI (PLAN/RTC/cube-size stop/trial logger), Pink IK, checkpoint loaders, MIT robot service |
+| `hardware/` | HandUMI print package (3MF/STL) from upstream [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw) (not our design), our modified parts (`mods/`) and build notes; our build copy is [physical-ai-vla/umihand](https://github.com/physical-ai-vla/umihand) |
+| `src/ego_teleop/`, `src/ego_collector/`, `scripts/body_*`, `src/visual_teleop/`, `scripts/umi_teleop_eval/` | wearable teleop (VIO), AprilTag V0 collector, RGB-D body tracking, (10-20) `visual_teleop` HandUMI teleop and wrist-tracking evaluations |
+| `scripts/rebot/laundry/`, `scripts/rebot/parity/` | (10-20) UMIalign pose + visual-gripper pipeline; UMI TCP tag-rig calibration, Kalibr, UMI → reBot replay parity |
+| `upstream/` | patch and new files on top of murobotics-ai/handumi-sw (formerly robonet-ai; Apache-2.0) |
+| `scripts/training/`, `scripts/training/archivers/`, `src/training/umi76/` | node launchers (4090 / 5090), archivers, base widening |
+| `docs/OPERATIONS_NOTES.md` | conventions and pitfalls (gripper signs, TCP frames, PLAN settings, GPU rules) |
+
+Path placeholders that had been substituted for the public release were restored to the real working paths, and the reBot
+URDF and MASt3R build patch are included. Many scripts hard-code the roots they ran from; the MANIFEST files in `docs/provenance/` list
+the source of every file. Datasets and checkpoints are still not included. `physical-ai-vla/umihand` holds the hardware only (print files, modified parts,
+STEP, BOM, IMU firmware).
+
+#### Repository map additions (v4)
+
+| path | contents |
+|---|---|
+| `report/part{1,2}_*_{en,ko}.{tex,pdf}` | the four v4 short reports; `report/archive/` = full-length v4 versions and v3 |
+| `analysis/v4_r30_ablation.py` | R30 matched-step comparison + Fig. 8 |
+| `analysis/v4_hra_summary.py` | Part II numbers (validation loss, table-aware tallies, G frame, hand-eye) + Fig. 9 |
+| `results/v4/` | loss curves (ROBOT100 pretrain, three R30 arms), R30 summary, run status, `hra/` evidence |
+
+#### Repository map additions (v3)
+
+| dir | contents |
+|---|---|
+| `src/ego_cart20/`, `tests/cart20/` | Cartesian ego package: contract (`config.py`), geometry, interpolation, jump filter, label builders, converter, validators, LeRobot exporters (plain, robotized-wrist, right-only), cube PnP scale, right-only conversion + sanity gate, ego-vs-robot and IK compatibility reports; `tests/` (contract, cube scale, right-only) |
+| `src/training/relonly/` | REL-only loss plugin (dims 20:32 zeroed), per-dim loss-mask variant + tests, AdamW8bit wrapper with a checkpoint-save shim, exact 4 + 4 ego/robot co-training sampler |
+| `analysis/v3/` | loss-curve extraction and the matched init comparison, direction-cosine and image/state-swap diagnostics, wrist optical-flow axis check, soft-prompt slot audit + init-loss probe, wrist sharpness, HRL80 PnP-vs-IMU validation, HRA held-out loss, hardware cycle counts |
+| `results/v3/` | dataset metadata and integrity reports, jump root cause, ego-vs-robot statistics, slot audit, robotized export records, loss curves, diagnostics, HRA QC (per-episode scale records), run status |
+| `report/figures/make_figures_v3.py` | Figs. 4–5 of the report |
+
+v3 code imports some internal packages that are not included: the HandUMI raw-episode exporter (`sources/handumi_export.py`),
+the deployment/inference client (`infer_core_v4`) used by the diagnostics, and the robot datasets. HRA_red videos and frames are not published.
+
+
+#### First release
+
+| dir | contents |
+|---|---|
+| `src/handumi_collector/`, `configs/handumi/` | HandUMI collector (`handumi_collector/`: devices, recorder, session/auto-loop, PySide6 UI, calibration and QA tools) and `configs/handumi/{tasks,hardware_handumi_v1}.yaml` |
+| `configs/dataset_calibration/` | Calibrations used for this dataset: fisheye intrinsics (L v002, R v003), camera-IMU extrinsics (L v001, R v002, plus the Kalibr result files in `kalibr/`), head C922 intrinsics v003, `camera_tcp/handumi_camera_tcp_v2.yaml`, the TCP convention and the gripper tick calibrations that the episodes reference (`gripper/`) |
+| `scripts/rebot/c8/` | Episode export to the raw_video + imu_data layout (`umi_export_orbslam.py`, `c8_export*.sh`) |
+| `src/mast3r_pose/` | Per-frame MASt3R-SLAM wrapper (`run_perframe*.py`), the sm_120 build patch, the pinned upstream commit and checkpoint MD5s, run scripts, and IMU-VI metric scale (`cp6_scale.py`) |
+| `src/rebot_prep/grip/` | Gripper width from raw jaw ticks (aperture 0.0675 m): `extract_grip.py`, `correct_grip.py`, `c8_grip.py` |
+| `src/rebot_prep/census/` | Census and gates: `c8_census_pre.py` (sensor/sync), `c8_phase3.py` (pose -> metric TCP -> pseudo-q, 65-frame segments), collision, gravity-sign and regression checks |
+| `src/rebot_prep/pseudo_joint/` | Retarget + continuity IK core (`pseudo_joint_pipeline.py`), state layout, input-quality gate, IK wrapper `eef_kin.py` |
+| `scripts/rebot/dataset/` | Segment rows -> LeRobot v3 dataset (`c8old_build_dataset.py`, `write_stage.py`), post-build and gripper-semantics gates |
+| `scripts/training/c8old/`, `src/training/robot/` | `train_bi.py` (LeRobot X-VLA entry point with install hooks), `humanik_delta.py` (Δq target, EEF aux and FK losses), `c8old_chain.sh` (smoke -> 300k pretrain -> integrity -> robot fine-tune), `c8old_launch.sh`, and `robot/` (reBot URDF, numpy/torch FK) |
+| `scripts/rebot/eval/c8old/` | Offline checkpoint evaluator (`c8old_mac_eval.py`), frame cache and checkpoint selection |
+| `results/` | `episode_manifest.csv` (349 episodes: session, order, time, domain, funnel outcome, split), `model_config/` (X-VLA `config.json`, `train_config.json`), `pose_benchmark/`, census/funnel JSONs, domain manifest, quarantine list, gripper census, split index, run provenance/summary, per-checkpoint eval JSONs (`eval/`, `eval_gated/`) and `selection.json` |
+| `sample_data/` | 3 episodes (see below) |
+| `analysis/` | `verify_claims.py` recomputes every number in the report and this README from the files in this repo (see `analysis/out/claim_audit.md` for the count; table in `analysis/out/claim_audit.md`). Post-hoc analyses of the final checkpoint: `prompt_swap.py` (6 order instructions, same noise seed, + 2 extra seeds), `summarize_prompt_swap.py`, `per_order_breakdown.py`; summaries in `analysis/out/*.json` |
+| `report/` | Technical reports (Part I stacking, Part II approach; English + Korean; PDF + LaTeX) and figure scripts |
+
+## Hardware and attribution
+
+### Hardware source: HandUMI is not our design
+
+The capture device is **HandUMI**, an open-source hand-worn UMI variant designed and published by **BrikHMP18**
+(Apache-2.0). It is **not** our own UMI design.
+
+| what | where | role |
+|---|---|---|
+| Original hardware design | [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw) (first published as `robonet-ai/handumi-hw`, which now redirects) | the source of the design; we printed it from commit `e58de33` |
+| Original software | [murobotics-ai/handumi-sw](https://github.com/murobotics-ai/handumi-sw) (formerly `robonet-ai/handumi-sw`) | we forked it at `33cc437` for an early path; the reported data were not recorded with it |
+| Our build copy | [physical-ai-vla/umihand](https://github.com/physical-ai-vla/umihand) | the upstream print files and STEP/BOM as we used them, plus our own changes: 3 modified parts (`mods/`) and the wrist-IMU firmware |
+| In this repository | [`hardware/`](hardware/), [`upstream/`](upstream/) (licence, NOTICE, our patch) | same build copy; the technical report, Sec. III, describes the upstream design and what we changed |
+
+Our own contributions on the hardware side are limited to the three modified parts (connector, camera mount, servo
+cover), the added Teensy 4.1 + ICM-42688-P wrist IMU that replaces upstream VR tracking, and the fixed head camera.
+
+### Running it
 
 This is research code from a single lab environment. Absolute hostnames, IPs, user names and home paths have
 been replaced with placeholders: `${HOME}`, `${REMOTE_HOME}`, `${DATA_ROOT}`, `${SHARED_ROOT}`, `<gpu-node>`,
 `<ray-head>`. Many scripts still assume the original directory layout (`~/c8`, `~/umi_bridge`, `~/ego_collector`).
 Where each part ran:
 
-- **Collection:** macOS laptop (PySide6, AVFoundation/UVC, `uvc-util`). Entry point `python -m handumi_collector.collect`, run from `collection/`.
+- **Collection:** macOS laptop (PySide6, AVFoundation/UVC, `uvc-util`). Entry point `python -m handumi_collector.collect`, run from the repository root.
 - **Export, gripper, census, dataset build, offline eval:** CPU / Apple MPS.
 - **MASt3R-SLAM:** one RTX 5080 (16 GB), with the upstream repo patched by `build_compat_5090.patch`.
 - **Training:** one RTX 4090, submitted as a Ray job, fp32 with TF32 matmuls, batch 4.
@@ -470,32 +645,41 @@ Upstream dependencies (not vendored):
 
 Not included (these live in other internal packages):
 
-- `ego_collector.camera.capture` / `orbbec_capture`: the camera capture backend imported by `collection/.../devices/camera.py`.
+- `ego_collector.camera.capture` / `orbbec_capture`: the camera capture backend imported by `src/handumi_collector/devices/camera.py` (listed here before the full code was added on 2026-10-07; now in `src/ego_collector/camera/`).
 - `handumi_collector.tools.pose_process`, `pose.run` and `pose.backends`: the legacy offline VO pipeline. `tools/camera_imu_offset.py` imports `pose_process.episodes_under`.
 - `handumi.robots` (the `rebot_b601` embodiment and IK solver): imported by `src/rebot_prep/pseudo_joint/eef_kin.py`.
 - `umi_bridge/track_c/data/r150_q_tcp.npz`, the robot reference joint/TCP data used by `c8_phase3.py`, and the R150 robot dataset used by the fine-tune stage of `c8old_chain.sh`.
 - The legacy gripper anchor file `gripper_contract.json` read by `c8_grip.py`. `src/rebot_prep/grip/correct_grip.py` gives the rule it was derived from (aperture 0.0675 m).
-- `umi_export_orbslam.py` expects `handumi_collector` and `configs/calibration` as siblings of its parent directory. In this repo they are `collection/handumi_collector` and `calibration/`.
+- `umi_export_orbslam.py` expects `handumi_collector` and `configs/calibration` relative to its parent directory. `scripts/umi_export_orbslam.py` finds `configs/calibration/` at the repository root and `handumi_collector` in `src/`; the copy in `scripts/rebot/c8/` keeps the original lookup.
 - `train_bi.py` imports `eef_delta.py` unconditionally. A copy is included, but it stays inactive unless `EEF_DELTA=1`, which the chain never sets.
 
-## Sample data
+### Not included
 
-`sample_data/<session>_<episode>/` holds three episodes from session `Hpilot_20260917_150545`:
+- `src/training/robot/reBot_B601_DM_dualarm.urdf` (vendor robot model) and `src/mast3r_pose/build_compat_5090.patch`
+  (a diff against MASt3R-SLAM) are withheld until their licences are confirmed. The FK code in `src/training/robot/`
+  expects the URDF at that path.
+- Part II (v4) processing code for HRA_A100 (origin-plane scale, origin-yaw matching, G-frame calibration, the table-aware
+  conversion and the robot-camera re-rendering) lives in internal tooling and is not included; its outputs and per-take
+  reports are in `results/v4/hra/`.
 
-| id | order | split |
-|---|---|---|
-| `20260917_150545_000010` | BPR | held-out (val) |
-| `20260917_150545_000001` | RBP | train |
-| `20260917_150545_000005` | PRB | train |
+## License, acknowledgements and citation
 
-Each episode directory contains:
+**License.** This repository has no license file for its own code. Third-party parts keep their licences: HandUMI
+hardware and software are Apache-2.0 (`upstream/LICENSE-handumi-hw-apache-2.0.txt`, `upstream/LICENSE-handumi-apache-2.0.txt`,
+`upstream/NOTICE.md`); the Aero Hand Open URDFs are Apache-2.0 (`assets/aero_hand_open/NOTICE`).
 
-- `episode_meta.json`, `events.json`
-- `sensors.mcap`: IMU, gripper, per-frame camera metadata and sync events
-- `head.mp4`: head camera, re-muxed video-only
-- `derived/pose_mast3r_filtered/`: per-side camera/TCP pose parquet files, canonical table and pose QA
-- `segments_<id>.npz`: the processed 65-frame segments. Keys are `starts, st, ac, tcp_tgt, vfL, vfR, vfH, epd, instr, val`. `epd` is the episode path relative to the raw dataset root (`Hpilot/<session>/<episode>`).
-- `right_wrist_frame.jpg`: one 640 px frame from the right wrist camera. It was checked by eye to show only the tabletop, cubes, plate and HandUMI hardware.
+**Acknowledgements.** HandUMI by BrikHMP18 ([murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw),
+[murobotics-ai/handumi-sw](https://github.com/murobotics-ai/handumi-sw)); [MASt3R-SLAM](https://github.com/rmurai0610/MASt3R-SLAM);
+[LeRobot](https://github.com/huggingface/lerobot) and X-VLA (`lerobot/xvla-base`);
+[Universal Manipulation Interface](https://github.com/real-stanford/universal_manipulation_interface).
 
-The sample episodes ship the head video only; wrist fisheye views of three HRL80 takes are shown in the
-[MASt3R-SLAM trajectory videos](#mast3r-slam-trajectory-videos).
+**Citation.** See [`CITATION.cff`](CITATION.cff):
+
+```bibtex
+@software{lee_egocentric_human_demonstrations_2026,
+  author = {Lee, Jeong Hwan},
+  title  = {Egocentric Human Demonstrations for Robot Manipulation},
+  year   = {2026},
+  url    = {https://github.com/physical-ai-vla/egocentric-cube-stacking}
+}
+```
