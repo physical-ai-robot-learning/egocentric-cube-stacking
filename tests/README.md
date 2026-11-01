@@ -13,20 +13,18 @@ Synthetic data and small fixtures only; tests that need hardware, recorded data 
 ```bash
 pip install -e ".[collector,experimental,dev]"     # or rely on pyproject's pytest pythonpath = src
 pytest tests/cart20 -q                  # 40 passed
-pytest tests/experimental/teleop -q     # 297 passed
-pytest tests/experimental/v0 -q         # 59 passed
-pytest tests/collector -q               # 224 passed, 12 failed, 1 skipped, 3 errors (known; same on main before the restructure)
 pytest tests/test_imports.py -q         # every src/ module imports from a clean checkout (known failures: import_smoke_known_failures.txt)
 ```
 
 The former `tests/experimental/vteleop` (tests of `visual_teleop`, which did not collect: `ImportError: gripper_cmd_from_g`) moved with
 `visual_teleop` to [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation) on 2026-11-01.
+The tests of `handumi_collector`, `ego_teleop` and `ego_collector` (`tests/collector`, `tests/experimental/{teleop,v0}`)
+moved with those packages to the shared package [`egocentric`](https://github.com/physical-ai-vla/egocentric) on 2026-11-01 (same results there: 224/12/1/3,
+297, 59).
 `src/training/relonly/test_rel16_relonly_lossmask.py` and `src/training/umi76/test_rel16_aux*.py` stay next to the code they test (node-side).
 
 ## Layout
 
-- `collector/` — `handumi_collector` (was `collection/tests`)
-- `experimental/teleop`, `experimental/v0` — `ego_teleop`, `ego_collector` V0 (was `experimental/tests`)
 - `cart20/` — `ego_cart20` contract, cube scale, right-only, robotize, UMI fusion (was `cart20/tests`)
 - `test_imports.py` + `import_smoke_known_failures.txt` — import smoke test of every module under `src/` (see `docs/code_structure.md`)
 

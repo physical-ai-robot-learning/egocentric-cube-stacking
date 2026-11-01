@@ -1,6 +1,8 @@
 # HandUMI collector (`handumi_collector`)
 
 > **Location (restructure of 2026-11-01).** This file was `collection/README.md`. Paths in it are relative to that old folder: `handumi_collector/` → `src/handumi_collector/`, `tests/` → `tests/collector/`, `docs/` → `docs/collector/`, `tools/` → `scripts/`; `configs/`, `scripts/`, `firmware/` and `assets/` are now at the repository root under the same names. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
+>
+> **Shared package (2026-11-01).** `handumi_collector` and `ego_collector` (and their tests, `tests/collector/` → `tests/collector/` of the shared package) now live once in the shared package [`egocentric`](https://github.com/physical-ai-vla/egocentric) (v0.1.0), which this repository's `pyproject.toml` installs; import names and commands are unchanged, and this guide, the configs and the data records stay here. Defaults the collector reads (`configs/handumi`, `configs/calibration`) resolve to the shared package's checkout, which holds byte-identical copies.
 
 This is the raw recorder for the human (HandUMI) side of the reBot work. It does not depend on any model. It records:
 
