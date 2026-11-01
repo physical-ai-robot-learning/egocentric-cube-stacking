@@ -9,6 +9,8 @@
 # deleted to keep Mac disk bounded. Swaps are logged to ~/umi_bridge/ui_swap_log.tsv. Run under nohup.
 N=bh-aiteam@100.64.0.2; TB=/home/bh-aiteam/holobrain-data/trainB; SSDR=/Volumes/PortableSSD/rebot_ckpts_archive
 cd ~/umi_bridge
+REPO=${EGO_CUBE_REPO:-$HOME/egocentric-human-demos-rebot}; LD=$REPO/scripts/rebot/loaders   # [2026-11-01] loaders from the repository
+mkdir -p ~/holobrain-mac-model   # [2026-11-01] checkpoint cache parent (the old checkout is gone)
 unset V4_STREAM V4_STREAM_SYNC V4_STREAM_ROWS V4_STREAM_SPEED V4_ADAPTIVE_K V4_TE V4_DEADBAND_XY_MM V4_DEADBAND_Z_MM V4_N_ACTION
 # [2026-10-02 user] bf16 inference + one cycle = k1..k4 as a continuous path (pass-through, full reach test on k4 only)
 # [2026-10-02 user] pure step mode: streaming off, no pass-through, no prefetch; one inference -> k1..k8 each with the full reach test
@@ -28,9 +30,9 @@ while true; do
     P=${e%%:*}; r=${e#*:}; RUN=${r%%:*}; DS=${r#*:}; IKB=pink; NODE=4090
     case "$DS" in *:*) NODE=${DS#*:}; DS=${DS%%:*} ;; esac
     [ -f $ST/$P.pin ] && continue      # user picked a checkpoint in the UI
-    if [ "$NODE" = 5090 ]; then PFX=5090_; LOADER=./load_relonly_5090_run_ckpt_to_ui.sh
+    if [ "$NODE" = 5090 ]; then PFX=5090_; LOADER=$LD/load_relonly_5090_run_ckpt_to_ui.sh
       node=$(ssh -o BatchMode=yes -o ConnectTimeout=15 $H5 "cd $R5/$RUN/checkpoints 2>/dev/null && for c in [0-9]*; do [ -f \$c/pretrained_model/model.safetensors ] && echo \$c; done" < /dev/null 2>/dev/null)
-    else PFX=trackb_; LOADER=./load_relonly_run_ckpt_to_ui.sh
+    else PFX=trackb_; LOADER=$LD/load_relonly_run_ckpt_to_ui.sh
       node=$(ssh -o BatchMode=yes -o ConnectTimeout=15 -J head-lp $N "ls $TB/$RUN/checkpoints 2>/dev/null | grep -E '^[0-9]{6}$'" < /dev/null 2>/dev/null); fi
     ssd=$(ls "$SSDR/$PFX$RUN" 2>/dev/null | grep -E '^[0-9]{6}$' | while read s; do [ -f "$SSDR/$PFX$RUN/$s/.archived" ] && echo $s; done)
     NEW=$(printf "%s\n%s\n" "$node" "$ssd" | grep -E '^[0-9]{6}$' | sort -u | tail -1)

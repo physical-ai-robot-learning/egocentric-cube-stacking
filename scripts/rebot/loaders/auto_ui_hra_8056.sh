@@ -7,6 +7,8 @@
 P=8056; RUN=HRA-RIGHTONLY-LOSSMASK-D20-B8-300K
 N=bh-aiteam@100.64.0.2; TB=/home/bh-aiteam/holobrain-data/trainB; SSD=/Volumes/PortableSSD/rebot_ckpts_archive/trackb_$RUN
 ST=~/umi_bridge/.auto_ui_d20_e5; mkdir -p $ST; cd ~/umi_bridge
+REPO=${EGO_CUBE_REPO:-$HOME/egocentric-human-demos-rebot}; LD=$REPO/scripts/rebot/loaders   # [2026-11-01] loaders from the repository
+mkdir -p ~/holobrain-mac-model   # [2026-11-01] checkpoint cache parent (the old checkout is gone)
 log() { echo "[$(date '+%F %T')] $*"; }
 loc() { echo ~/holobrain-mac-model/ckpt_UI_${RUN}_$((10#$1 / 1000))k_rightonly; }
 while true; do
@@ -17,7 +19,7 @@ while true; do
     CUR=$(cat $ST/$P 2>/dev/null)
     if [ -n "$NEW" ] && [ "$CUR" != "$NEW" ]; then
       if curl -s -m 5 localhost:$P/status | grep -q '"running": *true'; then log ":$P busy (episode running), $NEW waits"
-      elif ./load_hra_rightonly_ckpt_to_ui.sh $((10#$NEW)) $P > /tmp/claude_ld_$P.log 2>&1 < /dev/null \
+      elif $LD/load_hra_rightonly_ckpt_to_ui.sh $((10#$NEW)) $P > /tmp/claude_ld_$P.log 2>&1 < /dev/null \
            && curl -s -m 5 localhost:$P/ckpts | grep -q "_$((10#$NEW / 1000))k_rightonly"; then
         echo $NEW > $ST/$P; log ":$P loaded $RUN $NEW sha $(shasum -a 256 $(loc $NEW)/model.safetensors | cut -c1-16)"
         [ -n "$CUR" ] && echo "$CUR" >> $ST/hra_pending_delete

@@ -18,11 +18,15 @@
 # deviates is REFUSED and stops the run; output guard refuses chunks > 250 mm / 60 deg; approach stop after V4_HRA_MAX_RUN_S (60 s ROBOT time: step mode runs ~0.2 s of demo per cycle; 6 s stopped after 1-4 cycles, 10-04)
 # or predicted right move < V4_HRA_STILL_MM (5 mm) for V4_HRA_STILL_N (3) chunks; stacking prompt buttons disabled.
 set -u
+# [2026-11-01] the UI runs the repository code (src/rebot_deploy/mac_v4_smoke_ui.py + smoke_ui/); ~/holobrain-mac-model (the old
+# inference checkout) no longer exists -- only its ckpt_UI_* checkpoint cache path is kept (parent created on demand).
+REPO=${EGO_CUBE_REPO:-$HOME/egocentric-human-demos-rebot}; EGOC=${EGOCENTRIC_SRC:-$HOME/physical-ai-vla-repos/egocentric/src}
 STEP=$(printf "%06d" "${1:?step}"); PORT=${2:-8056};
 [ "$PORT" = 8053 ] && { echo "8053 is the stacking / cotrain UI -- use 8056 (or another free port) for HRA"; exit 1; }
  EXEC_K=${EXEC_K:-4}; DWELL=${DWELL:-1.0}
 RUN=${RUN:-HRA-RIGHTONLY-LOSSMASK-D20-B8-300K}; DS_EXPECT=${DS_EXPECT:-ego_hra_red_rightonly_v1_train}   # [2026-10-07] overridable (A93 runs)
 K=$((10#$STEP / 1000)); LOCAL=$HOME/holobrain-mac-model/ckpt_UI_${RUN}_${K}k_rightonly
+mkdir -p "$(dirname "$LOCAL")"   # [2026-11-01] checkpoint cache dir unchanged; its parent may be missing
 # [user 2026-10-03: main run on the 4090] checkpoints live on the 4090 (trainB) until the archiver moves them to the SSD
 N=bh-aiteam@100.64.0.2; R=/home/bh-aiteam/holobrain-data/trainB; SRC=$R/$RUN/checkpoints/$STEP/pretrained_model
 SSD=/Volumes/PortableSSD/rebot_ckpts_archive/trackb_$RUN/$STEP
@@ -92,7 +96,9 @@ try:
     print(f\"k={c['k']}&stream={b(c['stream'])}&speed={c['speed_pct']}&interp={b(c['goal_interp'])}&remote={b(c['remote'])}&prefetch={b(c['prefetch'])}&rtc={b(c['rtc'])}&pass={b(c['pass'])}&dwell={c['dwell_s']}&pflead={c.get('prefetch_lead', -1)}&passlast={b(c.get('pass_last', True))}&plan={b(c.get('plan', False))}&planema={c.get('plan_ema', 0.35)}&planxf={c.get('plan_xfade', 4)}&plansm={c.get('plan_smooth_deg', 3)}&planmin={c.get('plan_min_exec', 6)}\")   # [2026-10-07] PLAN details persist across reloads too
 except Exception: pass" 2>/dev/null)
 kill $(lsof -nP -iTCP:$PORT -sTCP:LISTEN -t) 2>/dev/null; sleep 3
-cd $HOME/holobrain-mac-model || exit 1
+export PYTHONPATH="$REPO/src:$EGOC${PYTHONPATH:+:$PYTHONPATH}"   # [2026-11-01] ego_paths + umi (shared egocentric package), this UI process only
+export REBOT_URDF=${REBOT_URDF:-$REPO/src/training/robot/reBot_B601_DM_dualarm.urdf}   # was ~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf (same file)
+cd $REPO/src/rebot_deploy || exit 1
 IKF=$HOME/umi_bridge/.auto_ui_d20_e5/$PORT.ikprofile   # [2026-10-06] the IK profile sticks per port like the remote choice
 if [ -n "${IK_PROFILE:-}" ]; then echo "$IK_PROFILE" > $IKF; else IK_PROFILE=$(cat $IKF 2>/dev/null); fi
 IK_PROFILE=${IK_PROFILE:-${V4_HRA_IK_PROFILE:-lock}}
@@ -120,7 +126,7 @@ V4_HRA_MAX_CYCLE_MM=${HRA_MAX_CYCLE_MM:-0} V4_HRA_MAX_TRAVEL_MM=${HRA_MAX_TRAVEL
 V4_RELONLY=1 V4_CKPT=$LOCAL V4_ACTION_MODE=umi V4_STATE_MODE=relcart20 V4_GRIPPER=hold \
   V4_CLAMP_MM=0 V4_CLAMP_DEG=0 V4_CHUNK=16 V4_EXEC_K=$EXEC_K V4_DWELL_TIMEOUT_S=$DWELL V4_DTYPE=${V4_DTYPE:-bf16} V4_N_ACTION=${V4_N_ACTION:-1} \
   V4_GLOBAL_ROT180=0 V4_GLOBAL_MIRROR=0 V4_UI_PORT=$PORT V4_IK_MAX_JOINT_DELTA=none IK_BACKEND=${IK_BACKEND:-pink} V4_PINK_LOCK=$LOCKV V4_PINK_ORI=$ORIV V4_PINK_POSTURE=${V4_PINK_POSTURE:-1e-3} V4_HRA_IK_PROFILE=$IK_PROFILE \
-  RUN=$RUN DS_EXPECT=$DS_EXPECT CKSEL_LOADER=$HOME/umi_bridge/load_hra_rightonly_ckpt_to_ui.sh \
+  RUN=$RUN DS_EXPECT=$DS_EXPECT CKSEL_LOADER=$REPO/scripts/rebot/loaders/load_hra_rightonly_ckpt_to_ui.sh \
   V4_REMOTE_INFER=$REMOTE_INFER V4_REMOTE_CKPT=$RCK V4_DENOISE_STEPS=${DENOISE_STEPS:-10} V4_PREFETCH_LEAD=${PREFETCH_LEAD:--1} V4_UMI_TCP_PITCH_DEG=$UMI_TCP_PITCH_DEG V4_UMI_TCP_OFFSET_MM=$UMI_TCP_OFFSET_MM V4_PASS_LAST=${PASS_LAST:-1} V4_CYCLE_SETTLE_S=${CYCLE_SETTLE_S:-0} V4_DQ_MAX=${DQ_MAX:-0.6} V4_FK_MAX_MM=${FK_MAX_MM:-60} UI_TAG=hra_rightonly_$IK_PROFILE \
   nohup $HOME/xvla-mac/bin/python mac_v4_smoke_ui.py > $HOME/v4_smoke_ui_$PORT.log 2>&1 < /dev/null &
 for i in $(seq 1 30); do sleep 5; [ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' http://localhost:$PORT/)" = 200 ] && break; done
