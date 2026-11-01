@@ -130,4 +130,4 @@ Also apply `jaw_hold_cmd` to the `widths_k is None` fallback, together with the 
 
 Line numbers refer to the files in this folder, copied 2026-10-07 (`infer_core_v4.py` 10-07 13:50, `mac_v4_smoke_ui.py` 10-07 14:45).
 Since the 2026-11-01 split (code unchanged) `_plan_forward_job` is in `src/rebot_deploy/smoke_ui/plan_exec.py`, the streaming call in `smoke_ui/stream_exec.py`
-and `jaw_hold_cmd` in `src/rebot_deploy/v4_contract.py`; the line numbers are those of the single files before the split (commit `77a4632`).
+and `jaw_hold_cmd` in `src/rebot_deploy/v4_contract.py`; the line numbers are those of the single files before the split (commit `11ffa66`).

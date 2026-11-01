@@ -2,7 +2,7 @@
 
 tests/ui/smoke_ui_probe.py drives every read-only route and a set of POST routes through Flask's test client with the robot and
 the network stubbed, and evaluates the pure helpers (chunk smoothing, stream merge, gripper conversions, ...) on synthetic input.
-tests/ui/golden/smoke_ui_routes.json is that probe's output on the single-file UI before the split (commit 77a4632); the test
+tests/ui/golden/smoke_ui_routes.json is that probe's output on the single-file UI before the split (commit 11ffa66); the test
 asserts the current code gives the same output: url map, the served page (sha256), JSON of the routes, the live settings after
 POST /mode, and the helper values (floats to 1e-9 relative).
 

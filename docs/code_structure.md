@@ -71,7 +71,7 @@ an entry script that runs its program at import; it **fails** otherwise. Failure
 [`tests/import_smoke_known_failures.txt`](../tests/import_smoke_known_failures.txt); the test fails on any new one. Most
 listed modules are scripts that read a data file or `sys.argv` at import time.
 
-Counts (same harness; "main" = `50a7b87` without the laundry-era `visual_teleop` package, which moved out):
+Counts (same harness; "main" = `68dfbb5` without the laundry-era `visual_teleop` package, which moved out):
 
 | interpreter | main: ok / skip / fail | after: ok / skip / fail |
 |---|---|---|
