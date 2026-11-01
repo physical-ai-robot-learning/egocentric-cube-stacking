@@ -57,7 +57,7 @@ flowchart LR
   D1 --> T
   T --> DEP["rebot_deploy<br/>Stage 5: inference UI, IK,<br/>robot service"]
   T --> EV["scripts/rebot/eval + analysis/<br/>offline evaluation, claims check"]
-  C -.-> X["ego_teleop / visual_teleop<br/>(experimental)"]
+  C -.-> X["ego_teleop<br/>(experimental)"]
 ```
 
 ## Components
@@ -74,9 +74,8 @@ flowchart LR
 | rebot_deploy | [`src/rebot_deploy/`](src/rebot_deploy/), [`scripts/rebot/loaders/`](scripts/rebot/loaders/) | 5 deploy | current | Inference core, robot web UI (PLAN / RTC / trial logger), Pink IK, MIT robot service, checkpoint loaders |
 | evaluation | [`scripts/rebot/eval/`](scripts/rebot/eval/), [`analysis/`](analysis/) | 5 evaluate | current | Offline checkpoint evaluation and audits; `analysis/verify_claims.py` recomputes every reported number |
 | hra | [`scripts/rebot/hra/`](scripts/rebot/hra/) | 1–5 (single arm) | current (sub-study) | Separate sub-study: right-arm approach to a cube (HRA_red, HRA_A100) — Part II of the report |
-| ego_teleop, visual_teleop | [`src/ego_teleop/`](src/ego_teleop/), [`src/visual_teleop/`](src/visual_teleop/) | teleop | experimental | Wearable VIO teleop and visual RGB-D teleop research; not deployed |
+| ego_teleop | [`src/ego_teleop/`](src/ego_teleop/) | teleop | experimental | Wearable VIO teleop research; not deployed |
 | ego_collector | [`src/ego_collector/`](src/ego_collector/) | 0 collect | superseded (by handumi_collector) | V0 AprilTag-glove collector; its `camera` layer is still imported |
-| laundry, parity | [`scripts/rebot/laundry/`](scripts/rebot/laundry/), [`scripts/rebot/parity/`](scripts/rebot/parity/) | 1–3 | cross-project | Belong to the laundry (T-shirt flattening) project: UMIalign pose + visual gripper; UMI TCP calibration and UMI → reBot replay parity |
 | report, results | [`report/`](report/), [`results/`](results/), [`docs/`](docs/) | — | current | Technical report (EN/KO, PDF + LaTeX), result records, guides and provenance |
 | upstream | [`upstream/`](upstream/) | — | third-party | Licences, NOTICE and our patch on top of HandUMI software |
 
@@ -119,7 +118,7 @@ Component guides with the full command lines: [`docs/collector/`](docs/collector
 ## Codebase guide
 
 **The split.** Importable code lives in `src/` as one package per concern (`handumi_collector`, `mast3r_pose`,
-`rebot_prep`, `ego_cart20`, `training`, `rebot_deploy`, plus the experimental `ego_teleop`, `visual_teleop` and the
+`rebot_prep`, `ego_cart20`, `training`, `rebot_deploy`, plus the experimental `ego_teleop` and the
 superseded `ego_collector`). Command-line tools and machine-specific run bundles live in `scripts/`; configs and
 calibrations in `configs/`; result records in `results/`; the claims checker and post-hoc analyses in `analysis/`.
 Scripts that ran on GPU nodes or against data roots keep their original sibling imports and absolute data paths.
@@ -485,25 +484,11 @@ trial logger in the deployment UI exists but has recorded no trial. Evidence: `r
 Evidence: `results/v4/hra/` (validation losses, calibration files, table-aware reports, start poses, plan-session summary).
 
 
-### Update 2026-10-20: servo-less HandUMI, visual gripper, T-shirt flattening data, UMI→robot calibration
+### Later work: laundry / garment
 
-After the v5 report the work moved to T-shirt flattening for the laundry project. Summary in
-[`docs/UPDATE_2026-10-20.md`](docs/UPDATE_2026-10-20.md) ([한국어](docs/UPDATE_2026-10-20_ko.md)); the report itself is unchanged.
-
-- **Hardware:** jaw servos removed (10-13) — **reinstalled 10-29** as torque-off jaw encoders (laundry project; see
-  [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation)); red tape on the jaw tips (later removed); AprilTag rigs (200–202 / 210–212) per unit; XIAO
-  nRF52840 wrist IMUs replace the Teensy ([`hardware/README.md`](hardware/README.md)).
-- **Gripper open/close from the wrist video:** red-tape tip distance per frame (`jaw_track.py`) → hysteresis binary
-  (closed ≤ 200 px / open ≥ 260 px) in `src/ego_cart20/sources/jaw_visual.py`; 16/16 spot checks, corr 0.93 vs the servo.
-  Used only while the servos were off; from 10-29 the jaw label is the servo encoder again.
-- **UMIalign pose pipeline** ([`scripts/rebot/laundry/`](scripts/rebot/laundry/)): MASt3R restart_v1, Orbbec canonical
-  tracker, smoother with corrected camera↔IMU rotation + fixed jaw-tip lever + AprilTag gate (TCP error p50 25–36 cm →
-  38–59 mm), 65-episode corrected dataset. The fine-tune on it was stopped at ~11k steps; no result.
-- **UMI → robot** ([`scripts/rebot/parity/`](scripts/rebot/parity/), `src/ego_cart20/robotize/`):
-  robotization (IK-ok p50 0.79, amplitude ~0.81), UMI TCP calibration by corner touch (1–4 mm static), robot camera
-  calibration and replay-parity tools built but **not yet run on the robot**.
-- **UMI as teleop device** (`src/visual_teleop/`): DPVO / mono VIO NO-GO, stereo VIO first robot teleop then
-  dropped (10-16).
+After the v5 report (2026-10-12) the HandUMI work moved to T-shirt flattening (servo-less HandUMI, visual gripper,
+UMIalign pose pipeline, UMI → robot calibration and replay). That project, including the material that used to be kept
+here, lives in [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation).
 
 ### What this repository does not show
 
@@ -528,8 +513,8 @@ After the v5 report the work moved to T-shirt flattening for the laundry project
 | `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` | `scripts/rebot/loaders/legacy/` |
 | one technical report `report/report_{en,ko}` (v5) | split reports `report/part*`, `report/methods_*`, `report/archive/` |
 
-`src/ego_teleop/`, `src/visual_teleop/` and `scripts/umi_teleop_eval/` are experimental (not deployed). `scripts/rebot/laundry/`
-and `scripts/rebot/parity/` belong to the laundry project and are kept here because they reuse this pipeline.
+`src/ego_teleop/` is experimental (not deployed). Laundry / garment material (formerly `scripts/rebot/laundry/`,
+`scripts/rebot/parity/`, `src/visual_teleop/`, `scripts/umi_teleop_eval/`) is in [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation).
 Item-by-item table: [`docs/provenance/README.md`](docs/provenance/README.md#superseded-items-kept-not-deleted).
 
 Conventions: lengths in the CART20 contract are metres (`*_m` fields in `src/ego_cart20/config.py`); frames, gripper signs and other

@@ -18,13 +18,14 @@ pytest tests/experimental/v0 -q         # 59 passed
 pytest tests/collector -q               # 224 passed, 12 failed, 1 skipped, 3 errors (known; same on main before the restructure)
 ```
 
-`tests/experimental/vteleop` does not collect (`ImportError: gripper_cmd_from_g`), on `main` as well.
+The former `tests/experimental/vteleop` (tests of `visual_teleop`, which did not collect: `ImportError: gripper_cmd_from_g`) moved with
+`visual_teleop` to [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation) on 2026-11-01.
 `src/training/relonly/test_rel16_relonly_lossmask.py` and `src/training/umi76/test_rel16_aux*.py` stay next to the code they test (node-side).
 
 ## Layout
 
 - `collector/` — `handumi_collector` (was `collection/tests`)
-- `experimental/teleop`, `experimental/v0`, `experimental/vteleop` — `ego_teleop`, `ego_collector` V0, `visual_teleop` (was `experimental/tests`)
+- `experimental/teleop`, `experimental/v0` — `ego_teleop`, `ego_collector` V0 (was `experimental/tests`)
 - `cart20/` — `ego_cart20` contract, cube scale, right-only, robotize, UMI fusion (was `cart20/tests`)
 
 ## Provenance

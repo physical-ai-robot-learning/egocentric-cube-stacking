@@ -1,7 +1,6 @@
 # Checks that need no hardware, GPU, recorded data or private checkpoints. Only subsets that pass on a clean
 # Python 3.12 install are run:
 #   - tests/collector is not run: 12 known failures + 3 errors (mock-gripper gate, camera listing, m15 UI), also on main.
-#   - tests/experimental/vteleop is not run: collection fails (ImportError gripper_cmd_from_g), also on main.
 #   - test_aero_backends.py is not run: it needs torch + dex-retargeting (the `aero` extra).
 name: ci
 on:

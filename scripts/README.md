@@ -25,15 +25,14 @@ scripts/training/c8old/c8old_chain.sh            # Gen-1 C-old chain (4090)
 
 - `*.py`, `*.sh` (flat) — from the former `collection/scripts`, `collection/tools` and `experimental/scripts`: calibration
   (ChArUco, table frame, exposure), robot-like protocol checks, HandUMI RGB-D body tracking (parked), `provenance.py`
-- `umi_teleop_eval/` — wrist tracking / VIO evaluations for `visual_teleop` (experimental)
 - `rebot/c8/` — episode export for the C8 pipeline (`c8_export*.sh`, `umi_export_orbslam.py` copy)
 - `rebot/mast3r/` — MASt3R-SLAM run scripts for the GPU nodes
 - `rebot/dataset/` — Gen-1 C-old dataset builder and gates (superseded by `rebot/dataset_v2/`)
 - `rebot/dataset_v2/` — C-old v2 (TR / hybrid / HRL80) builders and validators
 - `rebot/eval/rel16_audit/` — Gen-2 checkpoint audits and gate watchers; `rebot/eval/c8old/` — Gen-1 offline evaluator
 - `rebot/hra/` — single-arm approach (HRA) pipeline: `hra_red/`, `hra_a100/` (see `docs/hra/README.md`)
-- `rebot/laundry/` — UMIalign pose + visual gripper pipeline (**cross-project: laundry / T-shirt flattening**, see `docs/laundry/README.md`)
-- `rebot/parity/` — UMI TCP tag-rig calibration, Kalibr, UMI → reBot replay parity (**cross-project: laundry**, see `docs/parity/README.md`)
+- The laundry / garment material that used to sit here (`rebot/laundry/`, `rebot/parity/`, `umi_teleop_eval/`) lives in
+  [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation) since 2026-11-01.
 - `rebot/loaders/` — checkpoint → UI loaders and auto-swappers; `rebot/loaders/legacy/` = earlier per-run loaders (superseded)
 - `training/node4090/`, `training/node5090/` — node launchers; `training/hra_node/`, `training/mac_chains/`, `training/ego_cart20/` — wrappers and Mac-side chains;
   `training/archivers/` — checkpoint archivers; `training/c8old/` — Gen-1 trainer, patches and the C-old ladder (superseded by `src/training/relonly`)

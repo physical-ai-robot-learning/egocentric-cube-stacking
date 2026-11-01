@@ -65,7 +65,7 @@ Device identities (USB serials, product names) and the bring-up procedure are in
 
 ## Changes after 2026-10-12 (current state 2026-10-20)
 
-The units in use differ from the build above as follows. Details and numbers: `../docs/UPDATE_2026-10-20.md`.
+The units in use differ from the build above as follows. Details and numbers (laundry / garment project): [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation).
 
 - **Jaw servos removed (10-13).** The Feetech STS3215 shafts broke and the servos were heavy. The jaws now move freely
   and the servo cover/adapter are not fitted. Collector hardware profile: `handumi_rgbd_noservo`.
@@ -73,7 +73,7 @@ The units in use differ from the build above as follows. Details and numbers: `.
   open/close state is measured from the wrist-camera video (tip-to-tip distance of the tape; closed ≤ 200 px,
   open ≥ 260 px at 1920 width). Keep the tape on the inner jaw faces, fully visible to the wrist camera, and avoid other
   red/orange objects near the jaws. Note: the wrist camera mount flexes relative to the jaws.
-- **AprilTag rigs on each unit** (tag36h11, `../scripts/rebot/parity/print/`): IDs 200–202 on the right unit, 210–212 on the left, seen by a
+- **AprilTag rigs on each unit** (tag36h11; print files in [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation)): IDs 200–202 on the right unit, 210–212 on the left, seen by a
   fixed global Orbbec. Printed at "50 mm" they measure **48 mm** on our printer; measure the black square and use the
   measured size. Robot gripper tags 220–222 (right) / 230–232 (left); `aprilgrid_3x4_50mm_id300` is the corner-touch
   board for the TCP calibration. The TCP-in-rig calibration (`umi_tag_rig_v001.json`) is only valid for the tag

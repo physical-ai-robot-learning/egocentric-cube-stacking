@@ -29,7 +29,7 @@ collector = [
     "av>=12",
     "trimesh>=4.0",
 ]
-# experimental packages (src/ego_collector, src/ego_teleop, src/visual_teleop); was experimental/pyproject.toml
+# experimental packages (src/ego_collector, src/ego_teleop); was experimental/pyproject.toml
 experimental = ["mediapipe>=0.10.14"]
 apriltag = ["pupil-apriltags>=1.0.4"]
 viz = ["rerun-sdk>=0.20"]
@@ -50,7 +50,6 @@ packages = [
     "src/handumi_collector",
     "src/ego_collector",
     "src/ego_teleop",
-    "src/visual_teleop",
     "src/ego_cart20",
     "src/mast3r_pose",
     "src/rebot_prep",
