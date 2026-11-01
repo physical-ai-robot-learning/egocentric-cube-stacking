@@ -16,6 +16,7 @@ pytest tests/cart20 -q                  # 40 passed
 pytest tests/experimental/teleop -q     # 297 passed
 pytest tests/experimental/v0 -q         # 59 passed
 pytest tests/collector -q               # 224 passed, 12 failed, 1 skipped, 3 errors (known; same on main before the restructure)
+pytest tests/test_imports.py -q         # every src/ module imports from a clean checkout (known failures: import_smoke_known_failures.txt)
 ```
 
 The former `tests/experimental/vteleop` (tests of `visual_teleop`, which did not collect: `ImportError: gripper_cmd_from_g`) moved with
@@ -27,6 +28,7 @@ The former `tests/experimental/vteleop` (tests of `visual_teleop`, which did not
 - `collector/` — `handumi_collector` (was `collection/tests`)
 - `experimental/teleop`, `experimental/v0` — `ego_teleop`, `ego_collector` V0 (was `experimental/tests`)
 - `cart20/` — `ego_cart20` contract, cube scale, right-only, robotize, UMI fusion (was `cart20/tests`)
+- `test_imports.py` + `import_smoke_known_failures.txt` — import smoke test of every module under `src/` (see `docs/code_structure.md`)
 
 ## Provenance
 

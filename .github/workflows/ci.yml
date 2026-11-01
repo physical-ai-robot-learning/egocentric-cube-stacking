@@ -2,6 +2,8 @@
 # Python 3.12 install are run:
 #   - tests/collector is not run: 12 known failures + 3 errors (mock-gripper gate, camera listing, m15 UI), also on main.
 #   - test_aero_backends.py is not run: it needs torch + dex-retargeting (the `aero` extra).
+#   - tests/test_imports.py (import smoke of every src/ module) is not run: its known-failure list was measured on macOS
+#     with the project venvs (docs/code_structure.md); run it locally.
 name: ci
 on:
   push:

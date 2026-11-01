@@ -94,7 +94,8 @@ python analysis/verify_claims.py                   # needs only pyyaml
 
 The root `pyproject.toml` (src layout) declares the packages under `src/`; extras: `collector` (devices, mcap, PySide6),
 `experimental` (mediapipe), `apriltag`, `viz`, `aero`, `dev`. Training and MASt3R-SLAM run in separate environments on GPU
-nodes (LeRobot with X-VLA, MASt3R-SLAM checkout); see [Where each part ran](#running-it).
+nodes (LeRobot with X-VLA, MASt3R-SLAM checkout); see [Where each part ran](#running-it). Modules under `src/` use package
+imports, so run them after `pip install -e .` (or with `PYTHONPATH=src`), e.g. `python -m ego_cart20.scripts.convert_dataset`.
 
 ## Pipeline
 
@@ -121,7 +122,10 @@ Component guides with the full command lines: [`docs/collector/`](docs/collector
 `rebot_prep`, `ego_cart20`, `training`, `rebot_deploy`, plus the experimental `ego_teleop` and the
 superseded `ego_collector`). Command-line tools and machine-specific run bundles live in `scripts/`; configs and
 calibrations in `configs/`; result records in `results/`; the claims checker and post-hoc analyses in `analysis/`.
-Scripts that ran on GPU nodes or against data roots keep their original sibling imports and absolute data paths.
+Machine-specific data roots (`~/c8`, `~/umi_bridge`, `/home/bh-aiteam`, ...) are defined once in `src/ego_paths/` with
+environment overrides (`EGO_DATA_ROOT`, ...; defaults = the original paths); `src/` does not edit `sys.path` except
+through `ego_paths.prepend_sys_path` for external checkouts. Run bundles in `scripts/` keep their original bootstraps
+and roots. Import rules, the import smoke test and split candidates: [`docs/code_structure.md`](docs/code_structure.md).
 
 **The interfaces.**
 
@@ -339,7 +343,8 @@ on 10-29 as torque-off jaw encoders ([egocentric-garment-manipulation](https://g
 
 This is research code from a single lab environment. Absolute hostnames, IPs, user names and home paths have
 been replaced with placeholders: `${HOME}`, `${REMOTE_HOME}`, `${DATA_ROOT}`, `${SHARED_ROOT}`, `<gpu-node>`,
-`<ray-head>`. Many scripts still assume the original directory layout (`~/c8`, `~/umi_bridge`, `~/ego_collector`).
+`<ray-head>`. Many scripts still assume the original directory layout (`~/c8`, `~/umi_bridge`, `~/ego_collector`); in
+`src/` these roots come from `ego_paths` and can be redirected with environment variables ([`docs/code_structure.md`](docs/code_structure.md)).
 Where each part ran:
 
 - **Collection:** macOS laptop (PySide6, AVFoundation/UVC, `uvc-util`). Entry point `python -m handumi_collector.collect`, run from the repository root.
@@ -347,11 +352,11 @@ Where each part ran:
 - **MASt3R-SLAM:** one RTX 5080 (16 GB), with the upstream repo patched by `build_compat_5090.patch`.
 - **Training:** one RTX 4090, submitted as a Ray job, fp32 with TF32 matmuls, batch 4.
 
-Upstream dependencies (not vendored):
+Upstream dependencies (not vendored unless noted):
 
 - LeRobot with X-VLA: <https://github.com/huggingface/lerobot>. The base weights are `lerobot/xvla-base` on the Hugging Face Hub.
 - MASt3R-SLAM: <https://github.com/rmurai0610/MASt3R-SLAM>. The pinned commit is in `src/mast3r_pose/INSTALLED_COMMIT` and the checkpoint MD5s are in `MD5SUMS`.
-- Universal Manipulation Interface (`umi.common.pose_util`): <https://github.com/real-stanford/universal_manipulation_interface>
+- Universal Manipulation Interface (`umi.common.pose_util`): <https://github.com/real-stanford/universal_manipulation_interface> (MIT). A stand-in with the same API is vendored as `src/umi/` ([`upstream/README.md`](upstream/README.md)).
 - Python packages: `mcap`, `numpy`, `scipy`, `opencv-python`, `av`, `pandas`, `pyarrow`, `torch`, `pyyaml`, `PySide6`, `pyserial`, `scservo_sdk` (Feetech).
 
 Not included (these live in other internal packages):
