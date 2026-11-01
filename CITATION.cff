@@ -6,3 +6,4 @@ authors:
   - family-names: "Lee"
     given-names: "Jeong Hwan"
 repository-code: "https://github.com/physical-ai-vla/egocentric-cube-stacking"
+license: PolyForm-Noncommercial-1.0.0

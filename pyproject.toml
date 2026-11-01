@@ -7,6 +7,7 @@ version = "0.1.0"
 description = "HandUMI egocentric bimanual demonstrations -> reBot B601 / X-VLA: collection, pose, dataset, retargeting, training and deployment code"
 readme = "README.md"
 requires-python = ">=3.10"
+license = { text = "PolyForm-Noncommercial-1.0.0" }
 dependencies = [
     "opencv-contrib-python>=4.10,<5",
     "numpy>=1.26",

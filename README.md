@@ -6,6 +6,7 @@ reBot B601 dual-arm robot and used to pretrain X-VLA, with every reported number
 Part of **[egocentric](https://github.com/physical-ai-vla/egocentric)** — the entry point to all egocentric-demonstration projects.
 
 [![CI](https://github.com/physical-ai-vla/egocentric-cube-stacking/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial-orange.svg)](LICENSE)
 
 **Technical report:** [`report/report_en.pdf`](report/report_en.pdf) ([한국어](report/report_ko.pdf)) ·
 **Claims check:** `python analysis/verify_claims.py` → `736 claims checked, 0 failed.` ([how](#results-and-how-to-verify)) ·
@@ -668,7 +669,9 @@ Not included (these live in other internal packages):
 
 ## License, acknowledgements and citation
 
-**License.** This repository has no license file for its own code. Third-party parts keep their licences: HandUMI
+**License.** Code, documentation, data samples and media in this repository are licensed under the **PolyForm
+Noncommercial License 1.0.0** ([LICENSE](LICENSE)): free for research, teaching, personal and other noncommercial use;
+**commercial use is not permitted** without a separate written agreement with the author. Third-party parts keep their licences: HandUMI
 hardware and software are Apache-2.0 (`upstream/LICENSE-handumi-hw-apache-2.0.txt`, `upstream/LICENSE-handumi-apache-2.0.txt`,
 `upstream/NOTICE.md`); the Aero Hand Open URDFs are Apache-2.0 (`assets/aero_hand_open/NOTICE`).
 
