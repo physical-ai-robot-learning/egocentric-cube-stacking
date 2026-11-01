@@ -7,7 +7,7 @@
 | file | role |
 |---|---|
 | `infer_core_v4.py` | Inference core `V4Inferencer`. It handles observation -> state (RELCART20 / slim20 / umi), X-VLA flow sampling (MPS bf16), the REL-only zero mask, chunk decode `T_k = T_now @ A_k`, the IK backends (`pink`, numerical, learned, pinkdq/policydq, cuRobo client), the gripper mapping, RTC, the one-arm (`V4_ARM_ONLY=right`) contract and the fixed anchor. |
-| `mac_v4_smoke_ui.py` | Flask web UI and controller. It provides step / stream / **PLAN** execution, `/mode` live controls, the checkpoint dropdown, the cube-size stop, the trial logger and HRA safety gates. |
+| `mac_v4_smoke_ui.py` | Flask web UI and controller (entry point; since 2026-11-01 the code is split by area into `smoke_ui/`). It provides step / stream / **PLAN** execution, `/mode` live controls, the checkpoint dropdown, the cube-size stop, the trial logger and HRA safety gates. |
 | `pink_ik.py` | Pinocchio/Pink QP IK. Frame tasks: pos 1.0 / ori 0.5. Posture toward the seed is 1e-3. TCP = gripper_link + 70 mm x. URDF from `REBOT_URDF`, default `~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf`; the same file is in `src/training/robot/`. |
 | `eef_kin.py` | FK and continuity IK (same URDF/TCP model as the labels). The same file is in `src/rebot_prep/pseudo_joint/`. |
 | `hra_direction_probe.py` | Read-only offline probe (`/observe` only). It computes the cosine between the predicted right-TCP motion and the direction to a touched cube target. |
@@ -129,3 +129,5 @@ The one-arm HRA path is unaffected, because it holds the jaws through `jaw_hold_
 Also apply `jaw_hold_cmd` to the `widths_k is None` fallback, together with the regression test listed in `TODO_gripper_hold.md`.
 
 Line numbers refer to the files in this folder, copied 2026-10-07 (`infer_core_v4.py` 10-07 13:50, `mac_v4_smoke_ui.py` 10-07 14:45).
+Since the 2026-11-01 split (code unchanged) `_plan_forward_job` is in `src/rebot_deploy/smoke_ui/plan_exec.py`, the streaming call in `smoke_ui/stream_exec.py`
+and `jaw_hold_cmd` in `src/rebot_deploy/v4_contract.py`; the line numbers are those of the single files before the split (commit `77a4632`).

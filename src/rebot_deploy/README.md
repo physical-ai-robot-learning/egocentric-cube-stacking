@@ -12,15 +12,15 @@ Serves X-VLA checkpoints on the reBot: inference core, robot web UI/controller, 
 ## Entry points
 
 ```bash
-python src/rebot_deploy/mac_v4_smoke_ui.py              # usually started by scripts/rebot/loaders/load_*_ckpt_to_ui.sh
+python src/rebot_deploy/mac_v4_smoke_ui.py              # usually started by scripts/rebot/loaders/load_*_ckpt_to_ui.sh (or: python -m rebot_deploy.mac_v4_smoke_ui)
 python src/rebot_deploy/robot_service/robot_service_mit.py   # in the reBot plugin env (not included); MIT_MOCK=1 without hardware
 python src/rebot_deploy/hra_direction_probe.py ...
 ```
 
 ## Layout
 
-- `infer_core_v4.py` — inference core (obs → state, flow sampling, chunk decode, IK backends, gripper mapping)
-- `mac_v4_smoke_ui.py` — Flask UI and controller (PLAN / RTC / trial logger)
+- `infer_core_v4.py` — inference core (obs → state, flow sampling, chunk decode, IK backends, gripper mapping); `v4_contract.py` — its jaw scales, state builders and delta clamp
+- `mac_v4_smoke_ui.py` — entry point of the Flask UI and controller (PLAN / RTC / trial logger); the code is in `smoke_ui/` (settings, state, robot client, safety gates, the STEP / STREAM / PLAN executors, `routes_*.py`, `page.html`; map in [`smoke_ui/__init__.py`](smoke_ui/__init__.py))
 - `pink_ik.py`, `eef_kin.py` — IK and FK
 - `robot_service/` — MIT-mode HTTP robot service and USB arm-port mapping
 - `learned_ik/` — optional learned IK (contract docs + scripts)

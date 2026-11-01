@@ -21,7 +21,7 @@ pytest tests/test_imports.py -q                           # every src/ module im
 | `ego_paths` | regular package | the machine-specific roots (next section) |
 | `umi` | vendored | `umi.common.pose_util` (UMI API stand-in, MIT; source and md5 in [`upstream/README.md`](../upstream/README.md)) |
 | `rebot_prep.{census,grip,pseudo_joint,retarget}`, `training.{relonly,umi76,robot}`, `rebot_deploy.{learned_ik,robot_service}` | flat script bundles (no `__init__.py`) | ran as plain scripts from their own folder on the Mac or a GPU node; sibling imports now try the package-relative import first and fall back to the flat one, so both `python -m <pkg>.<mod>` and `python <file>.py` work |
-| `rebot_deploy` (`mac_v4_smoke_ui.py`, `infer_core_v4.py`, `pink_ik.py`, `eef_kin.py`) | flat app | run as `python src/rebot_deploy/mac_v4_smoke_ui.py` (its folder is `sys.path[0]`); it imports `infer_core_v4` by its flat name in ~25 places, so it is not importable as a package yet |
+| `rebot_deploy` (`mac_v4_smoke_ui.py` + `smoke_ui/`, `infer_core_v4.py`, `v4_contract.py`, `pink_ik.py`, `eef_kin.py`) | regular package, also runs flat | `python src/rebot_deploy/mac_v4_smoke_ui.py` (its folder is `sys.path[0]`, as the loaders run it) and `python -m rebot_deploy.mac_v4_smoke_ui` both work: siblings are imported package-relative when `__package__` is set and flat otherwise, and the UI imports `infer_core_v4` once (`smoke_ui/ic.py`), so exactly one copy of the core is loaded either way (2026-11-01 UI split) |
 
 ## Machine-specific roots: `ego_paths`
 
@@ -79,12 +79,22 @@ Counts (same harness; "main" = `50a7b87` without the laundry-era `visual_teleop`
 
 (After = 373 modules: the 369 of main plus `ego_paths`, `umi`, `umi.common`, `umi.common.pose_util`.)
 
+After the UI split (2026-11-01, 398 modules: + `rebot_deploy.smoke_ui` and its 22 modules, `rebot_deploy.v4_contract`): 3.11 343 / 16 / 39, 3.12 343 / 10 / 45; `rebot_deploy.infer_core_v4` and `rebot_deploy.mac_v4_smoke_ui` left the known-failures list.
+
 ## Split candidates (not split: behaviour first)
+
+Done on 2026-11-01 (branch `ui-split`; behaviour checked by an AST comparison of every moved statement and by
+[`tests/test_ui_routes.py`](../tests/test_ui_routes.py), a golden record of the routes, live settings and helpers taken on the single-file UI):
+
+| file | lines | what was done |
+|---|---|---|
+| `src/rebot_deploy/mac_v4_smoke_ui.py` | 3815 → 48 | **done.** Split into the package `src/rebot_deploy/smoke_ui/` (22 modules + `page.html`, map in its `__init__.py`): `settings` (the V4_* settings; the 13 that `POST /mode` changes live are read as `cfg.NAME` everywhere), `state` (STATE, INF, locks, caches as `rt.NAME`), `ic` (the one `infer_core_v4` import, replacing 25 inline flat imports), `robot_client`, `motion`, `safety`, the executors `step_exec` / `stream_exec` / `plan_exec`, eleven `routes_*` modules by area, `app` + `server`, and the page as a byte-identical `page.html`. The old file is the entry point and resolves every old top-level name (module `__getattr__`). Function bodies are unchanged apart from the `cfg.` / `rt.` / `_IC` rewrites; route names, JSON fields and the page are identical. |
+| `src/rebot_deploy/infer_core_v4.py` | 1203 → 1115 | **partly done.** Jaw scales and conversions, `_grip_contract`, the CART20 / RELCART20 state builders, `jaw_hold_cmd` and `clamp_delta` moved to `v4_contract.py` and are re-exported. `grip_to_cmd`, the RTC helpers, `remote_forward` and `curobo_solve` stay: they read settings the UI switches at run time on this module (`GRIPPER_MODE`, `RTC_ON`, `REMOTE_INFER`, ...), so moving them would change which value they see. Sibling imports (`eef_kin`, `v4_contract`, lazily `pink_ik`) follow `__package__`; the one nested-quote f-string was rewritten with single quotes (same AST), so the module now also parses on Python 3.11. |
+
+Still candidates:
 
 | file | lines | proposed split |
 |---|---|---|
-| `src/rebot_deploy/mac_v4_smoke_ui.py` | 3815 | Flask routes (56) by area into `ui/routes_{run,stream,plan,prompt,ckpt,trial,calib}.py`; the module-level `V4_*` settings into one `ui/settings.py` dataclass; the streaming executor (from the 10-01 block) and PLAN mode (10-06 block) into `ui/executors.py`; the HTML into a template file. Prerequisite: import `infer_core_v4` once as a package module instead of ~25 inline flat imports. |
-| `src/rebot_deploy/infer_core_v4.py` | 1203 | gripper conversions (`raw_to_width` … `grip_to_cmd`) and state builders (`relcart20_state`, `cart20_state`) into `rebot_deploy/contract.py`; RTC weights / remote forward into `rebot_deploy/remote.py`; keep `V4Inferencer` here. Needs Python ≥ 3.12 (nested f-string quotes at line ~1076). |
 | `src/rebot_deploy/robot_service/robot_service_mit.py` | 837 | camera capture vs arm control vs HTTP handlers. |
 | `src/ego_teleop/tools/g0_mount_qual.py`, `f4_fusion.py`, `f5_teleop_hud.py` | 650–800 | CLI wrapper + library module each (`ego_teleop.tools` → `ego_teleop.<area>`). |
 | scripts that parse `sys.argv` or read data at import (`ego_cart20.scripts.{convert_episode,report_dataset,validate_dataset*}`, `training.umi76.{widen_*,norm_parity,derive_*}`, `rebot_prep.census.*`, `rebot_prep.retarget.v2k_*`) | — | move the module-level work under `main()`; this is what keeps them in the known-failures list. |

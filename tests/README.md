@@ -17,6 +17,7 @@ pytest tests/experimental/teleop -q     # 297 passed
 pytest tests/experimental/v0 -q         # 59 passed
 pytest tests/collector -q               # 224 passed, 12 failed, 1 skipped, 3 errors (known; same on main before the restructure)
 pytest tests/test_imports.py -q         # every src/ module imports from a clean checkout (known failures: import_smoke_known_failures.txt)
+pytest tests/test_ui_routes.py -q       # the reBot smoke UI vs its pre-split golden record (needs flask, torch, cv2; UI_TEST_PYTHON=...)
 ```
 
 The former `tests/experimental/vteleop` (tests of `visual_teleop`, which did not collect: `ImportError: gripper_cmd_from_g`) moved with
