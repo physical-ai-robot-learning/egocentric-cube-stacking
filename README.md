@@ -3,6 +3,8 @@
 Bimanual human demonstrations recorded with a hand-worn UMI-style gripper (HandUMI), converted into training data for a
 reBot B601 dual-arm robot and used to pretrain X-VLA, with every reported number re-checkable from this repository.
 
+Part of **[egocentric](https://github.com/physical-ai-vla/egocentric)** — the entry point to all egocentric-demonstration projects.
+
 [![CI](https://github.com/physical-ai-vla/egocentric-cube-stacking/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 
 **Technical report:** [`report/report_en.pdf`](report/report_en.pdf) ([한국어](report/report_ko.pdf)) ·
