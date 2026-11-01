@@ -1,7 +1,9 @@
-# Egocentric Human Demonstrations for Robot Manipulation
+# Egocentric Human Demonstrations for Bimanual Cube Stacking
 
-Bimanual human demonstrations recorded with a hand-worn UMI-style gripper (HandUMI), converted into training data for a
-reBot B601 dual-arm robot and used to pretrain X-VLA, with every reported number re-checkable from this repository.
+Can bimanual demonstrations recorded by a person wearing a hand-worn gripper train a dual-arm robot? **349 three-cube
+stacking demonstrations → metric wrist poses → the robot's own relative-Cartesian action contract → X-VLA pretraining
+on human data → fine-tuning on robot data → closed-loop execution on a reBot B601**, with every reported number
+re-checkable from this repository.
 
 [![CI](https://github.com/physical-ai-vla/egocentric-cube-stacking/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial-orange.svg)](LICENSE)
@@ -17,21 +19,16 @@ Part of **[egocentric](https://github.com/physical-ai-vla/egocentric)** — the 
 
 ## Overview
 
-Research code, calibration, processing records and a small data sample from one experiment. We collected bimanual
-human demonstrations with a hand-worn UMI-style gripper ([HandUMI](https://github.com/murobotics-ai/handumi-hw), not our
-design; see [Hardware source](#hardware-source-handumi-is-not-our-design)), converted them into pseudo-joint trajectories
-for a reBot B601 dual-arm robot, and used them to pretrain X-VLA. Version 3 (October 2026) replaces the joint-space
-retargeting with a Cartesian conversion that matches the robot's own action contract, and tests what transfers to the
-robot ([Update v3](docs/history.md#update-v3-cartesian-ego-pretraining-and-transfer)). Version 4 (7 October 2026) adds a 30-episode
-low-data ablation and splits the write-up into two reports, each in English and Korean
-([Update v4](docs/history.md#update-v4-two-reports-r30-ablation-and-single-arm-approach)). Version 5 (12 October 2026) merges everything
-into **one technical report**: [`report/report_en.pdf`](report/report_en.pdf) ([한국어](report/report_ko.pdf)), 15 pages
-covering hardware, every pipeline stage, all results and their limits, with no result changed. Earlier states are tagged
-`report-v2-2026-09-30` and `report-v3-2026-10-04`.
+| step | what happens |
+|---|---|
+| 1 · human demonstrations | 349 bimanual three-cube stacking episodes in 6 instructed stacking orders, recorded with two hand-worn grippers (wrist fisheye camera, IMU and a Feetech jaw-servo encoder for the gripper opening) and a fixed head camera |
+| 2 · metric wrist poses | wrist-camera SLAM with a per-episode IMU visual–inertial scale; gripper, sync and quality gates |
+| 3 · robot action representation | first pseudo-joint trajectories (Gen-1); from version 3 directly the robot's relative-Cartesian action contract (Gen-2) |
+| 4 · learning | X-VLA pretrained on the human data, then fine-tuned on robot episodes; scratch baselines and a 30-episode low-data ablation |
+| 5 · robot | checkpoints executed on the robot in closed loop (observed, not counted) |
 
-- **Data path.** 349 recorded bimanual three-cube stacking episodes (6 stacking orders) go through sync, pose (MASt3R-SLAM +
-  per-episode IMU visual–inertial scale), gripper and gate filtering and are turned into robot training data: first as
-  pseudo-joint trajectories (Gen-1), then, from version 3, directly in the robot's relative-Cartesian action contract (Gen-2).
+### Key findings
+
 - **Offline result (Gen-1).** On 26 held-out episodes the 300k ego-pretrained model has a median TCP error of 1.5 / 5.7 mm
   (k=1 / k=30); the stacking instruction changes predictions but does not make them more accurate.
 - **Ego pretrain → robot fine-tuning.** After 250k steps of R150 fine-tuning, the ego-initialised model beats scratch on most
@@ -282,6 +279,18 @@ The sample episodes ship the head video only; wrist fisheye views of three HRL80
   The instruction measurably changes predictions but does not make them more accurate.
 
 ### Release history
+
+Research code, calibration, processing records and a small data sample from one experiment. We collected bimanual
+human demonstrations with a hand-worn UMI-style gripper ([HandUMI](https://github.com/murobotics-ai/handumi-hw), not our
+design; see [Hardware source](#hardware-source-handumi-is-not-our-design)), converted them into pseudo-joint trajectories
+for a reBot B601 dual-arm robot, and used them to pretrain X-VLA. Version 3 (October 2026) replaces the joint-space
+retargeting with a Cartesian conversion that matches the robot's own action contract, and tests what transfers to the
+robot ([Update v3](docs/history.md#update-v3-cartesian-ego-pretraining-and-transfer)). Version 4 (7 October 2026) adds a 30-episode
+low-data ablation and splits the write-up into two reports, each in English and Korean
+([Update v4](docs/history.md#update-v4-two-reports-r30-ablation-and-single-arm-approach)). Version 5 (12 October 2026) merges everything
+into **one technical report**: [`report/report_en.pdf`](report/report_en.pdf) ([한국어](report/report_ko.pdf)), 15 pages
+covering hardware, every pipeline stage, all results and their limits, with no result changed. Earlier states are tagged
+`report-v2-2026-09-30` and `report-v3-2026-10-04`.
 
 The results added by each release (multi-seed retargeting, robot-like collection and fine-tuning in v2; Cartesian ego
 pretraining and transfer diagnostics in v3; the R30 ablation and single-arm approach in v4) and the repository maps of
