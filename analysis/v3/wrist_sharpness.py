@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Wrist-image sharpness (variance of the Laplacian of the mean-RGB grey image, the same statistic as
-cart20/ego_cart20/scripts/compare_ego_r312c.py section 11) for LeRobot v3 datasets, N frames stride-sampled per stream.
+src/ego_cart20/scripts/compare_ego_r312c.py section 11) for LeRobot v3 datasets, N frames stride-sampled per stream.
 usage: wrist_sharpness.py <out.json> <name>=<lerobot_dataset_root> [...] [--n 200]"""
 import glob, json, sys
 import av, cv2, numpy as np

@@ -6,75 +6,75 @@ Text files were sanitized the same way as the first release: absolute paths beca
 user names became `<user>`; the few Korean comments/strings were translated to English. Binary files (`.npy`, `.parquet`) are byte copies.
 `~` in the source column is the author's home directory on the collection Mac.
 
-Files under `collection/handumi_collector/{config.py,ui/app.py,collector/main.py,collector/session.py}` and
-`collection/configs/handumi/tasks.yaml` already existed from the first release; they were refreshed from the current
+Files under `src/handumi_collector/{config.py,ui/app.py,collector/main.py,collector/session.py}` and
+`configs/handumi/tasks.yaml` already existed from the first release; they were refreshed from the current
 collector because the robot-like protocol (`--protocol robot_like_v1`) is wired into them. The earlier English translations
 (voice name, spoken-cue docstring) were kept.
 
-## pipeline/retarget_v2
+## src/rebot_prep/retarget (was pipeline/retarget_v2)
 
 | repo path | source |
 |---|---|
-| `pipeline/retarget_v2/v2k_seedbank.py` | `~/umi_bridge/track_c/v2k/v2k_seedbank.py` |
-| `pipeline/retarget_v2/v2k_retarget.py` | `~/umi_bridge/track_c/v2k/v2k_retarget.py` |
-| `pipeline/retarget_v2/v2k_compare.py` | `~/umi_bridge/track_c/v2k/v2k_compare.py` |
-| `pipeline/retarget_v2/v2k_tail.py` | `~/umi_bridge/track_c/v2k/v2k_tail.py` |
-| `pipeline/retarget_v2/hybrid_merge.py` | `~/umi_bridge/track_c/v2k/hybrid_merge.py` |
-| `pipeline/retarget_v2/hrl80_prereg_report.py` | `~/umi_bridge/track_c/v2k/hrl80_prereg_report.py` |
-| `pipeline/retarget_v2/contracts/v2kr_frozen.json` | `~/umi_bridge/track_c/v2k/v2kr_frozen.json` |
-| `pipeline/retarget_v2/contracts/v2tr_frozen.json` | `~/umi_bridge/track_c/v2k/v2tr_frozen.json` |
-| `pipeline/retarget_v2/contracts/hybrid_frozen.json` | `~/umi_bridge/track_c/v2k/hybrid_frozen.json` |
-| `pipeline/retarget_v2/contracts/r30_episodes.json` | `~/umi_bridge/track_c/v2k/r30_episodes.json` |
-| `pipeline/retarget_v2/contracts/R30_TR_EPISODES.md` | `~/umi_bridge/track_c/v2k/R30_TR_EPISODES.md` |
-| `pipeline/retarget_v2/contracts/r150_nested_subset_v1.json` | `~/umi_bridge/track_c/v2k/r150_nested_subset_v1.json` |
-| `pipeline/retarget_v2/contracts/final_combined_contract.json` | `~/umi_bridge/track_c/v2k/final_combined_contract.json` |
-| `pipeline/retarget_v2/contracts/hrl80_split_frozen.json` | `~/umi_bridge/track_c/v2k/hrl80_split_frozen.json` |
-| `pipeline/retarget_v2/contracts/hrl80_interpretation_prereg.json` | `~/umi_bridge/track_c/v2k/hrl80_interpretation_prereg.json` |
-| `pipeline/retarget_v2/contracts/gripper_binary_contract.json` | `~/umi_bridge/track_c/v2k/gripper_binary_contract.json` |
-| `pipeline/retarget_v2/contracts/rel16_ego_interface.json` | `~/umi_bridge/track_c/v2k/rel16_ego_interface.json` |
-| `pipeline/retarget_v2/contracts/seedbank_R30.json` | `~/umi_bridge/track_c/v2k/seedbank_R30.json` |
-| `pipeline/retarget_v2/contracts/seedbank_R30_q12.npy` | `~/umi_bridge/track_c/v2k/seedbank_R30_q12.npy` |
-| `pipeline/retarget_v2/contracts/seedbank.json` | `~/umi_bridge/track_c/v2k/seedbank.json` |
-| `pipeline/retarget_v2/contracts/seedbank_q12.npy` | `~/umi_bridge/track_c/v2k/seedbank_q12.npy` |
-| `pipeline/retarget_v2/chains/v2kr_chain.sh` | `~/c8/robotlike/v2kr_chain.sh` |
-| `pipeline/retarget_v2/chains/tr_chain.sh` | `~/c8/robotlike/tr_chain.sh` |
-| `pipeline/retarget_v2/chains/hrl80_chain.sh` | `~/c8/robotlike/hrl80_chain.sh` |
-| `pipeline/retarget_v2/chains/hrl80_retarget_chain.sh` | `~/c8/robotlike/hrl80_retarget_chain.sh` |
+| `src/rebot_prep/retarget/v2k_seedbank.py` | `~/umi_bridge/track_c/v2k/v2k_seedbank.py` |
+| `src/rebot_prep/retarget/v2k_retarget.py` | `~/umi_bridge/track_c/v2k/v2k_retarget.py` |
+| `src/rebot_prep/retarget/v2k_compare.py` | `~/umi_bridge/track_c/v2k/v2k_compare.py` |
+| `src/rebot_prep/retarget/v2k_tail.py` | `~/umi_bridge/track_c/v2k/v2k_tail.py` |
+| `src/rebot_prep/retarget/hybrid_merge.py` | `~/umi_bridge/track_c/v2k/hybrid_merge.py` |
+| `src/rebot_prep/retarget/hrl80_prereg_report.py` | `~/umi_bridge/track_c/v2k/hrl80_prereg_report.py` |
+| `src/rebot_prep/retarget/contracts/v2kr_frozen.json` | `~/umi_bridge/track_c/v2k/v2kr_frozen.json` |
+| `src/rebot_prep/retarget/contracts/v2tr_frozen.json` | `~/umi_bridge/track_c/v2k/v2tr_frozen.json` |
+| `src/rebot_prep/retarget/contracts/hybrid_frozen.json` | `~/umi_bridge/track_c/v2k/hybrid_frozen.json` |
+| `src/rebot_prep/retarget/contracts/r30_episodes.json` | `~/umi_bridge/track_c/v2k/r30_episodes.json` |
+| `src/rebot_prep/retarget/contracts/R30_TR_EPISODES.md` | `~/umi_bridge/track_c/v2k/R30_TR_EPISODES.md` |
+| `src/rebot_prep/retarget/contracts/r150_nested_subset_v1.json` | `~/umi_bridge/track_c/v2k/r150_nested_subset_v1.json` |
+| `src/rebot_prep/retarget/contracts/final_combined_contract.json` | `~/umi_bridge/track_c/v2k/final_combined_contract.json` |
+| `src/rebot_prep/retarget/contracts/hrl80_split_frozen.json` | `~/umi_bridge/track_c/v2k/hrl80_split_frozen.json` |
+| `src/rebot_prep/retarget/contracts/hrl80_interpretation_prereg.json` | `~/umi_bridge/track_c/v2k/hrl80_interpretation_prereg.json` |
+| `src/rebot_prep/retarget/contracts/gripper_binary_contract.json` | `~/umi_bridge/track_c/v2k/gripper_binary_contract.json` |
+| `src/rebot_prep/retarget/contracts/rel16_ego_interface.json` | `~/umi_bridge/track_c/v2k/rel16_ego_interface.json` |
+| `src/rebot_prep/retarget/contracts/seedbank_R30.json` | `~/umi_bridge/track_c/v2k/seedbank_R30.json` |
+| `src/rebot_prep/retarget/contracts/seedbank_R30_q12.npy` | `~/umi_bridge/track_c/v2k/seedbank_R30_q12.npy` |
+| `src/rebot_prep/retarget/contracts/seedbank.json` | `~/umi_bridge/track_c/v2k/seedbank.json` |
+| `src/rebot_prep/retarget/contracts/seedbank_q12.npy` | `~/umi_bridge/track_c/v2k/seedbank_q12.npy` |
+| `src/rebot_prep/retarget/chains/v2kr_chain.sh` | `~/c8/robotlike/v2kr_chain.sh` |
+| `src/rebot_prep/retarget/chains/tr_chain.sh` | `~/c8/robotlike/tr_chain.sh` |
+| `src/rebot_prep/retarget/chains/hrl80_chain.sh` | `~/c8/robotlike/hrl80_chain.sh` |
+| `src/rebot_prep/retarget/chains/hrl80_retarget_chain.sh` | `~/c8/robotlike/hrl80_retarget_chain.sh` |
 
-## pipeline/dataset_v2
+## scripts/rebot/dataset_v2 (was pipeline/dataset_v2)
 
 | repo path | source |
 |---|---|
-| `pipeline/dataset_v2/c8oldv2_build_dataset.py` | `~/c8/c8oldv2_build_dataset.py` |
-| `pipeline/dataset_v2/c8oldv2_build_hrl80.py` | `~/c8/c8oldv2_build_hrl80.py` |
-| `pipeline/dataset_v2/c8oldv2_final_append.py` | `~/c8/c8oldv2_final_append.py` |
-| `pipeline/dataset_v2/c8oldv2_validate.py` | `~/c8/c8oldv2_validate.py` |
-| `pipeline/dataset_v2/c8oldv2_validate_hrl80.py` | `~/c8/c8oldv2_validate_hrl80.py` |
-| `pipeline/dataset_v2/c8oldv2_validate_final.py` | `~/c8/c8oldv2_validate_final.py` |
-| `pipeline/dataset_v2/c8oldv2_append_invariant.py` | `~/c8/c8oldv2_append_invariant.py` |
-| `pipeline/dataset_v2/c8oldv2_hybrid_build.sh` | `~/c8/c8oldv2_hybrid_build.sh` |
-| `pipeline/dataset_v2/c8oldv2_hybrid_resume.sh` | `~/c8/c8oldv2_hybrid_resume.sh` |
-| `pipeline/dataset_v2/write_stage.py` | `~/c8/write_stage.py` |
+| `scripts/rebot/dataset_v2/c8oldv2_build_dataset.py` | `~/c8/c8oldv2_build_dataset.py` |
+| `scripts/rebot/dataset_v2/c8oldv2_build_hrl80.py` | `~/c8/c8oldv2_build_hrl80.py` |
+| `scripts/rebot/dataset_v2/c8oldv2_final_append.py` | `~/c8/c8oldv2_final_append.py` |
+| `scripts/rebot/dataset_v2/c8oldv2_validate.py` | `~/c8/c8oldv2_validate.py` |
+| `scripts/rebot/dataset_v2/c8oldv2_validate_hrl80.py` | `~/c8/c8oldv2_validate_hrl80.py` |
+| `scripts/rebot/dataset_v2/c8oldv2_validate_final.py` | `~/c8/c8oldv2_validate_final.py` |
+| `scripts/rebot/dataset_v2/c8oldv2_append_invariant.py` | `~/c8/c8oldv2_append_invariant.py` |
+| `scripts/rebot/dataset_v2/c8oldv2_hybrid_build.sh` | `~/c8/c8oldv2_hybrid_build.sh` |
+| `scripts/rebot/dataset_v2/c8oldv2_hybrid_resume.sh` | `~/c8/c8oldv2_hybrid_resume.sh` |
+| `scripts/rebot/dataset_v2/write_stage.py` | `~/c8/write_stage.py` |
 
 ## collection
 
 | repo path | source |
 |---|---|
-| `collection/handumi_collector/robotlike/__init__.py` | `~/ego_collector/handumi_collector/robotlike/__init__.py` |
-| `collection/handumi_collector/robotlike/monitor.py` | `~/ego_collector/handumi_collector/robotlike/monitor.py` |
-| `collection/handumi_collector/config.py` | `~/ego_collector/handumi_collector/config.py` |
-| `collection/handumi_collector/ui/app.py` | `~/ego_collector/handumi_collector/ui/app.py` |
-| `collection/handumi_collector/collector/main.py` | `~/ego_collector/handumi_collector/collector/main.py` |
-| `collection/handumi_collector/collector/session.py` | `~/ego_collector/handumi_collector/collector/session.py` |
-| `collection/configs/handumi/robot_like_v1.yaml` | `~/ego_collector/configs/handumi/robot_like_v1.yaml` |
-| `collection/configs/handumi/tasks.yaml` | `~/ego_collector/configs/handumi/tasks.yaml` |
-| `collection/scripts/robotlike_offline_check.py` | `~/ego_collector/scripts/robotlike_offline_check.py` |
-| `collection/scripts/robotlike_session_check.sh` | `~/ego_collector/scripts/robotlike_session_check.sh` |
-| `collection/scripts/robotlike_compare_groups.py` | `~/ego_collector/scripts/robotlike_compare_groups.py` |
-| `collection/scripts/robotlike_replay_live.py` | `~/ego_collector/scripts/robotlike_replay_live.py` |
-| `collection/scripts/robotlike_resident_5080.sh` | `~/ego_collector/scripts/robotlike_resident_5080.sh` |
-| `collection/docs/ROBOT_LIKE_PROTOCOL.md` | `~/ego_collector/docs/handumi_collector/ROBOT_LIKE_PROTOCOL.md` |
-| `collection/tests/test_robotlike.py` | `~/ego_collector/tests/handumi/test_robotlike.py` |
+| `src/handumi_collector/robotlike/__init__.py` | `~/ego_collector/handumi_collector/robotlike/__init__.py` |
+| `src/handumi_collector/robotlike/monitor.py` | `~/ego_collector/handumi_collector/robotlike/monitor.py` |
+| `src/handumi_collector/config.py` | `~/ego_collector/handumi_collector/config.py` |
+| `src/handumi_collector/ui/app.py` | `~/ego_collector/handumi_collector/ui/app.py` |
+| `src/handumi_collector/collector/main.py` | `~/ego_collector/handumi_collector/collector/main.py` |
+| `src/handumi_collector/collector/session.py` | `~/ego_collector/handumi_collector/collector/session.py` |
+| `configs/handumi/robot_like_v1.yaml` | `~/ego_collector/configs/handumi/robot_like_v1.yaml` |
+| `configs/handumi/tasks.yaml` | `~/ego_collector/configs/handumi/tasks.yaml` |
+| `scripts/robotlike_offline_check.py` | `~/ego_collector/scripts/robotlike_offline_check.py` |
+| `scripts/robotlike_session_check.sh` | `~/ego_collector/scripts/robotlike_session_check.sh` |
+| `scripts/robotlike_compare_groups.py` | `~/ego_collector/scripts/robotlike_compare_groups.py` |
+| `scripts/robotlike_replay_live.py` | `~/ego_collector/scripts/robotlike_replay_live.py` |
+| `scripts/robotlike_resident_5080.sh` | `~/ego_collector/scripts/robotlike_resident_5080.sh` |
+| `docs/collector/ROBOT_LIKE_PROTOCOL.md` | `~/ego_collector/docs/handumi_collector/ROBOT_LIKE_PROTOCOL.md` |
+| `tests/collector/test_robotlike.py` | `~/ego_collector/tests/handumi/test_robotlike.py` |
 
 ## results/retarget_v2
 

@@ -6,7 +6,7 @@ conclusion. Dates are when the fact was established.
 ## Robot (reBot B601) conventions
 
 - **Gripper semantics.** Raw jaw 0 = CLOSED, −270 = OPEN. Commands are 0..45 with raw = −6·cmd; cmd ≥ 27 opens. A comment in
-  `training/humanik_delta.py` saying "1 = closed" is wrong: the binarized label 1 means OPEN.
+  `scripts/training/c8old/humanik_delta.py` saying "1 = closed" is wrong: the binarized label 1 means OPEN.
 - **Gripper offset drift.** The follower gripper's open value shifts per power cycle (seen 0 / −100 / +90 / 358 wrap); closed
   clips at −270. Inference clips to [−270, 0]; check the jaw reading before `/run`.
 - **TCP frame.** The dataset TCP and the `eef_kin` FK TCP differ by R_y(90°). Forgetting the frame fix caused an upward
@@ -17,23 +17,23 @@ conclusion. Dates are when the fact was established.
 - **Global camera rotation.** `V4_GLOBAL_ROT180=0`. Decide it against the measured training relation, not appearance.
 - **After a robot-service restart**, `goal_interp` resets to ON; restore the UI's value.
 
-## Deployment UI (`deploy/`)
+## Deployment UI (`src/rebot_deploy/`, `scripts/rebot/loaders/`)
 
 - **PLAN settings are part of the policy.** Good values: `plan_ema 0.25, xfade 0, smooth 0, min_exec 1`
   (`/mode?planema=0.25&planxf=0&plansm=0&planmin=1`). UI restarts used to reset them to the code defaults (0.35 / 4 / 3 / 6)
   and inference quality dropped visibly (2026-10-07). The loader now restores them; still compare `/status` after a restart.
 - **Never restart a UI mid-run.** Check `/status` → `ui.running == False` first.
 - **Known issue:** in bimanual PLAN mode `solve_waypoint` gets `widths_k=None`, so jaws likely never open (see
-  `deploy/README.md`). Single-arm HRA is unaffected (jaws held).
+  `docs/deploy/README.md`). Single-arm HRA is unaffected (jaws held).
 - **Generic `GRIPPER_MODE=hold` bug:** it sends the raw jaw (0..−270) as a 0..45 command → clipped to 0 = closed. HRA uses
-  `jaw_hold_cmd` (raw/−6). See `deploy/TODO_gripper_hold.md`.
+  `jaw_hold_cmd` (raw/−6). See `docs/deploy/TODO_gripper_hold.md`.
 - Robotcam-trained models (HRA v2, A100) need TCP pitch/offset 0/0; anchored models need the same anchor file they were
   trained with (`B_anchor_F.json` for B, `G_anchor.json` for CT5–CT7).
 - Per-port sticky settings live in `~/umi_bridge/.auto_ui_d20_e5/` (`.wristzoom`, `.cubestop`, `.ikprofile`, `.umipitch`,
   `.umioffset`, `<port>.pin`).
 - Log every trial with the UI's TRIAL panel (`/trial`); without it there is no success rate (none was logged up to 10-07).
 
-## Training (`training/`)
+## Training (`src/training/`, `scripts/training/`)
 
 - **GPU nodes: RTX 4090 or RTX 5090 only, never the 5080s** (user rule, 2026-10-06). All GPU work goes through
   `ray job submit`, pinned with a node resource.
@@ -49,12 +49,12 @@ conclusion. Dates are when the fact was established.
 - **LeRobot v3 writes:** a killed write leaves a footer-less parquet; use per-shard writers + aggregate.
 - **`dataset_tools.delete_episodes` fails** on the 2-D (16, 32) action; select episodes with `--dataset.episodes`.
 
-## Pose and scale (`pipeline/`, `hra/`)
+## Pose and scale (`src/mast3r_pose/`, `src/rebot_prep/`, `scripts/rebot/hra/`)
 
 - MASt3R-SLAM runs on the 5090 via Ray (the 4090 sm_120 build produced 194 tracked / 196 RELOC on one take; rebuilt for sm_89
   it matches the 5090). Never use a session-global scale: per-episode scale varies 0.19–0.55.
 - IMU-VI scale is unobservable on slow motions (HRA); use cube PnP (edge **3.8 cm**, not 5 cm) or the origin plane.
-- The exported right-wrist camera–IMU rotation was off by ~18° (`collector/configs/calibration/camera_imu_right_rotfix_20261006.npy`).
+- The exported right-wrist camera–IMU rotation was off by ~18° (`configs/calibration/camera_imu_right_rotfix_20261006.npy`).
 - MASt3R-SLAM can jump > 10 cm in one frame without a loss flag; always run the v2b jump filter.
 - `open3d` 0.18 segfaults with numpy 2 on the Mac; use trimesh + own ICP.
 

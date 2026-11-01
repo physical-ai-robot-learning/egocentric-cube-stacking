@@ -1,8 +1,10 @@
 # Experimental
 
+> **Location (restructure of 2026-11-01).** This file was `experimental/README.md`. Paths in it are relative to that old folder: `ego_collector/`, `ego_teleop/`, `visual_teleop/` → `src/<same name>/`; `configs/`, `assets/`, `scripts/` → the repository-root folders of the same name; `tests/` → `tests/experimental/`; `docs/ego_teleop/` → `docs/experimental/ego_teleop/`; `../collector` (= the old `collection/` folder) → `src/handumi_collector/` + root `configs/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
+
 This folder holds research code that is **not** part of the production HandUMI → reBot path. It is kept for its
 results and because parts of it are reused elsewhere. Source: `~/ego_collector` (branch `orbbec-rgbd`, HEAD `12db478`,
-plus the uncommitted working tree as of 2026-10-07). See `MANIFEST.md`.
+plus the uncommitted working tree as of 2026-10-07). See [`../provenance/experimental_MANIFEST.md`](../provenance/experimental_MANIFEST.md).
 
 | path | what | status |
 |---|---|---|
@@ -18,31 +20,30 @@ Other status notes:
   (Kalibr, offset 32.77 ms). Left: `camera_imu_left_v001` / `wrist_bundle_left_v005` (offset 30.17 ms frozen by decision).
   The left camera latency looked session-dependent (30–36 ms). On 2026-10-06 the IMU extrinsic `T_b_c1` used in the
   exports was found to be about 18° off about camera x; the correction is `camera_imu_right_rotfix_20261006.npy` in
-  `../collector/configs/calibration/`.
-- The segmented relative VIO (`../collector/handumi_collector/pose/backends/segmented.py`) helped the right wrist
+  `configs/calibration/`.
+- The segmented relative VIO (`src/handumi_collector/pose/backends/segmented.py`) helped the right wrist
   (usable fraction 0.63 → 0.91) but did not fix left-wrist divergence.
 
 ## Layout and install
 
 - `configs/` holds the configs for these packages: `ego_teleop/` plus the V0 yamls (`world_tag_map`,
   `wrist_extrinsics`, `qa`, `aperture_calibration`, `collection_plan`, `charuco*`, `camera/`).
-- `configs/calibration` and `configs/handumi` are **symlinks** to `../collector/configs/...`. `ego_teleop` resolves
+- `configs/calibration` and `configs/handumi` were **symlinks** to `../collector/configs/...`; in the merged layout there is one root `configs/` tree, so the symlinks were dropped. `ego_teleop` resolves
   config paths from its own repo root, and the calibration files must stay single-sourced.
 - `assets/aero_hand_open/` holds the Aero Hand Open URDFs (Apache-2.0, TetherIA, see `NOTICE`) for the FK tests and
   the Aero branch.
 - `tests/teleop` holds the `ego_teleop` tests. `tests/v0` holds the `ego_collector` V0 tests and their `synth.py`.
 
 ```bash
-cd experimental
-uv venv && uv pip install -e . -e ../collector     # ego_teleop imports handumi_collector
-uv run pytest tests -q                             # 356 passed on this copy (same as the source tree)
+pip install -e ".[collector,experimental,dev]"     # from the repository root; ego_teleop imports handumi_collector
+pytest tests/experimental/teleop tests/experimental/v0 -q   # 356 passed on this copy (same as the source tree)
 ```
 
 `pyorbbecsdk` (head RGB-D), `dex-retargeting` (`--extra aero`), OpenVINS (`ov_bridge`) and MASt3R are external and
 optional; their tests skip when they are absent. `scripts/rgbd_tcp_qa.py` shells out to `scripts/ego_ik_retarget.py`,
-which belongs to the ego pipeline (`../pipeline`) and is not in this folder.
+which belongs to the ego pipeline and is not in this repository.
 
-Runbooks are in `docs/ego_teleop/`:
+Runbooks are in `docs/experimental/ego_teleop/`:
 
 - `PLAN.md`
 - `M1_RUNBOOK.md`
@@ -55,4 +56,4 @@ Runbooks are in `docs/ego_teleop/`:
 - `TELEOP_IMPROVEMENT_PLAN.md`
 - `AERO_A0_AUDIT.md`
 
-The full RGB-D teacher QA record is `../collector/docs/RGBD_TEACHER_QA.md`.
+The full RGB-D teacher QA record is `docs/collector/RGBD_TEACHER_QA.md`.

@@ -1,4 +1,6 @@
-# deploy/: serving X-VLA checkpoints on the reBot (Mac MPS + Pink IK + MIT robot service)
+# rebot_deploy (`src/rebot_deploy/`): serving X-VLA checkpoints on the reBot (Mac MPS + Pink IK + MIT robot service)
+
+> **Location (restructure of 2026-11-01).** This file was `deploy/README.md`. Paths in it are relative to that old folder: the Python files, `learned_ik/` and `robot_service/` → `src/rebot_deploy/`; `loaders/` (with `legacy/`) and `swappers/` → `scripts/rebot/loaders/`; `TODO_gripper_hold.md` → `docs/deploy/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
 
 ## Components
 
@@ -6,8 +8,8 @@
 |---|---|
 | `infer_core_v4.py` | Inference core `V4Inferencer`. It handles observation -> state (RELCART20 / slim20 / umi), X-VLA flow sampling (MPS bf16), the REL-only zero mask, chunk decode `T_k = T_now @ A_k`, the IK backends (`pink`, numerical, learned, pinkdq/policydq, cuRobo client), the gripper mapping, RTC, the one-arm (`V4_ARM_ONLY=right`) contract and the fixed anchor. |
 | `mac_v4_smoke_ui.py` | Flask web UI and controller. It provides step / stream / **PLAN** execution, `/mode` live controls, the checkpoint dropdown, the cube-size stop, the trial logger and HRA safety gates. |
-| `pink_ik.py` | Pinocchio/Pink QP IK. Frame tasks: pos 1.0 / ori 0.5. Posture toward the seed is 1e-3. TCP = gripper_link + 70 mm x. URDF from `REBOT_URDF`, default `~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf`; the same file is in `training/robot/`. |
-| `eef_kin.py` | FK and continuity IK (same URDF/TCP model as the labels). The same file is in `pipeline/pseudo_joint/`. |
+| `pink_ik.py` | Pinocchio/Pink QP IK. Frame tasks: pos 1.0 / ori 0.5. Posture toward the seed is 1e-3. TCP = gripper_link + 70 mm x. URDF from `REBOT_URDF`, default `~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf`; the same file is in `src/training/robot/`. |
+| `eef_kin.py` | FK and continuity IK (same URDF/TCP model as the labels). The same file is in `src/rebot_prep/pseudo_joint/`. |
 | `hra_direction_probe.py` | Read-only offline probe (`/observe` only). It computes the cosine between the predicted right-TCP motion and the direction to a touched cube target. |
 | `TODO_gripper_hold.md` | Open bug: generic `V4_GRIPPER=hold` sends the raw jaw reading as a command. |
 | `loaders/` | `load_*_ckpt_to_ui.sh <step> [port]`: fetch a checkpoint (node or SSD), verify sha256 + identity (run, dataset, domain), restart the UI with the run's V4_* contract, then restore the per-port control settings. Active loaders: `load_hra_rightonly_ckpt_to_ui.sh` (HRA, port 8056), `load_relonly_run_ckpt_to_ui.sh` (4090 REL-only bimanual), `load_relonly_5090_run_ckpt_to_ui.sh`. `legacy/` holds the earlier per-run loaders. |
@@ -17,7 +19,7 @@
 
 The core also needs these, which are not in this folder:
 - `umi.common.pose_util` from the UMI upstream (`~/holobrain-mac-model/umi_pkg`, upstream part of the repo).
-- `rel16_aux_relonly.py`, which the core imports from `~/umi_bridge/rel16_audit/relonly`. The same file is `training/relonly/rel16_aux_relonly.py`; point the path there or symlink it.
+- `rel16_aux_relonly.py`, which the core imports from `~/umi_bridge/rel16_audit/relonly`. The same file is `src/training/relonly/rel16_aux_relonly.py`; point the path there or symlink it.
 - LeRobot with X-VLA (`lerobot.policies.xvla`) in `~/xvla-mac` (py env).
 - `learned_ik` is optional and loads from `~/umi_bridge/learned_ik`.
 

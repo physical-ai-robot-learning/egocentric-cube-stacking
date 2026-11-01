@@ -1,5 +1,7 @@
 # HRA: right-arm approach prior from HandUMI ego data
 
+> **Location (restructure of 2026-11-01).** This file was `hra/README.md`. Paths in it are relative to that old folder: `hra_red/` and `hra_a100/` → `scripts/rebot/hra/hra_red/` and `scripts/rebot/hra/hra_a100/` (inner structure unchanged). Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
+
 HRA ("Human Right-arm Approach") is the single-arm task "Approach to the red cube". The data is egocentric HandUMI takes
 (right hand only, 10 s each). The goal is to learn a right-arm approach prior that moves the reBot right arm towards the cube.
 The narrative, numbers and lessons are in Part II of the report
@@ -15,17 +17,17 @@ Three dataset generations were built, in this order:
 
 All generations keep the CART20 tensor contract (32-D action, 20-D RELCART20 state). The left arm is a dummy (identity pose, gripper 0)
 and is loss-masked together with the gripper, so 9 of the 20 dims are supervised.
-Training uses the loss-mask REL-only trainer (`training/relonly/rel16_relonly_lossmask.py`), with domain 20, batch 8, AdamW8bit and bf16.
-Training is documented in `training/README.md` and serving in `deploy/README.md`.
+Training uses the loss-mask REL-only trainer (`src/training/relonly/rel16_relonly_lossmask.py`), with domain 20, batch 8, AdamW8bit and bf16.
+Training is documented in `docs/training/README.md` and serving in `docs/deploy/README.md`.
 
 ## External dependencies (not in this folder)
 
-- `~/ego_cart20` package. In this repo it is `pipeline/cart20/` (the `ego_cart20` Python package). It provides `right_only.py` (export / convert / sanity), `cube_pnp.py`,
+- `~/ego_cart20` package. In this repo it is `src/ego_cart20/` (the `ego_cart20` Python package). It provides `right_only.py` (export / convert / sanity), `cube_pnp.py`,
   `scripts/export_lerobot_right_only.py` and `scripts/export_lerobot_right_only_robotcam.py`.
 - `~/ego_collector` (collector, `scripts/umi_export_orbslam.py`, `handumi_collector.robotlike.{start_match,c922_view}`, calibration yamls
   under `configs/calibration/`, raw sessions under `datasets/human_handumi_raw/HRA_red|HRA_A100`). This lives in the collector part of the repo,
   which another owner maintains.
-- MASt3R-SLAM per-frame poses: `pipeline/mast3r_pose/`, run as Ray jobs on the 5090/5080, plus `robotlike_session_check.sh` from the collector.
+- MASt3R-SLAM per-frame poses: `src/mast3r_pose/`, run as Ray jobs on the 5090/5080, plus `robotlike_session_check.sh` from the collector.
 - Scripts hard-code `~/c8/hra_red` and `~/c8/hra_a100` as the working roots, and `~/xvla-mac/bin/python` as the Mac interpreter.
   Run them from a checkout laid out the same way, or edit `A=`, `OUT=` and `H /` at the top of each script.
 
@@ -51,9 +53,9 @@ Training is documented in `training/README.md` and serving in `deploy/README.md`
    1. QC gate.
    2. Upload with sha256 check.
    3. Wait for a free 4090 GPU.
-   4. 300-step smoke run, using the same launcher as the main run: `training/launchers/node4090/train_hra_rightonly_lossmask_d20_b8.sh`.
+   4. 300-step smoke run, using the same launcher as the main run: `scripts/training/node4090/train_hra_rightonly_lossmask_d20_b8.sh`.
    5. Automatic verdict.
-   6. Main run `HRA-RIGHTONLY-LOSSMASK-D20-B8-300K`, plus the SSD archiver `training/archivers/trackb_archive_v2_relonly.sh`.
+   6. Main run `HRA-RIGHTONLY-LOSSMASK-D20-B8-300K`, plus the SSD archiver `scripts/training/archivers/trackb_archive_v2_relonly.sh`.
 
    The 5090 variants (`smoke_then_main_5090.sh`, `smoke_5090_then_main_4090.sh`) are unused: the 5090 has a different torch version and launcher.
    `smoke_now_4090.sh` and `smoke_when_ready.sh` are earlier forms of the same chain.
@@ -146,7 +148,7 @@ Scripts in pipeline order (all under `pipe/` unless noted):
    - `start_compare_113.py`
    - `ik_check_a93.py`
    - visualizations `viz_ab.py` and `viz_ct.py`
-9. Serving a fresh checkpoint: `ui_CT5_5k.sh` and `ui_CT7old_5k.sh`. They wait for step 5000 and an idle UI, then call `deploy/loaders/load_hra_rightonly_ckpt_to_ui.sh`
+9. Serving a fresh checkpoint: `ui_CT5_5k.sh` and `ui_CT7old_5k.sh`. They wait for step 5000 and an idle UI, then call `scripts/rebot/loaders/load_hra_rightonly_ckpt_to_ui.sh`
    with `V4_FIXED_ANCHOR_JSON=G_anchor.json UMI_TCP_PITCH_DEG=0 UMI_TCP_OFFSET_MM=0,0,0`.
 10. `val_eval/val_loss_ab.py` / `run_ab_val.sh`: held-out loss for A and B (`resA.json`, `resB.json`).
 

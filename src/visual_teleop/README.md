@@ -1,4 +1,34 @@
-# visual_teleop — reBot bimanual visual teleoperation (Agent C)
+# visual_teleop
+
+Visual teleoperation of the reBot from a fixed RGB-D camera, wrist RGB and wrist IMUs (relative bimanual SE(3) → IK + safety → robot), recorded in the common 20-D action contract.
+
+**Status:** experimental (stereo wrist-VIO teleop was dropped on 2026-10-16; see [`docs/UPDATE_2026-10-20.md`](../../docs/UPDATE_2026-10-20.md))
+
+## Inputs → Outputs
+
+- In: wrist cameras, wrist IMUs, head Orbbec RGB-D; config in `config/` (inside this package) and calibrations in `configs/calibration/`.
+- Out: robot commands through the reBot bridge; `VISUAL_TELEOP` recordings.
+
+## Entry points
+
+`python -m visual_teleop.tools.fingertip_node`, `python -m visual_teleop.tools.sensor_hub`, `python -m visual_teleop.tools.live_teleop` (three processes, details below).
+
+## Layout
+
+- `config/` — teleop configs (`config.py` reads them next to itself; `tools/calib_right.py` writes `calibration.yaml`)
+- `vision/`, `imu/`, `fusion/`, `gripper/` — front-ends, AHRS, fusion, pinch/jaw
+- `retargeting/`, `robot/`, `safety/` — IK, dual-arm controller, limits
+- `recording/`, `ui/`, `tools/`, `reports/`, `assets/`
+
+## Provenance
+
+Built in `~/ego_collector` from 2026-10-14; see [`docs/provenance/experimental_MANIFEST.md`](../../docs/provenance/experimental_MANIFEST.md). Tests: `tests/experimental/vteleop/` (collection currently fails on `main` too: `gripper_cmd_from_g` import).
+
+---
+
+## Original README
+
+### visual_teleop — reBot bimanual visual teleoperation (Agent C)
 
 Fixed RGB-D + wrist RGB + wrist IMU → relative bimanual SE(3) → reBot IK + safety → robot. The robot-executed trajectory
 is recorded as `VISUAL_TELEOP` data in the common 20-D action contract.

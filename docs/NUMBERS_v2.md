@@ -7,9 +7,9 @@ else is derived. Rates in the JSON files are fractions (0.561 = 56.1 %).
 Terms:
 - **old259** = the 259 C8 source episodes of the first release, 1,229 candidate 65-frame bimanual segments.
 - **HRL80** = the new robot-like ego collection (60 episodes used, 521 candidate segments).
-- **held-out R120** = R150 minus the 30 R30 calibration episodes (`pipeline/retarget_v2/contracts/r30_episodes.json`). Posture (NN) and `W1_dq_vs_heldout120` use this reference.
+- **held-out R120** = R150 minus the 30 R30 calibration episodes (`src/rebot_prep/retarget/contracts/r30_episodes.json`). Posture (NN) and `W1_dq_vs_heldout120` use this reference.
 - **v1** = the single-anchor retarget of the first release. **v2-K** = kinematic multi-seed. **v2-Kr** = multi-seed with the frozen manifold penalty. **v2-TR** = R30 trajectory-window retrieval. **hybrid** = TR where feasible, otherwise Kr (`contracts/hybrid_frozen.json`).
-- In `compare_*_heldout.json`, group `r30` holds `v1`, `v2` (= v2-K) and `v2r` (= v2-Kr); group `tr` holds `v2` (= v2-TR); group `hybrid` holds `v2` (= hybrid). See `pipeline/retarget_v2/v2k_compare.py`.
+- In `compare_*_heldout.json`, group `r30` holds `v1`, `v2` (= v2-K) and `v2r` (= v2-Kr); group `tr` holds `v2` (= v2-TR); group `hybrid` holds `v2` (= hybrid). See `src/rebot_prep/retarget/v2k_compare.py`.
 
 ## 1. Retarget v2 (R30-only contract), evaluated against held-out R120
 
@@ -30,7 +30,7 @@ Other numbers from the same blocks:
 | cluster coverage v1 / v2-K / v2-Kr / v2-TR | 0.14 / 0.735 / 0.93 / 0.9 | `compare_R30_heldout.json` → `r30.v1.manifold.cluster_coverage`, `r30.v2.manifold.cluster_coverage`, `r30.v2r.manifold.cluster_coverage`, `tr.v2.manifold.cluster_coverage` |
 | distinct start clusters v1 / v2-TR | 1 / 100 | same file → `r30.v1.manifold.start_distinct_clusters`, `tr.v2.manifold.start_distinct_clusters` |
 | matched segments (both TR and Kr solve), W1 velocity, NN p50/p90 | 686 segments; TR vs Kr W1 0.00207 vs 0.00226; NN 0.272/0.453 vs 0.439/0.568; the 138 Kr fallback segments: \|dq\| p95 0.052, NN p90 1.14 | `results/retarget_v2/hybrid_master_MASTER.json` → `matched_segment_finding` (string) |
-| master old259 segment split TR / Kr_fallback / none | 689 / 138 / 402 of 1,229 (56.1 / 11.2 / 32.7 % *computed*) | `results/retarget_v2/hybrid_master_MASTER.json` → `segments.TR`, `segments.Kr_fallback`, `segments.none`, `total_segments`. The same percentages are written in `pipeline/retarget_v2/contracts/final_combined_contract.json` → `hrl80_report_preregistered.utility` |
+| master old259 segment split TR / Kr_fallback / none | 689 / 138 / 402 of 1,229 (56.1 / 11.2 / 32.7 % *computed*) | `results/retarget_v2/hybrid_master_MASTER.json` → `segments.TR`, `segments.Kr_fallback`, `segments.none`, `total_segments`. The same percentages are written in `src/rebot_prep/retarget/contracts/final_combined_contract.json` → `hrl80_report_preregistered.utility` |
 | failure reasons (old259) | none:no_workspace_window 399, Kr_fallback:no_workspace_window 121, Kr_fallback:no_feasible_rollout 17, none:no_feasible_rollout 3 | `hybrid_master_MASTER.json` → `fallback_reasons` |
 
 Legacy reference, **not** under the R30 contract: `results/retarget_v2/v2k_compare_old259.json` has the first v2-K run, which took its seed bank and workspace gate from the full R150: `old259.v1.rate` 0.451 and `old259.v2.rate` 0.728. `compare_R30full_heldout.json` repeats the `r30` group of `compare_R30_heldout.json` with the same values.
@@ -58,7 +58,7 @@ Legacy reference, **not** under the R30 contract: `results/retarget_v2/v2k_compa
 | episode length | 33.01–33.18 s (AUTO episode_s 30) | `hrl80_raw_census.json` → `summary.duration_s_min`, `summary.duration_s_max`, `episodes_main_session[*].auto_episode_s` |
 | live monitor verdict | FAIL on 60/60 (the live FAIL rule also counts rotation acceleration) | `hrl80_raw_census.json` → `summary.live_verdict` |
 | live group split (rotation-speed cutoff 0.1, grasps ≥ 2, rot-acc diagnostic only) | 58 "robot-like" / 2 "NOT robot-like" | `results/hrl80/compare_groups_final.json` → `cutoff`, `groups["new robot-like"].episodes`, `groups["new NOT robot-like"].episodes` |
-| frozen split | val = episodes 49–54 (one per order, round-block holdout), train 54 | `pipeline/retarget_v2/contracts/hrl80_split_frozen.json` → `val_source_episodes`, `counts` |
+| frozen split | val = episodes 49–54 (one per order, round-block holdout), train 54 | `src/rebot_prep/retarget/contracts/hrl80_split_frozen.json` → `val_source_episodes`, `counts` |
 
 ### HRL80 against old259 (pre-registered report)
 
@@ -81,7 +81,7 @@ Legacy reference, **not** under the R30 contract: `results/retarget_v2/v2k_compa
 | T0 (reproduces the old −0.009) argsort rank corr / Spearman with tie averaging | −0.101 / −0.123 (n 60) | −0.009 / −0.013 (n 259) | `hrl80_prereg_report.json` → `T0_v1_offline_fullpass_fraction.{HRL80,old259}.{argsort_rank_corr,spearman_avg_ties}` |
 
 **Prereg reading.** `hrl80_prereg_report.json` does not store a reading label. The readings were written before the
-results in `pipeline/retarget_v2/contracts/hrl80_interpretation_prereg.json` → `readings_stated_in_advance`. The numbers
+results in `src/rebot_prep/retarget/contracts/hrl80_interpretation_prereg.json` → `readings_stated_in_advance`. The numbers
 above fit `live_up_offline_flat`: the live rotation-speed median fell from 0.144 to 0.067, but U_e stayed flat
 (0.592 → 0.59), TR usable was 58.9 % rather than the 70–80 % the `strong` reading requires, and no_workspace_window is
 still the main failure reason. The wording rule is `amendment_1.claim_wording`: "associated", not causal.
@@ -120,7 +120,7 @@ Lower is better.
 | episodes 66/77, motion geo | 9.687 | 10.092 | +0.405 (+4.2 %) | 22 | `r120_groups.heldout2_motion_tcp.geo_score` |
 
 **Eval-set caveat.** The R150 "probe val-10" episodes are inside the R150 fine-tuning data for **both** arms: both arms
-fine-tune on all 150 R150 episodes. See `evaluation/c8old_mac_eval.py`, docstring line 7 ("R150 probe val-10 episodes
+fine-tune on all 150 R150 episodes. See `scripts/rebot/eval/c8old/c8old_mac_eval.py`, docstring line 7 ("R150 probe val-10 episodes
 (NOTE: included in the R150 fine-tuning data)"), and `results/finetune/SUMMARY.md` line 68. The episode ids are in
 `baseline/B1old_R150_250000.json` → `r120_groups.seen8_episodes` and `r120_groups.heldout2_episodes`.
 "heldout2" (episodes 66 and 77) means held out from R120 only, not from R150.

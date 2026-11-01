@@ -20,7 +20,7 @@ files below (it exits 1 on any mismatch). Status as of 2026-10-12 (version 5): a
 | Retarget v2 usable segments, v1 → TR | `results/retarget_v2/compare_R30_heldout.json` | 36.5 % → 56.1 % (of 1,229) | VERIFIED |
 | Posture distance to held-out robot data (NN p50), v1 → TR | `results/retarget_v2/compare_R30_heldout.json` | 1.49 → 0.27 rad | VERIFIED |
 | Start-posture clusters, v1 → TR | `results/retarget_v2/compare_R30_heldout.json` | 1 → 100 | VERIFIED |
-| Reference robot data is disjoint from the calibration set | `pipeline/retarget_v2/contracts/r30_episodes.json` | calibrate on R30, evaluate on the other 120 | VERIFIED |
+| Reference robot data is disjoint from the calibration set | `src/rebot_prep/retarget/contracts/r30_episodes.json` | calibrate on R30, evaluate on the other 120 | VERIFIED |
 | Robot-like re-collection | `results/hrl80/hrl80_raw_census.json` | 60 episodes, 10 per order, one session | VERIFIED |
 | Robot-like: live wrist-rotation over-threshold fraction (median) | `results/hrl80/hrl80_prereg_report.json` | 0.144 → 0.067 | VERIFIED |
 | Robot-like: TR usable rate | `results/hrl80/compare_hrl80_heldout.json` | 56.1 % → 58.9 % | VERIFIED |
@@ -31,7 +31,7 @@ files below (it exits 1 on any mismatch). Status as of 2026-10-12 (version 5): a
 | Ego init vs scratch, R150, 250k, geo score | `analysis/out/paired_bootstrap_r150_250k.json` | −10.0 %, 95 % CI −14.7 to −5.6 % | VERIFIED |
 | Same, moving-sample geo / moving k30 MAE | `analysis/out/paired_bootstrap_r150_250k.json` | −7.2 % (CI −13.4 to −1.8) / −6.8 % (CI −12.7 to +0.5) | VERIFIED |
 | Episodes favouring ego init | `analysis/out/paired_bootstrap_r150_250k.json` | 8 of 10 | VERIFIED |
-| The 10 evaluation episodes are inside both fine-tuning sets | `evaluation/c8old_mac_eval.py` docstring, `results/finetune/SUMMARY.md` | yes | VERIFIED |
+| The 10 evaluation episodes are inside both fine-tuning sets | `scripts/rebot/eval/c8old/c8old_mac_eval.py` docstring, `results/finetune/SUMMARY.md` | yes | VERIFIED |
 | R90 comparison | `results/finetune/R90_MATCHED.md` | 2 matched steps only; geo −33 % / −11 %, motion geo +2 % / +13 % → no conclusion | VERIFIED |
 | **v3** Cartesian ego dataset: episodes / trainable rows | `results/v3/ego_cart20/metadata_v2.json` | 330 (273 + 57; 3 refused) / 57,283 of 111,533 rows (51.4 %) | VERIFIED |
 | v3 split after jump filter (v2b) | `results/v3/ego_cart20/metadata_v2b.json` | train 297 eps / 48,411 rows (−6.20 %), val 32 / 5,671 | VERIFIED |

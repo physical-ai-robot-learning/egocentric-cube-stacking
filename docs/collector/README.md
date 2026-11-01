@@ -1,5 +1,7 @@
 # HandUMI collector (`handumi_collector`)
 
+> **Location (restructure of 2026-11-01).** This file was `collection/README.md`. Paths in it are relative to that old folder: `handumi_collector/` → `src/handumi_collector/`, `tests/` → `tests/collector/`, `docs/` → `docs/collector/`, `tools/` → `scripts/`; `configs/`, `scripts/`, `firmware/` and `assets/` are now at the repository root under the same names. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
+
 This is the raw recorder for the human (HandUMI) side of the reBot work. It does not depend on any model. It records:
 
 - a head C922 RGB stream, which is the **shared human/robot policy view** at 640x480@30;
@@ -7,23 +9,21 @@ This is the raw recorder for the human (HandUMI) side of the reBot work. It does
   a Feetech STS3215 jaw encoder.
 
 Output is mp4 per stream plus one `sensors.mcap` per episode. Pose estimation, retargeting and export are offline steps
-and live elsewhere in this repo (`../pipeline`, `../hra`). A pose failure never loses a raw episode.
+and live elsewhere in this repo (`src/mast3r_pose/`, `src/rebot_prep/`, `src/ego_cart20/`, `scripts/rebot/hra/`). A pose failure never loses a raw episode.
 
 Source: `~/ego_collector` (branch `orbbec-rgbd`, HEAD `12db478`, plus uncommitted working tree as of 2026-10-07). See
-`MANIFEST.md`.
+[`../provenance/collection_MANIFEST.md`](../provenance/collection_MANIFEST.md).
 
-## Install (uv)
+## Install
 
 ```bash
-cd collector
-uv sync                      # python 3.11 (.python-version); pulls ../experimental in editable mode (see below)
-uv run pytest tests/handumi -q
+pip install -e ".[collector,experimental,dev]"   # from the repository root (python 3.11 was used)
+pytest tests/collector -q
 ```
 
 `handumi_collector` lazily imports `ego_collector.camera` (the UVC/Orbbec capture layer from the V0 collector). The
-ChArUco scripts also import `ego_collector.camera.calibration`. That package lives in `../experimental/ego_collector`,
-and `pyproject.toml` declares it as a path dependency (`handumi-rebot-experimental`). Without uv, put both folders on
-the path: `PYTHONPATH=collector:experimental`.
+ChArUco scripts also import `ego_collector.camera.calibration`. That package is `src/ego_collector` and is installed by
+the same root `pyproject.toml`. Without installing, put `src` on the path: `PYTHONPATH=src`.
 
 Test baseline, run with the source venv on this copy (identical to the source tree):
 
@@ -103,7 +103,7 @@ The `HRA_A100` cycle:
 
 `record_c922_view: true` also writes `right_wrist_c922.mp4`: the fisheye remapped to the measured robot C922, frame for
 frame with `right_wrist.mp4`. The RECORD tab shows a ROBOT C922 VIEW tile, with a start reference image for matching
-the start pose (see the note on `start_ref_*.png` in `MANIFEST.md`).
+the start pose (see the note on `start_ref_*.png` in [`../provenance/collection_MANIFEST.md`](../provenance/collection_MANIFEST.md)).
 
 ## Running `collect`
 

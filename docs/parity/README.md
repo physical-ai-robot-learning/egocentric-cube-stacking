@@ -1,8 +1,10 @@
 # umi_robot_parity: UMI TCP calibration and UMI → reBot replay parity (2026-10-16 → 10-20)
 
+> **Location (restructure of 2026-11-01).** This file was `pipeline/umi_robot_parity/README.md`. Paths in it are relative to that old folder: the folder → `scripts/rebot/parity/` (inner structure unchanged: `scripts/`, `tools/`, `configs/`, `kalibr/`, `print/`). Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
+
 Goal (lead decision 10-16): motion collected with the HandUMI must replay the same on the reBot. A fixed global Orbbec sees
 3-tag AprilTag rigs on each UMI (tag36h11 200–202 right, 210–212 left, printed 48 mm) and, later, tag 220 on the robot
-gripper. Overview and numbers: [`docs/UPDATE_2026-10-20.md`](../../docs/UPDATE_2026-10-20.md), Sec. 5.
+gripper. Overview and numbers: [`docs/UPDATE_2026-10-20.md`](../UPDATE_2026-10-20.md), Sec. 5.
 
 | step | code | status |
 |---|---|---|
@@ -16,4 +18,4 @@ gripper. Overview and numbers: [`docs/UPDATE_2026-10-20.md`](../../docs/UPDATE_2
 | Kalibr camera–IMU | `kalibr/run_kalibr.sh`, `patch_kalibr.py`, `scripts/kalibr_bag_export.py`, `kalibr_to_camimu.py` | works; used for the dropped stereo rig |
 
 Print files in `print/` (print at 100 %, measure the black square; our printer gave 48 mm for 50 mm). `tools/` import
-`visual_teleop` (see `experimental/visual_teleop`), and the robot tools need the reBot MIT bridge.
+`visual_teleop` (see `src/visual_teleop`), and the robot tools need the reBot MIT bridge.

@@ -1,5 +1,7 @@
 # ego_cart20: ego-only CART20 pretraining data for X-VLA v4
 
+> **Location (restructure of 2026-11-01).** This file was `cart20/README.md`. Paths in it are relative to that old folder: `ego_cart20/` → `src/ego_cart20/` (so `ego_cart20/scripts/...` is `src/ego_cart20/scripts/...`), `tests/` → `tests/cart20/`, `docs/` → `docs/cart20/`, `configs/` → `configs/cart20/`; `launch/` scripts are in `scripts/training/ego_cart20/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
+
 Turns human egocentric demonstrations (HandUMI) into X-VLA v4 training samples. The samples have the same meaning and channel layout as the reBot R312c RELCART20 REL-only data used for fine-tuning.
 Status, numbers and open questions: `SPEC_STATUS_2026-10-01.md`. Training recipe: `~/umi_bridge/RELCART20_RELONLY_D6_RECIPE.md`.
 

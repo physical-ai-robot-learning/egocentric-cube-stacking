@@ -56,12 +56,12 @@ Our capture rig deviates from upstream in three ways:
 - **No VR tracking.** The upstream design gets wrist SE(3) from a PICO/Quest controller. Our collector gets wrist
   motion from the fisheye camera plus an IMU. The Quest-tracker variant lives in our `handumi-sw` fork; see
   `../upstream/`.
-- **Added wrist IMU per unit**: a Teensy 4.1 with an ICM-42688-P on SPI. Firmware is in `../collection/firmware/`
+- **Added wrist IMU per unit**: a Teensy 4.1 with an ICM-42688-P on SPI. Firmware is in `../firmware/`
   (`teensy_imu/`, plus a `xiao_imu/` variant and the `bringup/` probes).
 - **Head camera**: a Logitech C922 at 640x480@30 is the shared human/robot policy view.
 
-Device identities (USB serials, product names) and the bring-up procedure are in `../collection/README.md` and
-`../collection/docs/IMU_BRINGUP.md`.
+Device identities (USB serials, product names) and the bring-up procedure are in `../docs/collector/README.md` and
+`../docs/collector/IMU_BRINGUP.md`.
 
 ## Changes after 2026-10-12 (current state 2026-10-20)
 
@@ -73,13 +73,13 @@ The units in use differ from the build above as follows. Details and numbers: `.
   open/close state is measured from the wrist-camera video (tip-to-tip distance of the tape; closed ≤ 200 px,
   open ≥ 260 px at 1920 width). Keep the tape on the inner jaw faces, fully visible to the wrist camera, and avoid other
   red/orange objects near the jaws. Note: the wrist camera mount flexes relative to the jaws.
-- **AprilTag rigs on each unit** (tag36h11, `../pipeline/umi_robot_parity/print/`): IDs 200–202 on the right unit, 210–212 on the left, seen by a
+- **AprilTag rigs on each unit** (tag36h11, `../scripts/rebot/parity/print/`): IDs 200–202 on the right unit, 210–212 on the left, seen by a
   fixed global Orbbec. Printed at "50 mm" they measure **48 mm** on our printer; measure the black square and use the
   measured size. Robot gripper tags 220–222 (right) / 230–232 (left); `aprilgrid_3x4_50mm_id300` is the corner-touch
   board for the TCP calibration. The TCP-in-rig calibration (`umi_tag_rig_v001.json`) is only valid for the tag
   placement it was measured with.
 - **Wrist IMU = Seeed XIAO nRF52840 Sense Plus** on both units (right 10-16, left 10-17), replacing the Teensy 4.1 +
-  ICM-42688-P (lower still noise). Firmware `../collection/firmware/xiao_imu/`; build with
+  ICM-42688-P (lower still noise). Firmware `../firmware/xiao_imu/`; build with
   `arduino-cli compile --fqbn Seeeduino:mbed:xiaonRF52840SensePlus --build-property "build.extra_flags=-DTARGET_SEEED_XIAO_NRF52840_SENSE_PLUS"`
   (without the flag WHO_AM_I reads 0). The USB serial changes after flashing. The IMU must be rigidly fixed: a loose
   mount showed up as a drifting camera↔IMU rotation.

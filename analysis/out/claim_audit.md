@@ -45,16 +45,16 @@
 | split | val main-domain episodes | 22 | 22.0 | `results/episode_manifest.csv` | PASS |
 | split | val sessions | 9 | 9.0 | `results/episode_manifest.csv` | PASS |
 | split | non-quarantined sessions | 13 | 13.0 | `results/episode_manifest.csv` | PASS |
-| calib | left fx px | 789 | 788.9385 | `calibration/fisheye_left_v002.yaml` | PASS |
-| calib | right fx px | 791 | 791.2815 | `calibration/fisheye_right_v003.yaml` | PASS |
-| calib | left cam-IMU offset ms | 30.2 | 30.17 | `calibration/camera_imu_left_v001.yaml` | PASS |
-| calib | right cam-IMU offset ms | 32.8 | 32.77 | `calibration/camera_imu_right_v002.yaml` | PASS |
-| calib | left reprojection mean px | 6.0 | 6.0454 | `calibration/kalibr/calib_left-results-imucam.txt` | PASS |
-| calib | right reprojection mean px | 5.6 | 5.641 | `calibration/kalibr/calib_right-results-imucam.txt` | PASS |
-| calib | cam->TCP ty mm | 55.3 | 55.3 | `calibration/camera_tcp/handumi_camera_tcp_v2.yaml` | PASS |
-| calib | cam->TCP tz mm | 122.5 | 122.5 | `calibration/camera_tcp/handumi_camera_tcp_v2.yaml` | PASS |
-| calib | jaw aperture mm | 67.5 | 67.5 | `pipeline/grip/correct_grip.py` | PASS |
-| calib | jaw aperture +/- mm | 5 | 5.0 | `pipeline/grip/correct_grip.py` | PASS |
+| calib | left fx px | 789 | 788.9385 | `configs/dataset_calibration/fisheye_left_v002.yaml` | PASS |
+| calib | right fx px | 791 | 791.2815 | `configs/dataset_calibration/fisheye_right_v003.yaml` | PASS |
+| calib | left cam-IMU offset ms | 30.2 | 30.17 | `configs/dataset_calibration/camera_imu_left_v001.yaml` | PASS |
+| calib | right cam-IMU offset ms | 32.8 | 32.77 | `configs/dataset_calibration/camera_imu_right_v002.yaml` | PASS |
+| calib | left reprojection mean px | 6.0 | 6.0454 | `configs/dataset_calibration/kalibr/calib_left-results-imucam.txt` | PASS |
+| calib | right reprojection mean px | 5.6 | 5.641 | `configs/dataset_calibration/kalibr/calib_right-results-imucam.txt` | PASS |
+| calib | cam->TCP ty mm | 55.3 | 55.3 | `configs/dataset_calibration/camera_tcp/handumi_camera_tcp_v2.yaml` | PASS |
+| calib | cam->TCP tz mm | 122.5 | 122.5 | `configs/dataset_calibration/camera_tcp/handumi_camera_tcp_v2.yaml` | PASS |
+| calib | jaw aperture mm | 67.5 | 67.5 | `src/rebot_prep/grip/correct_grip.py` | PASS |
+| calib | jaw aperture +/- mm | 5 | 5.0 | `src/rebot_prep/grip/correct_grip.py` | PASS |
 | pose | held-out tracks | 10 | 10.0 | `results/pose_benchmark/cp6_ss1_5080.log` | PASS |
 | pose | IMU-VI scale err p50 % | 4.6 | 4.6 | `results/pose_benchmark/cp6_ss1_5080.log` | PASS |
 | pose | IMU-VI scale err p90 % | 17.0 | 17.0 | `results/pose_benchmark/cp6_ss1_5080.log` | PASS |
@@ -86,8 +86,8 @@
 | train | warm-up steps | 1000 | 1000.0 | `results/model_config/{config,train_config}.json` | PASS |
 | train | final lr | 2.5e-06 | 0.0 | `results/model_config/{config,train_config}.json` | PASS |
 | train | save every | 10000 | 10000.0 | `results/model_config/{config,train_config}.json` | PASS |
-| train | aux C weight | 2.0 | 2.0 | `training/c8old_chain.sh` | PASS |
-| train | FK D weight | 20 | 20.0 | `training/c8old_chain.sh` | PASS |
+| train | aux C weight | 2.0 | 2.0 | `scripts/training/c8old/c8old_chain.sh` | PASS |
+| train | FK D weight | 20 | 20.0 | `scripts/training/c8old/c8old_chain.sh` | PASS |
 | eval | samples | 399 | 399.0 | `results/eval/300000.json` | PASS |
 | eval | arm-samples | 798 | 798.0 | `results/eval/300000.json` | PASS |
 | eval | moving arm-samples | 187 | 187.0 | `results/eval/300000.json` | PASS |
@@ -559,19 +559,19 @@ hand | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
 | v41_hw | report: CH343, 1\,Mbaud, servo id 1 | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
 | v41_hw | evidence: servo id 1 on our units | True | True | `hardware/README.md` | PASS |
 | v41_hw | report: runs at 200\,Hz | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
-| v41_hw | evidence: the firmware runs it at 200 Hz | True | True | `collection/README.md` | PASS |
+| v41_hw | evidence: the firmware runs it at 200 Hz | True | True | `docs/collector/README.md` | PASS |
 | v41_hw | report: 40-byte payload, CRC-16 | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
-| v41_hw | evidence: ### type 0x01 IMU (len = 40) | True | True | `collection/firmware/teensy_imu/PROTOCOL.md` | PASS |
+| v41_hw | evidence: ### type 0x01 IMU (len = 40) | True | True | `firmware/teensy_imu/PROTOCOL.md` | PASS |
 | v41_hw | report: (417, 531, 501\,px) | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
-| v41_hw | evidence: fx by session (417/531/501) | True | True | `collection/README.md` | PASS |
+| v41_hw | evidence: fx by session (417/531/501) | True | True | `docs/collector/README.md` | PASS |
 | v41_hw | report: (\texttt{UC684}) | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
-| v41_hw | evidence: same USB serial `UC684` | True | True | `collection/README.md` | PASS |
+| v41_hw | evidence: same USB serial `UC684` | True | True | `docs/collector/README.md` | PASS |
 | v41_hw | report: 85.7$\times$21.4$\times$42.1\mm, printed | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
 | v41_hw | evidence: 85.7 × 21.4 × 42.1 mm | True | True | `hardware/mods/README.md` | PASS |
 | v41_hw | report: depth 21.4$\to$31.4\mm | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
 | v41_hw | evidence: depth 21.4 → 31.4 mm | True | True | `hardware/mods/README.md` | PASS |
 | v41_hw | report: 12.2\,V supply | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
-| v41_hw | evidence: 12.2 V supply against the 12.0 V EEPROM  | True | True | `collection/README.md` | PASS |
+| v41_hw | evidence: 12.2 V supply against the 12.0 V EEPROM  | True | True | `docs/collector/README.md` | PASS |
 | attribution | part1_stacking_en_full.tex: The capture device is \emph{not our desi | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
 | attribution | part1_stacking_en_full.tex: designed and published by BrikHMP18 (not | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
 | attribution | part1_stacking_en.tex: by BrikHMP18 (not our design) | True | True | `report/part1_stacking_en.tex` | PASS |
