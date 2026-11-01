@@ -39,7 +39,7 @@ def _usable(py):
 def _same(a, b, path="$"):
     if isinstance(a, float) or isinstance(b, float):
         if isinstance(a, (int, float)) and isinstance(b, (int, float)) and not isinstance(a, bool) and not isinstance(b, bool):
-            assert math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-12), f"{path}: {a} != {b}"
+            assert (math.isnan(a) and math.isnan(b)) or math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-12), f"{path}: {a} != {b}"
             return
     if isinstance(a, dict) and isinstance(b, dict):
         assert sorted(a) == sorted(b), f"{path}: keys {sorted(set(a) ^ set(b))}"
