@@ -68,13 +68,13 @@ Moves were done with `git mv`, so `git log --follow <new path>` shows each file'
 
 | item | what it was | replaced by |
 |---|---|---|
-| `src/ego_collector/` | V0 AprilTag-glove egocentric collector | `src/handumi_collector/` (the `ego_collector.camera` layer is still imported) |
+| `ego_collector` (shared `egocentric` package since 2026-11-01) | V0 AprilTag-glove egocentric collector | `handumi_collector` (the `ego_collector.camera` layer is still imported) |
 | `src/rebot_prep/pseudo_joint/`, `src/rebot_prep/census/c8_phase3.py` | Gen-1 joint-space (pseudo-joint) retargeting | Cartesian CART20 conversion in `src/ego_cart20/` (report v3) |
 | `src/rebot_prep/retarget/` v2-K / v2-Kr | multi-seed kinematic retargeting variants | v2-TR (primary) and the frozen hybrid master, same folder |
 | `legacy/c8old_dataset_v1/` (was `scripts/rebot/dataset/`) | C-old v1 dataset builder | `scripts/rebot/dataset_v2/` (C-old v2, final, frozen) |
 | `scripts/training/c8old/`, `scripts/rebot/eval/c8old/` | Gen-1 trainer (`train_bi.py` + `humanik_delta.py`), C-old chain and offline evaluator | Gen-2 REL-only training in `src/training/relonly/` |
 | `legacy/loaders/` (was `scripts/rebot/loaders/legacy/`) | earlier per-run checkpoint loaders | `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` |
-| `src/ego_teleop/` | wearable teleoperation research | not replaced; experimental, not deployed |
+| `ego_teleop` (shared `egocentric` package since 2026-11-01) | wearable teleoperation research | not replaced; experimental, not deployed |
 
 ## Laundry / garment material moved out (2026-11-01)
 
@@ -91,3 +91,29 @@ and is owned by [egocentric-garment-manipulation](https://github.com/physical-ai
 | `umi_laundry_MANIFEST.md`, `umi_robot_parity_MANIFEST.md` | provenance records of the two folders above |
 
 The MANIFEST files kept in this folder still mention these paths; they are verbatim records.
+
+## Shared package `egocentric` (2026-11-01)
+
+`handumi_collector`, `ego_collector`, `ego_teleop` and `umi` were also used, as a partial copy, by
+[egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation). They now live once
+in the shared package [`egocentric`](https://github.com/physical-ai-vla/egocentric) (v0.1.0), which both repositories install (`pyproject.toml`:
+`egocentric @ git+https://github.com/physical-ai-vla/egocentric@v0.1.0`). Import names are unchanged.
+
+| removed from this repository | now in `egocentric` |
+|---|---|
+| `src/handumi_collector/`, `src/ego_collector/`, `src/ego_teleop/`, `src/umi/` | `src/` (same names) |
+| `tests/collector/`, `tests/experimental/teleop/`, `tests/experimental/v0/` | `tests/` (same paths) |
+| `scripts/mast3r_live_server.py` | `scripts/` (loaded by the `ego_teleop` tests) |
+
+Kept here: the guides (`docs/collector/`, `docs/experimental/`), `configs/`, `assets/`, `firmware/`, `upstream/` and every
+data record. The shared package holds byte-identical copies of the configs and assets its code reads by default. The
+shared package took the newer revision of four `ego_teleop` / `ego_collector` files from the garment copy and added six
+modules that only that copy had; its `docs/provenance.md` lists every difference and how it was resolved. Notable for this
+repository: `ego_teleop.robot.rebot_client`'s default joint limits are now the MIT bridge's clip range (used by the
+live-robot tools `hud_robot` and `m0_eef_jog` when no limits are given). No reported number depends on these packages'
+changed files (`analysis/verify_claims.py`: 736 claims, 0 failed, before and after).
+
+Import smoke test (`tests/test_imports.py`) of the 143 modules left under `src/`, with the shared package on the path
+(ok / skip / fail): `~/ego_collector/.venv` (3.11) 88 / 15 / 40, `~/xvla-mac` (3.12) 89 / 8 / 46. No remaining module
+changed status; the 230 moved modules are tested in `egocentric`, and `handumi_collector.tools.metric_qa` left the
+known-failures list with its package. `tests/cart20`: 40 passed before and after.

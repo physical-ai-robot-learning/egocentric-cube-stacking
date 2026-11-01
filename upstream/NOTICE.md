@@ -28,7 +28,7 @@ Hardware: the STL meshes in `hardware/print/{left,right,tips}/stl/` are the upst
 so all coordinates are positive. The geometry is unchanged. The 3MF plate projects were generated from them by
 Beyond Honeycomb (2026-08-26).
 
-Code under `collector/` and `experimental/` (the `handumi_collector`, `ego_teleop` and `ego_collector` packages) is original work and is not derived from HandUMI source. `experimental/assets/aero_hand_open/` carries its own NOTICE (TetherIA aero-hand-open, Apache-2.0).
+Code under `collector/` and `experimental/` (the `handumi_collector`, `ego_teleop` and `ego_collector` packages) is original work and is not derived from HandUMI source. Since 2026-11-01 these packages, and `src/umi/` below, are in the shared package [`egocentric`](https://github.com/physical-ai-vla/egocentric), which this repository installs. `experimental/assets/aero_hand_open/` carries its own NOTICE (TetherIA aero-hand-open, Apache-2.0).
 
 `src/umi/common/pose_util.py` provides the `umi.common.pose_util` API of the Universal Manipulation Interface
 (real-stanford/universal_manipulation_interface, MIT License, Copyright (c) 2023 Columbia Artificial Intelligence and
