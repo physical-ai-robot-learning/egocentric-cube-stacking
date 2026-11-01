@@ -80,3 +80,20 @@ Bambu slicer `result.json`, and neither was exported. Our print package (`../har
 - `LICENSE-handumi-hw-apache-2.0.txt` is a verbatim copy of `handumi-hw/LICENSE` (Apache-2.0, Copyright 2026
   BrikHMP18). The two files differ only in their appendix and notices.
 - `NOTICE.md` is our statement of modifications, as required by Apache-2.0 §4(b).
+
+## Universal Manipulation Interface (`umi.common.pose_util`) → `src/umi/`
+
+Several modules (`rebot_prep.pseudo_joint`, `training.umi76`, `rebot_deploy.infer_core_v4`, `scripts/rebot/eval/rel16_audit`)
+import `umi.common.pose_util`, the pose / rot6d helpers of the Universal Manipulation Interface
+(<https://github.com/real-stanford/universal_manipulation_interface>, MIT, `LICENSE-umi-mit.txt`; upstream `main` was at
+`d095ba9590df789df5189eea5ee7e431689038a6` when checked on 2026-11-01). They used to find it in a checkout outside the
+repository (`~/holobrain-mac-model/umi_pkg`, later removed). It is now vendored so a clean clone resolves the import:
+
+| vendored file | copied from | md5 |
+|---|---|---|
+| `src/umi/__init__.py`, `src/umi/common/__init__.py` | `~/softfold_infer/rebot/umi/{,common/}__init__.py` (empty) | `d41d8cd98f00b204e9800998ecf8427e` |
+| `src/umi/common/pose_util.py` | `~/softfold_infer/rebot/umi/common/pose_util.py` (unchanged) | `63731316f6b46e0958326817f9df5748` |
+
+As its own docstring says, this `pose_util.py` is a minimal stand-in written on 2026-10-08 with the same functions and
+conventions as UMI's file (pose = xyz + rotvec; rot6d = the first two **rows** of R; Gram–Schmidt back to R), not a
+verbatim copy of it. The UMI MIT licence is included because the API and conventions follow UMI.

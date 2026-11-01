@@ -29,3 +29,7 @@ so all coordinates are positive. The geometry is unchanged. The 3MF plate projec
 Beyond Honeycomb (2026-08-26).
 
 Code under `collector/` and `experimental/` (the `handumi_collector`, `ego_teleop` and `ego_collector` packages) is original work and is not derived from HandUMI source. `experimental/assets/aero_hand_open/` carries its own NOTICE (TetherIA aero-hand-open, Apache-2.0).
+
+`src/umi/common/pose_util.py` provides the `umi.common.pose_util` API of the Universal Manipulation Interface
+(real-stanford/universal_manipulation_interface, MIT License, Copyright (c) 2023 Columbia Artificial Intelligence and
+Robotics Lab; full text in `upstream/LICENSE-umi-mit.txt`). See `upstream/README.md` for its source and md5.
