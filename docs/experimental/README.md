@@ -2,7 +2,7 @@
 
 > **Location (restructure of 2026-11-01).** This file was `experimental/README.md`. Paths in it are relative to that old folder: `ego_collector/`, `ego_teleop/` → `src/<same name>/` (`visual_teleop/` moved to [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation) on 2026-11-01); `configs/`, `assets/`, `scripts/` → the repository-root folders of the same name; `tests/` → `tests/experimental/`; `docs/ego_teleop/` → `docs/experimental/ego_teleop/`; `../collector` (= the old `collection/` folder) → `src/handumi_collector/` + root `configs/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
 >
-> **Shared package (2026-11-01).** `ego_collector` and `ego_teleop`, their tests (`tests/experimental/{teleop,v0}`) and `scripts/mast3r_live_server.py` now live once in the shared package [`physical-ai-robot-learning`](https://github.com/physical-ai-vla/physical-ai-robot-learning) (v0.2.0), which this repository's `pyproject.toml` installs; import names are unchanged. The notes and runbooks here stay in this repository.
+> **Shared package (2026-11-01).** `ego_collector` and `ego_teleop`, their tests (`tests/experimental/{teleop,v0}`) and `scripts/mast3r_live_server.py` now live once in the shared package [`robot-learning`](https://github.com/physical-ai-vla/robot-learning) (v0.2.1), which this repository's `pyproject.toml` installs; import names are unchanged. The notes and runbooks here stay in this repository.
 
 This folder holds research code that is **not** part of the production HandUMI → reBot path. It is kept for its
 results and because parts of it are reused elsewhere. Source: `~/ego_collector` (branch `orbbec-rgbd`, HEAD `12db478`,

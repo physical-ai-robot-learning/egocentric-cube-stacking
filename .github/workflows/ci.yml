@@ -1,7 +1,7 @@
 # Checks that need no hardware, GPU, recorded data or private checkpoints. Only subsets that pass on a clean
 # Python 3.12 install are run:
 #   - tests/collector, tests/experimental: moved with handumi_collector / ego_collector / ego_teleop to the shared package
-#     egocentric (github.com/physical-ai-vla/physical-ai-robot-learning), whose CI runs them; it is installed here through pyproject.toml.
+#     egocentric (github.com/physical-ai-vla/robot-learning), whose CI runs them; it is installed here through pyproject.toml.
 #   - tests/test_imports.py (import smoke of every src/ module) is not run: its known-failure list was measured on macOS
 #     with the project venvs (docs/code_structure.md); run it locally.
 name: ci
