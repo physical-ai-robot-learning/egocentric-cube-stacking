@@ -23,7 +23,7 @@ jobs:
         run: python -m compileall -q -x '/\.git/' .
       - name: Claims check (every number in the report and README)
         run: |
-          pip install pyyaml
+          pip install pyyaml numpy
           python analysis/verify_claims.py
       - name: Install
         run: pip install -e ".[collector,experimental,dev]" rosbags
