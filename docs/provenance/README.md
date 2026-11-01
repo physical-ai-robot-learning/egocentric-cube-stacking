@@ -42,7 +42,7 @@ This table maps those paths to the current ones.
 | `pipeline/mast3r_pose/*.sh` | `scripts/rebot/mast3r/` |
 | `pipeline/{census,grip,pseudo_joint}/` | `src/rebot_prep/{census,grip,pseudo_joint}/` |
 | `pipeline/retarget_v2/` (incl. `contracts/`, `chains/`) | `src/rebot_prep/retarget/` |
-| `pipeline/dataset/`, `pipeline/dataset_v2/` | `scripts/rebot/dataset/`, `scripts/rebot/dataset_v2/` |
+| `pipeline/dataset/`, `pipeline/dataset_v2/` | `legacy/c8old_dataset_v1/` (was `scripts/rebot/dataset/` until the 2026-11-01 second pass), `scripts/rebot/dataset_v2/` |
 | `pipeline/export/` | `scripts/rebot/c8/` |
 | `pipeline/umi_laundry/` | `scripts/rebot/laundry/` (README → `docs/laundry/`); moved to garment on 2026-11-01 (below) |
 | `pipeline/umi_robot_parity/` | `scripts/rebot/parity/` (README → `docs/parity/`); moved to garment on 2026-11-01 (below) |
@@ -59,7 +59,8 @@ This table maps those paths to the current ones.
 | `hra/hra_red/`, `hra/hra_a100/` | `scripts/rebot/hra/hra_red/`, `scripts/rebot/hra/hra_a100/` |
 | `hra/README.md` | `docs/hra/README.md` |
 | `*/MANIFEST.md` (9 files) | `docs/provenance/` (this folder) |
-| `analysis/`, `report/`, `results/`, `sample_data/`, `hardware/`, `upstream/`, `docs/*.md`, `docs/media/` | unchanged |
+| `analysis/`, `report/`, `results/`, `sample_data/`, `hardware/`, `upstream/`, `docs/*.md` | unchanged |
+| `docs/media/` | `media/` (2026-11-01, second pass: same top-level `media/` as egocentric-garment-manipulation; the v5 report PDFs/LaTeX still print the old path) |
 
 Moves were done with `git mv`, so `git log --follow <new path>` shows each file's history.
 
@@ -70,9 +71,9 @@ Moves were done with `git mv`, so `git log --follow <new path>` shows each file'
 | `src/ego_collector/` | V0 AprilTag-glove egocentric collector | `src/handumi_collector/` (the `ego_collector.camera` layer is still imported) |
 | `src/rebot_prep/pseudo_joint/`, `src/rebot_prep/census/c8_phase3.py` | Gen-1 joint-space (pseudo-joint) retargeting | Cartesian CART20 conversion in `src/ego_cart20/` (report v3) |
 | `src/rebot_prep/retarget/` v2-K / v2-Kr | multi-seed kinematic retargeting variants | v2-TR (primary) and the frozen hybrid master, same folder |
-| `scripts/rebot/dataset/` | C-old v1 dataset builder | `scripts/rebot/dataset_v2/` (C-old v2, final, frozen) |
+| `legacy/c8old_dataset_v1/` (was `scripts/rebot/dataset/`) | C-old v1 dataset builder | `scripts/rebot/dataset_v2/` (C-old v2, final, frozen) |
 | `scripts/training/c8old/`, `scripts/rebot/eval/c8old/` | Gen-1 trainer (`train_bi.py` + `humanik_delta.py`), C-old chain and offline evaluator | Gen-2 REL-only training in `src/training/relonly/` |
-| `scripts/rebot/loaders/legacy/` | earlier per-run checkpoint loaders | `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` |
+| `legacy/loaders/` (was `scripts/rebot/loaders/legacy/`) | earlier per-run checkpoint loaders | `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` |
 | `src/ego_teleop/` | wearable teleoperation research | not replaced; experimental, not deployed |
 
 ## Laundry / garment material moved out (2026-11-01)

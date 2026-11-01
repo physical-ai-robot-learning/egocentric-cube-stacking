@@ -13,7 +13,7 @@ Part of **[egocentric](https://github.com/physical-ai-vla/egocentric)** — the 
 **Hardware:** HandUMI is **BrikHMP18's open-source design** ([murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw)), **not ours**
 ([details](#hardware-source-handumi-is-not-our-design))
 
-![Three human demonstrations, head camera, 2x speed](docs/media/demo_three_orders.gif)
+![Three human demonstrations, head camera, 2x speed](media/demo_three_orders.gif)
 
 ## Overview
 
@@ -183,7 +183,7 @@ upstream [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw)
 
 ### Demonstration videos
 
-![Three human demonstrations, head camera, 2x speed](docs/media/demo_three_orders.gif)
+![Three human demonstrations, head camera, 2x speed](media/demo_three_orders.gif)
 
 Head-camera view of three recorded human demonstrations (2x speed). Left to right: RBP (train), PRB (train),
 BPR (held-out validation episode). Full-length videos (640x480, 30 fps, 23 s, no audio):
@@ -199,9 +199,9 @@ trace. Details in [MASt3R-SLAM trajectory videos](#mast3r-slam-trajectory-videos
 
 | Video | Take | Metric scale |
 |---|---|---|
-| [hrl80_000035_wrist.mp4](docs/media/mast3r_trajectories/hrl80_000035_wrist.mp4) | HRL80 bimanual stacking, PRB, 33 s | IMU-VI |
-| [hrl80_000055_wrist.mp4](docs/media/mast3r_trajectories/hrl80_000055_wrist.mp4) | HRL80 bimanual stacking, RBP, 33 s | IMU-VI |
-| [hrl80_000060_wrist.mp4](docs/media/mast3r_trajectories/hrl80_000060_wrist.mp4) | HRL80 bimanual stacking, PBR, 33 s | IMU-VI |
+| [hrl80_000035_wrist.mp4](media/mast3r_trajectories/hrl80_000035_wrist.mp4) | HRL80 bimanual stacking, PRB, 33 s | IMU-VI |
+| [hrl80_000055_wrist.mp4](media/mast3r_trajectories/hrl80_000055_wrist.mp4) | HRL80 bimanual stacking, RBP, 33 s | IMU-VI |
+| [hrl80_000060_wrist.mp4](media/mast3r_trajectories/hrl80_000060_wrist.mp4) | HRL80 bimanual stacking, PBR, 33 s | IMU-VI |
 
 These are human demonstrations recorded with the hand-worn rig, not robot rollouts. Wrist-camera videos are not
 published (see [Sample data](#sample-data)).
@@ -394,8 +394,8 @@ trajectories (z up, each arm's origin at its start, current tool axes drawn) wit
 both grippers below (1 = open). Click a preview for the MP4 (960×540).
 
 <table>
-<tr><td align="center" width="50%"><a href="docs/media/mast3r_trajectories/hrl80_000035_wrist.mp4"><img src="docs/media/mast3r_trajectories/preview/hrl80_000035_wrist.gif" width="100%" alt="hrl80_000035"></a><br><sub>HRL80 stacking, order PRB (33 s, shown 3×)</sub></td><td align="center" width="50%"><a href="docs/media/mast3r_trajectories/hrl80_000055_wrist.mp4"><img src="docs/media/mast3r_trajectories/preview/hrl80_000055_wrist.gif" width="100%" alt="hrl80_000055"></a><br><sub>HRL80 stacking, order RBP (33 s, shown 3×)</sub></td></tr>
-<tr><td align="center" width="50%"><a href="docs/media/mast3r_trajectories/hrl80_000060_wrist.mp4"><img src="docs/media/mast3r_trajectories/preview/hrl80_000060_wrist.gif" width="100%" alt="hrl80_000060"></a><br><sub>HRL80 stacking, order PBR (33 s, shown 3×)</sub></td><td></td></tr>
+<tr><td align="center" width="50%"><a href="media/mast3r_trajectories/hrl80_000035_wrist.mp4"><img src="media/mast3r_trajectories/preview/hrl80_000035_wrist.gif" width="100%" alt="hrl80_000035"></a><br><sub>HRL80 stacking, order PRB (33 s, shown 3×)</sub></td><td align="center" width="50%"><a href="media/mast3r_trajectories/hrl80_000055_wrist.mp4"><img src="media/mast3r_trajectories/preview/hrl80_000055_wrist.gif" width="100%" alt="hrl80_000055"></a><br><sub>HRL80 stacking, order RBP (33 s, shown 3×)</sub></td></tr>
+<tr><td align="center" width="50%"><a href="media/mast3r_trajectories/hrl80_000060_wrist.mp4"><img src="media/mast3r_trajectories/preview/hrl80_000060_wrist.gif" width="100%" alt="hrl80_000060"></a><br><sub>HRL80 stacking, order PBR (33 s, shown 3×)</sub></td><td></td></tr>
 </table>
 
 Renderer: `analysis/v3/viz_mast3r_episode.py`.
@@ -507,10 +507,10 @@ here, lives in [egocentric-garment-manipulation](https://github.com/physical-ai-
 |---|---|
 | Gen-2 Cartesian CART20 / RELCART20 data (`src/ego_cart20/`, report v3+) | Gen-1 pseudo-joint retargeting (`src/rebot_prep/pseudo_joint/`, `census/c8_phase3.py`) |
 | retarget v2-TR + frozen hybrid master (`src/rebot_prep/retarget/`) | v1 single-anchor retarget; v2-K / v2-Kr variants |
-| C-old v2 dataset builders (`scripts/rebot/dataset_v2/`) | C-old v1 builder (`scripts/rebot/dataset/`) |
+| C-old v2 dataset builders (`scripts/rebot/dataset_v2/`) | C-old v1 builder (`legacy/c8old_dataset_v1/`) |
 | REL-only X-VLA training (`src/training/relonly/`) | Gen-1 trainer and chain (`scripts/training/c8old/`, `scripts/rebot/eval/c8old/`) |
 | `src/handumi_collector/` | V0 AprilTag collector `src/ego_collector/` (camera layer still used) |
-| `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` | `scripts/rebot/loaders/legacy/` |
+| `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` | `legacy/loaders/` |
 | one technical report `report/report_{en,ko}` (v5) | split reports `report/part*`, `report/methods_*`, `report/archive/` |
 
 `src/ego_teleop/` is experimental (not deployed). Laundry / garment material (formerly `scripts/rebot/laundry/`,
@@ -589,7 +589,7 @@ the deployment/inference client (`infer_core_v4`) used by the diagnostics, and t
 | `src/rebot_prep/grip/` | Gripper width from raw jaw ticks (aperture 0.0675 m): `extract_grip.py`, `correct_grip.py`, `c8_grip.py` |
 | `src/rebot_prep/census/` | Census and gates: `c8_census_pre.py` (sensor/sync), `c8_phase3.py` (pose -> metric TCP -> pseudo-q, 65-frame segments), collision, gravity-sign and regression checks |
 | `src/rebot_prep/pseudo_joint/` | Retarget + continuity IK core (`pseudo_joint_pipeline.py`), state layout, input-quality gate, IK wrapper `eef_kin.py` |
-| `scripts/rebot/dataset/` | Segment rows -> LeRobot v3 dataset (`c8old_build_dataset.py`, `write_stage.py`), post-build and gripper-semantics gates |
+| `legacy/c8old_dataset_v1/` | Segment rows -> LeRobot v3 dataset (`c8old_build_dataset.py`, `write_stage.py`), post-build and gripper-semantics gates |
 | `scripts/training/c8old/`, `src/training/robot/` | `train_bi.py` (LeRobot X-VLA entry point with install hooks), `humanik_delta.py` (Δq target, EEF aux and FK losses), `c8old_chain.sh` (smoke -> 300k pretrain -> integrity -> robot fine-tune), `c8old_launch.sh`, and `robot/` (reBot URDF, numpy/torch FK) |
 | `scripts/rebot/eval/c8old/` | Offline checkpoint evaluator (`c8old_mac_eval.py`), frame cache and checkpoint selection |
 | `results/` | `episode_manifest.csv` (349 episodes: session, order, time, domain, funnel outcome, split), `model_config/` (X-VLA `config.json`, `train_config.json`), `pose_benchmark/`, census/funnel JSONs, domain manifest, quarantine list, gripper census, split index, run provenance/summary, per-checkpoint eval JSONs (`eval/`, `eval_gated/`) and `selection.json` |

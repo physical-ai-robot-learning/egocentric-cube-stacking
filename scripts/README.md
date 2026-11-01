@@ -17,7 +17,7 @@ python scripts/charuco_calibrate.py ...          # flat tools: calibration, came
 python scripts/robotlike_offline_check.py ...
 python scripts/umi_export_orbslam.py <episode> <side> <out>
 scripts/rebot/mast3r/c8_run_5080.sh <side list> <out dir>
-python scripts/rebot/dataset/c8old_build_dataset.py gate|rows|write
+python legacy/c8old_dataset_v1/c8old_build_dataset.py gate|rows|write
 scripts/training/c8old/c8old_chain.sh            # Gen-1 C-old chain (4090)
 ```
 
@@ -27,13 +27,13 @@ scripts/training/c8old/c8old_chain.sh            # Gen-1 C-old chain (4090)
   (ChArUco, table frame, exposure), robot-like protocol checks, HandUMI RGB-D body tracking (parked), `provenance.py`
 - `rebot/c8/` — episode export for the C8 pipeline (`c8_export*.sh`, `umi_export_orbslam.py` copy)
 - `rebot/mast3r/` — MASt3R-SLAM run scripts for the GPU nodes
-- `rebot/dataset/` — Gen-1 C-old dataset builder and gates (superseded by `rebot/dataset_v2/`)
+- Gen-1 C-old v1 dataset builder: moved to [`legacy/c8old_dataset_v1/`](../legacy/c8old_dataset_v1/) (superseded by `rebot/dataset_v2/`)
 - `rebot/dataset_v2/` — C-old v2 (TR / hybrid / HRL80) builders and validators
 - `rebot/eval/rel16_audit/` — Gen-2 checkpoint audits and gate watchers; `rebot/eval/c8old/` — Gen-1 offline evaluator
 - `rebot/hra/` — single-arm approach (HRA) pipeline: `hra_red/`, `hra_a100/` (see `docs/hra/README.md`)
 - The laundry / garment material that used to sit here (`rebot/laundry/`, `rebot/parity/`, `umi_teleop_eval/`) lives in
   [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation) since 2026-11-01.
-- `rebot/loaders/` — checkpoint → UI loaders and auto-swappers; `rebot/loaders/legacy/` = earlier per-run loaders (superseded)
+- `rebot/loaders/` — checkpoint → UI loaders and auto-swappers; earlier per-run loaders are in [`legacy/loaders/`](../legacy/loaders/) (superseded)
 - `training/node4090/`, `training/node5090/` — node launchers; `training/hra_node/`, `training/mac_chains/`, `training/ego_cart20/` — wrappers and Mac-side chains;
   `training/archivers/` — checkpoint archivers; `training/c8old/` — Gen-1 trainer, patches and the C-old ladder (superseded by `src/training/relonly`)
 

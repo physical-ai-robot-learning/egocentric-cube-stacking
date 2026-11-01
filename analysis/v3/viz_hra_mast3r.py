@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""HRA_red right-wrist MASt3R-SLAM trajectory video, in the style of docs/media/mast3r_trajectories/*_gravity_up.mp4.
+"""HRA_red right-wrist MASt3R-SLAM trajectory video, in the style of media/mast3r_trajectories/*_gravity_up.mp4.
 
 Left: head camera + right wrist fisheye (left wrist: none on this rig).  Right: the right wrist path in METRES -- the SLAM
 trajectory scaled by the cube-PnP metric scale (the IMU-VI scale is shown for comparison only) -- gravity-aligned (z = up,
 from the accelerometer during the start still window, camera<-IMU from the export's IMU.T_b_c1), origin = start, with a
 camera triad at the current frame.  Bottom: wrist-to-cube distance from PnP (metric, independent of SLAM) and wrist speed.
 
-usage: viz_hra_mast3r.py <episode number e.g. 000150> [...] [--out docs/media/mast3r_trajectories] [--runs DIR]
+usage: viz_hra_mast3r.py <episode number e.g. 000150> [...] [--out media/mast3r_trajectories] [--runs DIR]
 """
 import argparse, json, pathlib, re, sys
 import numpy as np
@@ -111,6 +111,6 @@ def render(ep, runs, out_dir):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("episodes", nargs="+")
-    ap.add_argument("--out", type=pathlib.Path, default=pathlib.Path("docs/media/mast3r_trajectories")); ap.add_argument("--runs", type=pathlib.Path, default=H / "c8/robotlike/runs_viz")
+    ap.add_argument("--out", type=pathlib.Path, default=pathlib.Path("media/mast3r_trajectories")); ap.add_argument("--runs", type=pathlib.Path, default=H / "c8/robotlike/runs_viz")
     a = ap.parse_args(); a.out.mkdir(parents=True, exist_ok=True)
     for e in a.episodes: render(e, a.runs, a.out)
