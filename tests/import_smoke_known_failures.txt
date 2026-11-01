@@ -8,11 +8,9 @@ ego_cart20.scripts.validate_dataset  # IndexError
 ego_cart20.scripts.validate_dataset_softfold  # IndexError
 handumi_collector.tools.metric_qa  # IndexError
 mast3r_pose.cp6_scale  # FileNotFoundError
-rebot_deploy.infer_core_v4  # SyntaxError
 rebot_deploy.learned_ik.build_lik0_data  # ValueError
 rebot_deploy.learned_ik.eval_ik_backends  # ModuleNotFoundError
 rebot_deploy.learned_ik.train_lik0  # SystemExit
-rebot_deploy.mac_v4_smoke_ui  # ModuleNotFoundError
 rebot_prep.census.c8_census_pre  # FileNotFoundError
 rebot_prep.census.c8_g1_gravity_sign  # FileNotFoundError
 rebot_prep.census.c8_phase3  # FileNotFoundError

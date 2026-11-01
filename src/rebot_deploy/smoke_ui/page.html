@@ -1,0 +1,249 @@
+<!doctype html><html><head><meta charset=utf-8><title>v4 smoke</title><style>
+body{font-family:-apple-system,sans-serif;margin:18px;background:#111;color:#eee}
+button{font-size:15px;padding:9px 14px;margin:3px;border-radius:7px;border:1px solid #444;background:#222;color:#eee}
+button.big{font-size:19px;padding:14px 22px}
+#estop{background:#a11;border-color:#f55;font-weight:700}
+.on{background:#2a5;border-color:#6d9}
+table{border-collapse:collapse;margin-top:10px}td,th{border:1px solid #444;padding:5px 9px;font-size:13px}
+pre{background:#181818;padding:10px;border-radius:6px;font-size:12px;max-height:230px;overflow:auto}
+img{width:220px;border:1px solid #333;border-radius:5px}
+</style></head><body>
+<div id=hra style="display:none;background:#7a1010;color:#fff;font:bold 15px monospace;padding:8px 12px;margin:0 0 8px;border-radius:6px"></div>
+<div style="margin:0 0 8px;color:#fc9">HRA 출발 자세: 손목 <input id=hrapitch value=35 style="width:3em">° 아래, 높이 <input id=hradz value=0 style="width:3em"> mm
+  <button class=big onclick="hrastart()">HRA 출발 자세로 이동</button> <span id=hrainfo style="font-size:12px"></span>
+  <span style="font-size:11px;color:#aaa">(학습 166개 시작 자세 p50 36°; 이동 후 큐브를 그리퍼 앞 5 cm·안쪽 15-20 cm에 놓고 RUN)</span>
+  <br><b>UMI 출발 자세</b>: <select id=spose><option value="">umi_start_pose.json</option></select> 오른쪽 <input id=soR value=0 style="width:3em"> 뒤 <input id=soB value=0 style="width:3em"> 아래 <input id=soD value=0 style="width:3em"> mm <span style="font-size:11px;color:#aaa">(로봇 손목 카메라 화면 기준, 음수 = 반대)</span>
+  <button class=big onclick="umistart(false)">UMI 출발 자세로 이동</button>
+  <button class=big style="background:#2a6" onclick="umistart(true)">UMI 출발 자세 → RESET ANCHOR → RUN loop</button> <span id=umiinfo style="font-size:12px"></span>
+  <br><b>손목 영상 확대</b> (모델 입력만, f'=s·f, C922 주점 기준): s <input id=wzoom value=1.00 style="width:4em">
+  <button onclick="setwz()">적용</button> <button onclick="wsnap()">손목 사진 저장</button> <span id=wzinfo style="font-size:12px"></span>
+  <br><b>큐브 크기 정지</b> (오른손 C922 원본, 빨간 큐브 √면적 px ≥ 값이면 RUN 정지, 0 = 끔): <input id=cstop value=0 style="width:4em"> px
+  <label><input type=checkbox id=cfollow checked> 따라가기(작아지면 재시작)</label>
+  <button onclick="setcs()">적용</button> <button onclick="getcs()">지금 큐브 크기</button> <span id=csinfo style="font-size:12px"></span>
+  <img id=wzimg style="width:112px;vertical-align:middle;display:none"></div>
+<h2>reBot real-robot smoke <span id=model style="font-size:13px;color:#9ad">loading model…</span></h2>
+<div id=modelbar style="font-size:13px;margin:-6px 0 8px 0;padding:4px 8px;border-radius:4px;background:#122;color:#9ad"></div>
+<div id=sent style="font-size:12px;margin:0 0 8px 0;padding:4px 8px;border-radius:4px;background:#121;color:#9d9;font-family:ui-monospace,monospace"></div>
+<div>
+  <button id=estop class=big onclick="post('/estop')">E-STOP</button>
+  <button onclick="post('/clear_estop')">clear estop</button>
+  <button onclick="post('/reenable')">reenable</button>
+  <button onclick="post('/connect')">connect</button>
+  <button onclick="post('/rest')">REST</button>
+  <button onclick="post('/train_start')">TRAIN START pose</button>
+  <button onclick="post('/gripper_mode/predict')">gripper: PREDICT</button>
+  <button onclick="post('/gripper_mode/hold')">gripper: HOLD</button>
+</div>
+<div style="margin-top:6px;font-size:12px;color:#888">gripper zero (jaw closed should read ~0):
+  L <button onclick="gz('left','release')">1 release</button><button onclick="gz('left','set')">2 set zero</button>
+  &nbsp; R <button onclick="gz('right','release')">1 release</button><button onclick="gz('right','set')">2 set zero</button>
+</div>
+<div style="margin-top:10px" id=tasks></div>
+<div style="margin-top:8px">
+  <span style="font-size:12px;color:#888">safety: arm
+  <button onclick="post('/arm/left')">L</button><button onclick="post('/arm/right')">R</button>
+  <button onclick="post('/arm/both')">both</button></span>
+  &nbsp;|&nbsp;
+  <button onclick="post('/observe_only')">DRY RUN (no motion)</button>
+  <button class=big onclick="post('/prompt_sweep')">PROMPT SWEEP (no motion)</button>
+</div>
+<div style="margin-top:8px">
+  clamp: <button onclick="post('/clamp/3/1')">3mm/1&deg;</button>
+  <button onclick="post('/clamp/10/2')">10mm/2&deg;</button>
+  <button onclick="post('/clamp/25/4')">25mm/4&deg;</button>
+  &nbsp;steps: <button onclick="post('/steps/1')">1</button>
+  <button onclick="post('/steps/4')">4</button>
+  <button onclick="post('/steps/8')">8</button>
+  <button class=big onclick="post('/step')">MOVE 1 CHUNK</button>
+  <button class=big onclick="post('/goto_train_start')">GO TO TRAIN START</button>
+  <button onclick="post('/reset_anchor')">RESET ANCHOR</button>
+  <button class=big id=run onclick="post('/run')">RUN loop</button>
+  <button class=big onclick="post('/stop')">STOP</button>
+  <button class=big onclick="post('/prompt_ab')">PROMPT A/B (6 prompts)</button>
+  <button class=big onclick="post('/prompt_ab?fixed=RBP')">CONTROL (RBP x6)</button>
+  <button onclick="post('/prompt_ab_stop')">A/B stop</button>
+  <button class=big onclick="post('/profile?n=20')">LATENCY PROFILE (20)</button>
+</div>
+<div style="margin-top:8px">
+  <span style="color:#9ad">replay episode</span>
+  <button id=ep0 onclick="setep(0)">ep0</button><button id=ep7 onclick="setep(7)">ep7</button>
+  <button id=ep42 onclick="setep(42)">ep42</button>
+  &nbsp;anchor <button id=ancsource onclick="setanc('source')">source</button>
+  <button id=ancmeasured onclick="setanc('measured')">measured</button>
+  &nbsp;
+  <button class=big onclick="rep('joints')">REPLAY joints (IK 없음)</button>
+  <button class=big onclick="rep('source')">REPLAY teleop TCP→IK</button>
+  <button class=big onclick="rep('delta')">REPLAY delta</button>
+  <button class=big onclick="rep('umi')">REPLAY relative(umi)</button>
+  <button onclick="post('/replay_stop')">replay stop</button>
+  <span id=repcfg style="color:#9ad;font-size:12px"></span>
+  <button class=big onclick="post('/denoise_ablation')">DENOISE ABLATION (no motion)</button>
+</div>
+<div style="margin-top:8px;color:#9fc">mode: k <select id=ctk><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option><option>16</option></select>
+  &nbsp;<label><input type=checkbox id=ctstream> streaming</label>
+  speed <input id=ctspeed type=number min=5 max=100 step=5 style="width:4em">%
+  &nbsp;<label><input type=checkbox id=ctinterp> 보간 (bridge, 모든 UI 공통)</label>
+  &nbsp;<label><input type=checkbox id=ctpass> pass-through</label>
+  dwell <input id=ctdwell type=number min=0.05 max=5 step=0.05 style="width:4em">s
+  &nbsp;<label><input type=checkbox id=ctrtc> RTC</label>
+  &nbsp;<label style="color:#6f6"><input type=checkbox id=ctplan> PLAN(연속)</label>
+  &nbsp;<label><input type=checkbox id=ctprefetch> prefetch (step: 마지막 waypoint 동안 다음 추론)</label>
+  &nbsp;<label><input type=checkbox id=ctremote> 5090 추론</label>
+  &nbsp;IK <select id=ctik><option>pink</option><option>numerical</option><option>learned</option><option>curobo</option></select>
+  <button class=big onclick="ctapply()">APPLY MODE</button> <span id=ctinfo style="font-size:12px"></span></div>
+<div style="margin-top:8px;color:#fc9">checkpoint: <select id=cksel></select>
+  <button class=big onclick="ckload()">LOAD CKPT</button> <span id=ckinfo style="font-size:12px"></span></div>
+<div id=trialbox style="margin-top:8px;padding:8px 10px;border:1px solid #365;border-radius:6px;background:#0f1a14;color:#cfe">
+  <b>TRIAL 기록</b> (시도 1회 끝날 때마다 저장)
+  &nbsp;layout <input id=trlayout placeholder="예: L1" style="width:5em">
+  &nbsp;실제로 쌓은 순서 <select id=trorder><option value="">-</option><option>RBP</option><option>RPB</option><option>BRP</option><option>BPR</option><option>PRB</option><option>PBR</option></select>
+  &nbsp;쌓은 단수 <button id=trl0 onclick="trlv(0)">0</button><button id=trl1 onclick="trlv(1)">1</button><button id=trl2 onclick="trlv(2)">2</button><button id=trl3 onclick="trlv(3)">3</button>
+  &nbsp;<label><input type=checkbox id=trwrong> 색 틀림</label>
+  &nbsp;실패 이유 <select id=trreason><option value="">-</option><option value=grasp_miss>잡기 실패</option><option value=wrong_cube>다른 큐브/색</option>
+    <option value=drop>운반 중 떨어뜨림</option><option value=place_off>놓는 위치 어긋남</option><option value=knocked_over>쌓은 것 무너뜨림</option>
+    <option value=stall>멈춤/진행 안 함</option><option value=ik_limit>IK/한계 정지</option><option value=collision>충돌</option><option value=estop>E-STOP</option><option value=other>기타</option></select>
+  &nbsp;메모 <input id=trnote style="width:14em">
+  <button class=big onclick="trsave()">SAVE TRIAL</button>
+  <div id=trsum style="font-size:12px;margin-top:4px;color:#9d9;font-family:ui-monospace,monospace"></div>
+</div>
+<div id=clamp style="margin-top:6px;color:#9ad;font-size:13px"></div>
+<table id=t><thead><tr><th>arm</th><th>pred mm</th><th>pred deg</th><th>cmd mm</th><th>cmd deg</th>
+<th>actual mm</th><th>actual deg</th><th>dir cos</th><th>FK err mm</th></tr></thead><tbody></tbody></table>
+<pre id=out>press DRY RUN first</pre>
+<div style="display:flex;gap:10px;margin-top:8px">
+  <div><div>middle → global</div><img src=/frame/middle id=m></div>
+  <div><div>left wrist</div><img src=/frame/left id=l></div>
+  <div><div>right wrist</div><img src=/frame/right id=r></div>
+</div>
+<script>
+const REP={ep:0,anchor:'source'};
+function rep(m){post('/replay?mode='+m+'&ep='+REP.ep+'&anchor='+REP.anchor);}
+// update the DOM in the click itself: routing this through refresh() made the buttons look dead whenever the
+// /status fetch was slow or failed, because the label never got as far as being rewritten
+function repui(){
+  [0,7,42].forEach(function(e){var b=document.getElementById('ep'+e); if(b) b.className=(REP.ep===e)?'on':'';});
+  ['source','measured'].forEach(function(a){var b=document.getElementById('anc'+a);
+    if(b) b.className=(REP.anchor===a)?'on':'';});
+  var rc=document.getElementById('repcfg'); if(rc) rc.textContent='  → ep'+REP.ep+' / anchor='+REP.anchor;
+}
+function setep(e){REP.ep=e;repui();}
+function setanc(a){REP.anchor=a;repui();}
+const TASKS=[["RBP", "Stack the red cube on the bottom, blue cube in the middle, and purple cube on the top, on the plate."], ["RPB", "Stack the red cube on the bottom, purple cube in the middle, and blue cube on the top, on the plate."], ["BRP", "Stack the blue cube on the bottom, red cube in the middle, and purple cube on the top, on the plate."], ["BPR", "Stack the blue cube on the bottom, purple cube in the middle, and red cube on the top, on the plate."], ["PRB", "Stack the purple cube on the bottom, red cube in the middle, and blue cube on the top, on the plate."], ["PBR", "Stack the purple cube on the bottom, blue cube in the middle, and red cube on the top, on the plate."]];
+document.getElementById('tasks').innerHTML = 'prompt: ' + TASKS.map(function(t,i){
+  return '<button id=tk' + i + ' title="' + t[1] + '">' + t[0] + '</button>';}).join('');
+TASKS.forEach(function(t,i){
+  document.getElementById('tk'+i).addEventListener('click', function(){ post('/task/'+i); });});
+async function post(p){document.getElementById('out').textContent='...';
+  const r=await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  const j=await r.json(); document.getElementById('out').textContent=JSON.stringify(j,null,1); refresh();}
+async function gz(arm,stage){
+  if(stage==='set' && !confirm(arm+' jaw fully closed by hand? store zero here')) return;
+  await post('/gripper_zero/'+arm+'/'+stage);
+  if(stage==='release') alert(arm+' jaw torque OFF: close the jaw fully by hand, then press "2 set zero"');}
+async function refresh(){const j=await (await fetch('/status')).json();
+  {const b=document.getElementById('hra'); if(j.hra){b.style.display='block'; b.textContent='MODE: '+j.hra.mode+'  |  TASK: '+j.hra.task+'  |  LEFT ARM: '+j.hra.left+'  |  JAWS: '+j.hra.jaws+'  |  stop: '+(j.hra.max_run_s>0?j.hra.max_run_s+' s or ':'no time limit, ')+'<'+j.hra.still_mm+' mm x'+j.hra.still_n+'  |  travel '+j.hra.travel_mm+'/'+j.hra.max_travel_cap+' mm  cycle max '+j.hra.max_cycle_mm+'/'+j.hra.max_cycle_cap+' mm  |  IK '+j.hra.ik+'  |  gate refusals '+j.hra.gate_refusals+'  left dev '+j.hra.max_left_dev_rad+' rad'+(j.hra.last_pred_mm!=null?'  |  pred '+j.hra.last_pred_mm+' mm':'');} else b.style.display='none';}
+  if(j.model){
+    const m=j.model, off=(m.clamp && m.clamp.mm<=0);
+    document.getElementById('model').textContent = m.ckpt+'  ·  '+m.action_mode
+      +(m.action_mode==='umi' ? ' (current-anchor: T_now @ A[k])' : ' (sequential delta)');
+    // the decode and the clamp change what reaches the arm, so they are stated on the page, not buried in
+    // /status: two checkpoints that differ only in these have looked identical here before
+    document.getElementById('modelbar').innerHTML =
+      '<b>ckpt</b> '+m.ckpt+' &nbsp; <b>decode</b> '+m.action_mode
+      +' &nbsp; <b>clamp</b> '+(off?'<span style="color:#f96">OFF</span>':(m.clamp.mm+' mm / '+m.clamp.deg+'&deg; per step'))
+      +' &nbsp; <b>exec k</b> '+m.exec_k+' &nbsp; <b>n_action</b> '+m.n_action
+      +' &nbsp; <b>gripper</b> '+m.gripper+' &nbsp; <b>dtype</b> '+m.dtype;
+  }
+  document.getElementById('clamp').textContent='arm='+j.ui.arm+'   '+(j.last&&j.last.clamp?j.last.clamp:'')
+    +'   presses='+j.ui.presses+'   running='+j.ui.running+'   cycles='+j.ui.cycles
+    +'   travel='+JSON.stringify((j.ui.travel_mm||[]).map(x=>Math.round(x)))+'mm'
+    +(j.ui.stop_reason?('   ['+j.ui.stop_reason+']'):'')
+    +(j.replay?('   REPLAY '+j.replay.mode+' '+j.replay.done+'/'+j.replay.total_queries
+                +(j.replay.running?' running':' stopped')):'')
+    +'   robot='+JSON.stringify(j.robot);
+  document.getElementById('run').className = j.ui.running ? 'big on' : 'big';
+  repui();
+  TASKS.forEach((t,i)=>{const b=document.getElementById('tk'+i); if(b) b.className = (t[0]===j.ui.task)?'on':'';});
+  if(j.sent){
+    const NM=['L_pan','L_lift','L_elbow','L_wflex','L_wyaw','L_wroll',
+              'R_pan','R_lift','R_elbow','R_wflex','R_wyaw','R_wroll'];
+    document.getElementById('sent').innerHTML =
+      '<b>last /execute_step</b> &nbsp; substep '+j.sent.substep+'/'+j.sent.of
+      + ' &nbsp; grip cmd L '+j.sent.grip_cmd[0]+' R '+j.sent.grip_cmd[1]+' <span style="color:#777">(0..45)</span><br>'
+      + NM.map(function(nm,i){return nm+' <b>'+j.sent.arm_deg[i].toFixed(1)+'</b>&deg;';}).join(' &nbsp; ');
+  }
+  const tb=document.querySelector('#t tbody'); tb.innerHTML='';
+  ((j.last&&j.last.rows)||[]).forEach(x=>{const tr=document.createElement('tr');
+    tr.innerHTML='<td>'+x.arm+'</td><td>'+x.pred_mm+'</td><td>'+x.pred_deg+'</td><td>'+x.cmd_mm+'</td><td>'
+      +x.cmd_deg+'</td><td>'+x.actual_mm+'</td><td>'+x.actual_deg+'</td><td>'+x.dir_cos+'</td><td>'+x.fkerr_mm+'</td>';
+    tb.appendChild(tr);});
+  ['m','l','r'].forEach((id,i)=>{const cam=['middle','left','right'][i];
+    document.getElementById(id).src='/frame/'+cam+'?t='+Date.now();});}
+async function cklist(){const j=await (await fetch('/ckpts')).json(); const el=document.getElementById('cksel');
+  const prev=el.value; el.innerHTML='<option value=auto>auto (newest)</option>'+j.steps.slice().reverse().map(s=>`<option value=${s}>${parseInt(s,10)/1000}k</option>`).join('');
+  el.value=prev||j.pinned||'auto'; if(!el.value) el.value='auto';
+  const rl=j.remote_url?(Array.isArray(j.remote_loaded)?j.remote_loaded.join(', '):j.remote_loaded):null;
+  document.getElementById('ckinfo').innerHTML=`<b style="font-size:15px;color:#6f6">▶ 실제 로드: ${j.serving_k}</b>`
+    +` | 선택(pinned): ${j.pinned?parseInt(j.pinned,10)/1000+'k':'auto'}`
+    +(j.loading?` | <b style="color:#ff6">⏳ ${parseInt(j.loading,10)/1000}k 로딩 중</b>`:'')
+    +(j.remote_url?` | 원격 ${j.remote_url.replace('http://','')}: ${rl}`:' | 추론 Mac')+` | ${j.run}`;}
+async function hrastart(){document.getElementById('hrainfo').textContent='이동 중...';
+  const j=await (await fetch(`/hra_start_pose?pitch=${document.getElementById('hrapitch').value}&dz_mm=${document.getElementById('hradz').value}`,{method:'POST'})).json();
+  document.getElementById('hrainfo').textContent=j.error?('실패: '+j.error):`완료: 손목 ${j.pitch_now_deg}° 아래, roll ${j.roll_now_deg}°, TCP ${j.tcp_mm_now} mm`;
+  document.getElementById('out').textContent=JSON.stringify(j,null,1);}
+function csmsg(j){return `정지 기준 ${j.stop_px} px (재시작 < ${j.resume_below_px} px, 따라가기 ${j.follow?'ON':'OFF'}${j.waiting?' · 대기 중':''}, 재시작 ${j.resumes}회) | 지금 큐브 ${j.cube_px_now} px`;}
+async function setcs(){const j=await (await fetch('/cube_stop?px='+document.getElementById('cstop').value+'&follow='+(document.getElementById('cfollow').checked?1:0),{method:'POST'})).json();
+  document.getElementById('csinfo').textContent=csmsg(j);}
+async function getcs(){const j=await (await fetch('/cube_stop')).json(); document.getElementById('csinfo').textContent=csmsg(j);}
+fetch('/cube_stop').then(r=>r.json()).then(j=>{document.getElementById('cstop').value=j.stop_px; document.getElementById('cfollow').checked=j.follow; document.getElementById('csinfo').textContent=csmsg(j);});
+async function setwz(){const j=await (await fetch('/wrist_zoom?s='+document.getElementById('wzoom').value,{method:'POST'})).json();
+  document.getElementById('wzinfo').textContent=j.error?('실패: '+j.error):('현재 확대 '+j.wrist_zoom.toFixed(2)+'x');}
+async function wsnap(){const j=await (await fetch('/wrist_snap',{method:'POST'})).json();
+  if(j.error){document.getElementById('wzinfo').textContent='실패: '+j.error;return;}
+  document.getElementById('wzinfo').textContent=`저장 (확대 ${j.zoom.toFixed(2)}x, TCP ${j.tcp_mm} mm)`; const im=document.getElementById('wzimg'); im.src='data:image/jpeg;base64,'+j.img; im.style.display='inline';}
+fetch('/wrist_zoom').then(r=>r.json()).then(j=>{if(j.wrist_zoom){document.getElementById('wzoom').value=j.wrist_zoom.toFixed(2); document.getElementById('wzinfo').textContent='현재 확대 '+j.wrist_zoom.toFixed(2)+'x';}});
+fetch('/start_poses').then(r=>r.json()).then(j=>{const sel=document.getElementById('spose'); (j.poses||[]).forEach(p=>{const o=document.createElement('option'); o.value=p.name; o.textContent=p.name.replace('.json','')+' ('+p.tcp_mm.join(', ')+' mm)'; sel.appendChild(o);});});
+const UMI_START='saved=1&steps=10';
+async function umistart(andRun){const el=document.getElementById('umiinfo'); el.textContent='UMI 출발 자세로 이동 중...';
+  const j=await (await fetch('/hra_start_pose?'+UMI_START+'&pose='+encodeURIComponent(document.getElementById('spose').value)+'&right_mm='+document.getElementById('soR').value+'&back_mm='+document.getElementById('soB').value+'&down_mm='+document.getElementById('soD').value,{method:'POST'})).json();
+  document.getElementById('out').textContent=JSON.stringify(j,null,1);
+  if(j.error){el.textContent='실패: '+j.error; return;}
+  el.textContent=`도착: TCP ${j.tcp_mm_now} mm, 손목 ${j.pitch_now_deg}°, roll ${j.roll_now_deg}°`;
+  if(andRun){await new Promise(r=>setTimeout(r,1000));
+    const ra=await (await fetch('/reset_anchor',{method:'POST'})).json(); el.textContent+=' → RESET ANCHOR';
+    const rr=await (await fetch('/run',{method:'POST'})).json(); el.textContent+=rr.error?(' → RUN 실패: '+rr.error):' → RUN loop';
+    document.getElementById('out').textContent=JSON.stringify({start:j,reset_anchor:ra,run:rr},null,1);}}
+async function ckload(){const v=document.getElementById('cksel').value;
+  const j=await (await fetch('/ckpt_select/'+v,{method:'POST'})).json(); document.getElementById('out').textContent=JSON.stringify(j,null,1);}
+cklist(); setInterval(cklist,5000);
+let CTINIT=false, CTSIG='';
+async function ctsync(force){const j=await (await fetch('/status')).json(); const c=j.model&&j.model.ctl; if(!c) return;
+  document.getElementById('ctinfo').textContent=`now: k ${c.k} | ${c.stream?'STREAM '+c.speed_pct+'%':'STEP'} | 보간 ${c.goal_interp?'ON':'OFF'} | RTC ${c.rtc?'ON'+(c.rtc_last?' (prev k'+(c.rtc_last.prev_idx+1)+', delay '+c.rtc_last.delay+', left '+c.rtc_last.leftover+')':''):'OFF'} | prefetch ${c.prefetch?'ON':'OFF'} | pass ${c.pass?'ON':'OFF'} dwell ${c.dwell_s}s | IK ${c.ik} | 추론 ${c.remote?'원격'+(c.remote_last&&c.remote_last.rt_ms?' '+c.remote_last.rt_ms+' ms':''):'Mac MPS'}`;
+  // [2026-10-03] re-sync the form whenever the SERVER state changes (UI restarted / another tab applied), not only on page load:
+  // a stale form + APPLY MODE silently turned 5090 inference off after a UI restart
+  const sig=JSON.stringify([c.k,c.stream,c.speed_pct,c.goal_interp,c.ik,c.remote,c.prefetch,c.rtc,c.pass,c.dwell_s]);
+  if(CTINIT&&!force&&sig===CTSIG) return; CTINIT=true; CTSIG=sig;
+  document.getElementById('ctk').value=String(c.k); document.getElementById('ctstream').checked=!!c.stream;
+  document.getElementById('ctspeed').value=c.speed_pct; document.getElementById('ctik').value=c.ik; document.getElementById('ctremote').checked=!!c.remote; document.getElementById('ctprefetch').checked=!!c.prefetch; document.getElementById('ctrtc').checked=!!c.rtc; document.getElementById('ctplan').checked=!!c.plan; document.getElementById('ctpass').checked=!!c.pass; document.getElementById('ctdwell').value=c.dwell_s; document.getElementById('ctinterp').checked=!!c.goal_interp;}
+async function ctapply(){const q=new URLSearchParams({k:document.getElementById('ctk').value,
+  stream:document.getElementById('ctstream').checked?'1':'0', speed:document.getElementById('ctspeed').value,
+  interp:document.getElementById('ctinterp').checked?'1':'0', remote:document.getElementById('ctremote').checked?'1':'0', prefetch:document.getElementById('ctprefetch').checked?'1':'0', rtc:document.getElementById('ctrtc').checked?'1':'0', plan:document.getElementById('ctplan').checked?'1':'0',
+  pass:document.getElementById('ctpass').checked?'1':'0', dwell:document.getElementById('ctdwell').value});
+  const j=await (await fetch('/mode?'+q,{method:'POST'})).json();
+  const k=await (await fetch('/ik/'+document.getElementById('ctik').value,{method:'POST'})).json();
+  document.getElementById('out').textContent=JSON.stringify({mode:j,ik:k},null,1); ctsync(true);}
+ctsync(true); setInterval(()=>ctsync(false),5000);
+repui(); setInterval(refresh,3000); refresh();
+
+var TR={lv:null};
+function trlv(v){TR.lv=v;[0,1,2,3].forEach(function(i){var b=document.getElementById('trl'+i); if(b) b.className=(i===v)?'on':'';});}
+async function trsum(){try{const j=await (await fetch('/trials')).json(); const c=(j.by_ckpt||[]).find(function(b){return b.ckpt===j.current_ckpt;});
+  document.getElementById('trsum').textContent='log '+j.log+' | 전체 '+j.n+'회 | 현재 ckpt '+(c?(c.n+'회, 3단 성공 '+c.success+' ('+Math.round(100*c.success/c.n)+'%), 단수 0/1/2/3 = '+c.levels.join('/')+', 색 틀림 '+c.wrong_color):'기록 없음');}catch(e){}}
+async function trsave(){if(TR.lv===null){alert('쌓은 단수(0-3)를 고르세요');return;}
+  const body={stack_level:TR.lv, wrong_color:document.getElementById('trwrong').checked, failure_reason:document.getElementById('trreason').value,
+    layout_id:document.getElementById('trlayout').value, order_executed:document.getElementById('trorder').value, note:document.getElementById('trnote').value};
+  const r=await (await fetch('/trial',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();
+  document.getElementById('out').textContent=JSON.stringify(r,null,1);
+  if(r.saved){trlv(null);document.getElementById('trwrong').checked=false;document.getElementById('trreason').value='';document.getElementById('trnote').value='';document.getElementById('trorder').value='';trsum();}}
+trsum();
+</script></body></html>
