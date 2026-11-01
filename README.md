@@ -129,7 +129,7 @@ Scripts that ran on GPU nodes or against data roots keep their original sibling 
 | Gen-2 action (CART20) | 16 future poses `inv(T(t)) @ T(t + k·UMI_DT)`, k = 1..16, `UMI_DT` = 3/59.94 s (50.05 ms), so 0.80 s; per arm `[xyz, rot6d, g]`, LEFT first, grippers at dims 9 and 19; model action `[16, 32]` = CART20 + 12 exact zeros (AUX12) | [`src/ego_cart20/config.py`](src/ego_cart20/config.py), [`docs/cart20/README.md`](docs/cart20/README.md) |
 | Gen-2 state (RELCART20) | each arm's pose relative to its task start, `[L pose9, R pose9, gL, gR]` (20-D); rows stored at 15 Hz | same |
 | rotation | rot6d = first two **rows** of R (UMI `mat_to_rot6d`); quaternions are wxyz | same |
-| gripper (ego labels) | continuous aperture, 0 = closed, 1 = open (aperture / 80 mm) | same |
+| gripper (ego labels) | continuous aperture, 0 = closed, 1 = open (aperture / 80 mm); source = the HandUMI **Feetech jaw servo encoder** for the cube-stacking data (`src/rebot_prep/grip/`), wrist video only while the servos were off (10-13 → 10-28), servo encoder again from 10-29 | same |
 | gripper (reBot raw) | raw 0 = CLOSED, −270 = OPEN; commands 0..45 with raw = −6·cmd | [`docs/OPERATIONS_NOTES.md`](docs/OPERATIONS_NOTES.md) |
 | Gen-1 action | Δq_pseudo chunk `q[t+5+i] − q[t]`, i = 0..29 (LEAD 5, 30 steps), on 65-frame segments | [`scripts/training/c8old/humanik_delta.py`](scripts/training/c8old/humanik_delta.py) |
 | frames | dataset TCP and the `eef_kin` FK TCP differ by R_y(90°); the IK TCP is `gripper_link` + 0.07 m along x | [`docs/OPERATIONS_NOTES.md`](docs/OPERATIONS_NOTES.md) |
@@ -487,10 +487,12 @@ Evidence: `results/v4/hra/` (validation losses, calibration files, table-aware r
 After the v5 report the work moved to T-shirt flattening for the laundry project. Summary in
 [`docs/UPDATE_2026-10-20.md`](docs/UPDATE_2026-10-20.md) ([한국어](docs/UPDATE_2026-10-20_ko.md)); the report itself is unchanged.
 
-- **Hardware:** jaw servos removed (10-13); red tape on the jaw tips; AprilTag rigs (200–202 / 210–212) per unit; XIAO
+- **Hardware:** jaw servos removed (10-13) — **reinstalled 10-29** as torque-off jaw encoders (laundry project; see
+  `physical-ai-vla/egocentric-laundry-folding`); red tape on the jaw tips (later removed); AprilTag rigs (200–202 / 210–212) per unit; XIAO
   nRF52840 wrist IMUs replace the Teensy ([`hardware/README.md`](hardware/README.md)).
 - **Gripper open/close from the wrist video:** red-tape tip distance per frame (`jaw_track.py`) → hysteresis binary
   (closed ≤ 200 px / open ≥ 260 px) in `src/ego_cart20/sources/jaw_visual.py`; 16/16 spot checks, corr 0.93 vs the servo.
+  Used only while the servos were off; from 10-29 the jaw label is the servo encoder again.
 - **UMIalign pose pipeline** ([`scripts/rebot/laundry/`](scripts/rebot/laundry/)): MASt3R restart_v1, Orbbec canonical
   tracker, smoother with corrected camera↔IMU rotation + fixed jaw-tip lever + AprilTag gate (TCP error p50 25–36 cm →
   38–59 mm), 65-episode corrected dataset. The fine-tune on it was stopped at ~11k steps; no result.
