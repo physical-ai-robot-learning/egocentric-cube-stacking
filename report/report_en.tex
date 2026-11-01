@@ -12,7 +12,7 @@
 \begin{document}
 \title{Egocentric Human Demonstrations\\for a Bimanual Robot\\[1mm]\Large From a Hand-Worn Gripper to Robot Policies}
 \author{\IEEEauthorblockN{Jeong Hwan Lee}
-\IEEEauthorblockA{Technical report, version 5, 12 October 2026 \quad alnrg2arg@gmail.com\\
+\IEEEauthorblockA{Technical report, version 5.1, 1 November 2026 \quad alnrg2arg@gmail.com\\
 Code, results and sample data are available on request.}}
 \maketitle
 
@@ -270,7 +270,7 @@ typical trajectories.
 \caption{MASt3R-SLAM wrist trajectories of an HRL80 stacking take (order PRB). Left: head camera and both wrist fisheye
 cameras. Right: trajectories gravity-aligned (z up), each arm's origin at its start pose, current tool axes drawn (x red,
 y green, z blue), metric scale from the IMU; below, both grippers (1 = open). Videos of three takes (PRB, RBP, PBR):
-\texttt{docs/media/mast3r\_trajectories/hrl80\_0000\{35,55,60\}\_wrist.mp4} in the repository.}
+\texttt{media/mast3r\_trajectories/hrl80\_0000\{35,55,60\}\_wrist.mp4} in the repository.}
 \label{fig:traj}
 \end{figure*}
 
@@ -951,17 +951,25 @@ generalization, and a benefit on disjoint robot data require the controlled expe
 
 \appendices
 \section{Code Map and Report History}\label{app:code}
-\textbf{Code map} (paths in the repository): collector and protocols \code{collection/} (\code{autoloop.py}, \code{recorder.py},
-\code{integrity.py}); hardware and IMU firmware \code{hardware/}, \code{collection/firmware/}; upstream licence, NOTICE and our patch
-\code{upstream/}; export and sync \code{pipeline/export/}, \code{pipeline/census/}; MASt3R-SLAM wrapper and scales
-\code{pipeline/mast3r_pose/}, \code{cart20/ego_cart20/cube_pnp.py}; Gen-1 \code{pipeline/pseudo_joint/}, \code{pipeline/retarget_v2/};
-Gen-2 \code{cart20/} (contract, pose filter, converter, validators); single arm \code{hra/}; training \code{training/}; evaluation and
-diagnostics \code{evaluation/}, \code{analysis/}; deployment \code{deploy/}; claim verification \code{analysis/verify_claims.py}.
+\textbf{Code map} (paths in the repository after the 1 November 2026 restructure; old-to-new map in
+\code{docs/provenance/README.md}): collector and protocols \code{src/handumi_collector/} (\code{collector/autoloop.py},
+\code{collector/recorder.py}, \code{collector/integrity.py}); hardware and IMU firmware \code{hardware/}, \code{firmware/}; upstream
+licence, NOTICE and our patch \code{upstream/}; export and sync \code{scripts/rebot/c8/}, \code{src/rebot_prep/census/}; MASt3R-SLAM
+wrapper and scales \code{src/mast3r_pose/}, \code{src/ego_cart20/cube_pnp.py}; Gen-1 \code{src/rebot_prep/pseudo_joint/},
+\code{src/rebot_prep/retarget/}; Gen-2 \code{src/ego_cart20/} (contract, pose filter, converter, validators); single arm
+\code{scripts/rebot/hra/}; training \code{src/training/}, \code{scripts/training/}; evaluation and diagnostics \code{scripts/rebot/eval/},
+\code{analysis/}; deployment \code{src/rebot_deploy/}; claim verification \code{analysis/verify_claims.py}.
+
+\textbf{Repository and follow-up.} The laundry and garment work that followed this project, recorded with the same hand-worn
+grippers, continues in its own repository, \texttt{egocentric-garment-manipulation}, and is not part of this report. Code shared by the
+egocentric projects lives in the \texttt{egocentric} package (\url{https://github.com/physical-ai-vla/egocentric}), the entry point to
+all of them.
 
 \textbf{Report history.} Version 2 (30 September 2026) covered Gen-1 stacking; version 3 (4 October) added Gen-2 and transfer
 diagnostics; version 4 (7 October) added the R30 ablation and split the work into Part I (stacking), Part II (approach) and a
-methods document; version 4.1 (12 October) added the hardware description. This version 5 merges them into one report without
-changing any result; the earlier documents remain in the repository.
+methods document; version 4.1 (12 October) added the hardware description. Version 5 (12 October) merged them into one report without
+changing any result; the earlier documents remain in the repository. This version 5.1 (1 November) only updates repository paths after
+the code restructure and adds the paragraph on the follow-up repository; no result changed.
 
 \begin{thebibliography}{99}\footnotesize
 \bibitem{chi2024umi} C.~Chi, Z.~Xu, C.~Pan, E.~Cousineau, B.~Burchfiel, S.~Feng, R.~Tedrake, and S.~Song, ``Universal manipulation interface: In-the-wild robot teaching without in-the-wild robots,'' in \emph{RSS}, 2024.

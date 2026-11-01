@@ -169,12 +169,12 @@ cd report && for f in part1_stacking_en part1_stacking_ko part2_approach_en part
 
 | Report | English | 한국어 | Full-length version |
 |---|---|---|---|
-| **Technical report (v5, one document, 15 pp)** | [`report/report_en.pdf`](report/report_en.pdf) | [`report/report_ko.pdf`](report/report_ko.pdf) | (is the full report) |
+| **Technical report (v5.1, one document, 15 pp; v5.1 = v5 with repository paths updated after the 11-01 restructure)** | [`report/report_en.pdf`](report/report_en.pdf) | [`report/report_ko.pdf`](report/report_ko.pdf) | (is the full report) |
 | Part I: three-cube stacking (bimanual), 4 pp | [`report/part1_stacking_en.pdf`](report/part1_stacking_en.pdf) | [`report/part1_stacking_ko.pdf`](report/part1_stacking_ko.pdf) | `report/archive/part1_stacking_{en,ko}_full.pdf` (11 pp, v4.1) |
 | Part II: single-arm approach to a cube, 2 pp | [`report/part2_approach_en.pdf`](report/part2_approach_en.pdf) | [`report/part2_approach_ko.pdf`](report/part2_approach_ko.pdf) | `report/archive/part2_approach_{en,ko}_full.pdf` (5 pp) |
 | Methods and pipeline (how every stage works), 6 pp | [`report/methods_en.pdf`](report/methods_en.pdf) | [`report/methods_ko.pdf`](report/methods_ko.pdf) | — |
 
-The v5 technical report is the main document. The earlier split documents remain: short versions in `report/`, full-length
+The v5.1 technical report is the main document. The earlier split documents remain: short versions in `report/`, full-length
 versions in `report/archive/`. LaTeX
 sources sit next to the PDFs; figures are rebuilt by `report/figures/make_figures*.py`, `analysis/v4_r30_ablation.py` and
 `analysis/v4_hra_summary.py`. The v3 single report is also in `report/archive/`. `analysis/verify_claims.py` also checks that every value required in the full-length reports appears in the v5 report.
@@ -308,7 +308,7 @@ every release are in [`docs/history.md`](docs/history.md):
 | REL-only X-VLA training (`src/training/relonly/`) | Gen-1 trainer and chain (`scripts/training/c8old/`, `scripts/rebot/eval/c8old/`) |
 | `src/handumi_collector/` | V0 AprilTag collector `src/ego_collector/` (camera layer still used) |
 | `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` | `legacy/loaders/` |
-| one technical report `report/report_{en,ko}` (v5) | split reports `report/part*`, `report/methods_*`, `report/archive/` |
+| one technical report `report/report_{en,ko}` (v5.1) | split reports `report/part*`, `report/methods_*`, `report/archive/` |
 
 `src/ego_teleop/` is experimental (not deployed). After the v5 report (2026-10-12) the HandUMI work moved to T-shirt
 flattening; that project, including the material formerly kept here (`scripts/rebot/laundry/`, `scripts/rebot/parity/`,

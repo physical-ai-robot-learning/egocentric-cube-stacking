@@ -13,7 +13,7 @@
 \begin{document}
 \title{로봇 양팔을 위한 에고센트릭 인간 시연:\\손 착용 그리퍼에서 로봇 정책까지}
 \author{\IEEEauthorblockN{Jeong Hwan Lee}
-\IEEEauthorblockA{기술 보고서, 버전 5, 2026년 10월 12일 \quad alnrg2arg@gmail.com\\ 코드, 결과, 샘플 데이터는 요청 시 제공합니다.}}
+\IEEEauthorblockA{기술 보고서, 버전 5.1, 2026년 11월 1일 \quad alnrg2arg@gmail.com\\ 코드, 결과, 샘플 데이터는 요청 시 제공합니다.}}
 \maketitle
 
 \begin{abstract}
@@ -250,7 +250,7 @@ T_{WC}(f) = T_{WK}^{\text{final}}(k)\,T_{WK}^{\text{track}}(k)^{-1}\,T_{WC}^{\te
 \caption{HRL80 쌓기 테이크(순서 PRB)의 MASt3R-SLAM 손목 궤적. 왼쪽: 헤드 카메라와 두 손목 어안 카메라. 오른쪽: 중력 정렬(z 위쪽)된
 궤적으로, 각 팔의 원점은 시작 자세이고 현재 공구 축을 표시(x 빨강, y 초록, z 파랑)하며 메트릭 스케일은 IMU에서 얻었다. 아래: 두
 그리퍼(1 = 열림). 세 테이크(PRB, RBP, PBR)의 영상은 저장소의
-\texttt{docs/media/mast3r\_trajectories/hrl80\_0000\{35,55,60\}\_wrist.mp4}에 있다.}
+\texttt{media/mast3r\_trajectories/hrl80\_0000\{35,55,60\}\_wrist.mp4}에 있다.}
 \label{fig:traj}
 \end{figure*}
 
@@ -888,16 +888,23 @@ R30에서 비교하여 쌓기가 처음 성공하는 스텝 및 데이터 예산
 
 \appendices
 \section{코드 맵과 보고서 이력}\label{app:code}
-\textbf{코드 맵}(저장소 내 경로): 수집기와 프로토콜 \code{collection/} (\code{autoloop.py}, \code{recorder.py},
-\code{integrity.py}); 하드웨어와 IMU 펌웨어 \code{hardware/}, \code{collection/firmware/}; 업스트림 라이선스, NOTICE, 우리의 패치
-\code{upstream/}; 내보내기와 동기화 \code{pipeline/export/}, \code{pipeline/census/}; MASt3R-SLAM 래퍼와 스케일
-\code{pipeline/mast3r_pose/}, \code{cart20/ego_cart20/cube_pnp.py}; Gen-1 \code{pipeline/pseudo_joint/}, \code{pipeline/retarget_v2/};
-Gen-2 \code{cart20/}(계약, 자세 필터, 변환기, 검증기); 단일 팔 \code{hra/}; 학습 \code{training/}; 평가와 진단 \code{evaluation/},
-\code{analysis/}; 배포 \code{deploy/}; 주장 검증 \code{analysis/verify_claims.py}.
+\textbf{코드 맵}(2026년 11월 1일 재구성 이후의 저장소 내 경로; 이전--현재 경로 대응은 \code{docs/provenance/README.md}):
+수집기와 프로토콜 \code{src/handumi_collector/} (\code{collector/autoloop.py}, \code{collector/recorder.py},
+\code{collector/integrity.py}); 하드웨어와 IMU 펌웨어 \code{hardware/}, \code{firmware/}; 업스트림 라이선스, NOTICE, 우리의 패치
+\code{upstream/}; 내보내기와 동기화 \code{scripts/rebot/c8/}, \code{src/rebot_prep/census/}; MASt3R-SLAM 래퍼와 스케일
+\code{src/mast3r_pose/}, \code{src/ego_cart20/cube_pnp.py}; Gen-1 \code{src/rebot_prep/pseudo_joint/}, \code{src/rebot_prep/retarget/};
+Gen-2 \code{src/ego_cart20/}(계약, 자세 필터, 변환기, 검증기); 단일 팔 \code{scripts/rebot/hra/}; 학습 \code{src/training/},
+\code{scripts/training/}; 평가와 진단 \code{scripts/rebot/eval/}, \code{analysis/}; 배포 \code{src/rebot_deploy/}; 주장 검증
+\code{analysis/verify_claims.py}.
+
+\textbf{저장소와 후속 작업.} 이 프로젝트에 이어 같은 손 착용 그리퍼로 진행한 세탁물·의류 작업은 별도 저장소
+\texttt{egocentric-garment-manipulation}에서 계속되며, 이 보고서에는 포함되지 않는다. 에고센트릭 프로젝트들이 공유하는 코드는
+\texttt{egocentric} 패키지(\url{https://github.com/physical-ai-vla/egocentric})에 있으며, 이 저장소가 모든 프로젝트의 진입점이다.
 
 \textbf{보고서 이력.} 버전 2(2026년 9월 30일)는 Gen-1 쌓기를 다루었고, 버전 3(10월 4일)은 Gen-2와 전이 진단을 추가하였으며, 버전
 4(10월 7일)는 R30 ablation을 추가하고 작업을 제I부(쌓기), 제II부(접근), 방법 문서로 나누었다. 버전 4.1(10월 12일)은 하드웨어 설명을
-추가하였다. 이번 버전 5는 어떤 결과도 바꾸지 않고 이들을 하나의 보고서로 합친 것이며, 이전 문서들은 저장소에 남아 있다.
+추가하였다. 버전 5(10월 12일)는 어떤 결과도 바꾸지 않고 이들을 하나의 보고서로 합쳤으며, 이전 문서들은 저장소에 남아 있다. 이번 버전 5.1(11월
+1일)은 코드 재구성 이후의 저장소 경로를 고치고 후속 저장소에 관한 단락을 추가한 것뿐이며, 어떤 결과도 바뀌지 않았다.
 
 \begin{thebibliography}{99}\footnotesize
 \bibitem{chi2024umi} C.~Chi, Z.~Xu, C.~Pan, E.~Cousineau, B.~Burchfiel, S.~Feng, R.~Tedrake, and S.~Song, ``Universal manipulation interface: In-the-wild robot teaching without in-the-wild robots,'' in \emph{RSS}, 2024.
