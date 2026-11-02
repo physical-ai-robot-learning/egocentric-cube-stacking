@@ -19,7 +19,7 @@ pytest tests/test_imports.py -q                           # every src/ module im
 |---|---|---|
 | `ego_cart20`, `mast3r_pose` | regular packages | absolute package imports only |
 | `ego_paths` | regular package | the machine-specific roots (next section) |
-| `handumi_collector`, `ego_collector`, `ego_teleop`, `umi` | from the shared package [`robot-learning`](https://github.com/physical-ai-vla/robot-learning) (v0.1.0, since 2026-11-01) | installed by `pyproject.toml`; import names unchanged. `umi` = `umi.common.pose_util` (UMI API stand-in, MIT; source and md5 in [`upstream/README.md`](../upstream/README.md)) |
+| `handumi_collector`, `ego_collector`, `ego_teleop`, `umi` | from the shared package [`handumi-common`](https://github.com/physical-ai-vla/handumi-common) (v0.1.0, since 2026-11-01) | installed by `pyproject.toml`; import names unchanged. `umi` = `umi.common.pose_util` (UMI API stand-in, MIT; source and md5 in [`upstream/README.md`](../upstream/README.md)) |
 | `rebot_prep.{census,grip,pseudo_joint,retarget}`, `training.{relonly,umi76,robot}`, `rebot_deploy.{learned_ik,robot_service}` | flat script bundles (no `__init__.py`) | ran as plain scripts from their own folder on the Mac or a GPU node; sibling imports now try the package-relative import first and fall back to the flat one, so both `python -m <pkg>.<mod>` and `python <file>.py` work |
 | `rebot_deploy` (`mac_v4_smoke_ui.py` + `smoke_ui/`, `infer_core_v4.py`, `v4_contract.py`, `pink_ik.py`, `eef_kin.py`) | regular package, also runs flat | `python src/rebot_deploy/mac_v4_smoke_ui.py` (its folder is `sys.path[0]`, as the loaders run it) and `python -m rebot_deploy.mac_v4_smoke_ui` both work: siblings are imported package-relative when `__package__` is set and flat otherwise, and the UI imports `infer_core_v4` once (`smoke_ui/ic.py`), so exactly one copy of the core is loaded either way (2026-11-01 UI split) |
 
@@ -41,7 +41,7 @@ environment variable:
 | `LAUNDRY_SYSTEM`, `LAUNDRY_DIT_DATASETS` | `~/laundry_system`, `~/laundry_dit_training/datasets` | `EGO_LAUNDRY_SYSTEM`, `EGO_LAUNDRY_DIT_DATASETS` |
 
 `REPO_ROOT` points at the checkout for an editable install or `PYTHONPATH=src` (no code relies on it for a wheel install).
-The `robot-learning` wheel ships the top-level `umi` package, which would shadow a separately installed UMI. The shared
+The `handumi-common` wheel ships the top-level `umi` package, which would shadow a separately installed UMI. The shared
 packages do not use `ego_paths` (it stays here); their three uses of it became `Path.home()` / `sys.path.insert` again.
 
 Code under `src/` no longer edits `sys.path` directly. Where it must load an **external** checkout that is not part of
@@ -82,8 +82,8 @@ Counts (same harness; "main" = `68dfbb5` without the laundry-era `visual_teleop`
 
 After the UI split (2026-11-01, 398 modules: + `rebot_deploy.smoke_ui` and its 22 modules, `rebot_deploy.v4_contract`): 3.11 343 / 16 / 39, 3.12 343 / 10 / 45; `rebot_deploy.infer_core_v4` and `rebot_deploy.mac_v4_smoke_ui` left the known-failures list.
 
-After the shared packages moved to `robot-learning` (then named `egocentric`, 2026-11-01) the test covers the 143 modules left under `src/`; the
-230 moved modules (236 with the six that only the garment copy had) are covered by the same test in `robot-learning`. Counts with the shared package installed: see
+After the shared packages moved to `handumi-common` (then named `egocentric`, 2026-11-01) the test covers the 143 modules left under `src/`; the
+230 moved modules (236 with the six that only the garment copy had) are covered by the same test in `handumi-common`. Counts with the shared package installed: see
 [`docs/provenance/README.md`](provenance/README.md#shared-package-egocentric-2026-11-01).
 
 ## Split candidates (not split: behaviour first)

@@ -1,8 +1,8 @@
 # Root project for the whole repository (src layout). Merges the former collection/pyproject.toml
 # ("handumi-collector") and experimental/pyproject.toml ("handumi-rebot-experimental"); the dependency
 # lists are the union of the two, unchanged. Install: `pip install -e ".[dev]"` (or `uv pip install -e ".[dev]"`).
-# handumi_collector, ego_collector, ego_teleop and umi come from the shared package `robot-learning` (since 2026-11-01;
-# https://github.com/physical-ai-vla/robot-learning); the extras below pass on to its extras of the same name.
+# handumi_collector, ego_collector, ego_teleop and umi come from the shared package `handumi-common` (since 2026-11-01;
+# https://github.com/physical-ai-vla/handumi-common); the extras below pass on to its extras of the same name.
 [project]
 name = "egocentric-cube-stacking"
 version = "0.1.0"
@@ -19,19 +19,19 @@ dependencies = [
     "pyyaml>=6.0",
     "matplotlib>=3.8",
     "tqdm>=4.66",
-    "robot-learning @ git+https://github.com/physical-ai-vla/robot-learning@v0.2.1",
+    "handumi-common @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0",
 ]
 
 [project.optional-dependencies]
-# HandUMI raw collector (handumi_collector, from robot-learning); was the core dependency list of collection/pyproject.toml
-collector = ["robot-learning[collector] @ git+https://github.com/physical-ai-vla/robot-learning@v0.2.1"]
-# experimental packages (ego_collector, ego_teleop, from robot-learning); was experimental/pyproject.toml
-experimental = ["robot-learning[experimental] @ git+https://github.com/physical-ai-vla/robot-learning@v0.2.1"]
-apriltag = ["robot-learning[apriltag] @ git+https://github.com/physical-ai-vla/robot-learning@v0.2.1"]
-viz = ["robot-learning[viz] @ git+https://github.com/physical-ai-vla/robot-learning@v0.2.1"]
+# HandUMI raw collector (handumi_collector, from handumi-common); was the core dependency list of collection/pyproject.toml
+collector = ["handumi-common[collector] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
+# experimental packages (ego_collector, ego_teleop, from handumi-common); was experimental/pyproject.toml
+experimental = ["handumi-common[experimental] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
+apriltag = ["handumi-common[apriltag] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
+viz = ["handumi-common[viz] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
 # Aero hand branch (ego_teleop/hand3d + retarget/aero_backends): dex_retargeting/DexPilot on the Aero URDF.
 # The head RGB-D camera additionally needs `pyorbbecsdk`, installed by hand.
-aero = ["robot-learning[aero] @ git+https://github.com/physical-ai-vla/robot-learning@v0.2.1"]
+aero = ["handumi-common[aero] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
 dev = ["pytest>=8.0"]
 
 [build-system]
@@ -39,7 +39,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.metadata]
-allow-direct-references = true   # the git dependency on robot-learning
+allow-direct-references = true   # the git dependency on handumi-common
 
 [tool.hatch.build.targets.wheel]
 packages = [

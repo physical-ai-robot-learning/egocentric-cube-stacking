@@ -20,7 +20,7 @@ pytest tests/test_ui_routes.py -q       # the reBot smoke UI vs its pre-split go
 The former `tests/experimental/vteleop` (tests of `visual_teleop`, which did not collect: `ImportError: gripper_cmd_from_g`) moved with
 `visual_teleop` to [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation) on 2026-11-01.
 The tests of `handumi_collector`, `ego_teleop` and `ego_collector` (`tests/collector`, `tests/experimental/{teleop,v0}`)
-moved with those packages to the shared package [`robot-learning`](https://github.com/physical-ai-vla/robot-learning) on 2026-11-01 (same results there: 224/12/1/3,
+moved with those packages to the shared package [`handumi-common`](https://github.com/physical-ai-vla/handumi-common) on 2026-11-01 (same results there: 224/12/1/3,
 297, 59).
 `src/training/relonly/test_rel16_relonly_lossmask.py` and `src/training/umi76/test_rel16_aux*.py` stay next to the code they test (node-side).
 
