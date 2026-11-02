@@ -33,4 +33,4 @@ python -m handumi_collector.tools.inspect_episode ...
 
 Copied from `~/ego_collector` on 2026-10-07 (HEAD `12db478` + working tree). Full guide: [`docs/collector/README.md`](../../docs/collector/README.md); file-level source table: [`docs/provenance/collection_MANIFEST.md`](../../docs/provenance/collection_MANIFEST.md). Tests: `tests/collector/`.
 
-The Python files of this package are shared with the garment project ([egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation), `src/handumi_collector/`): identical copies, see [`docs/provenance/README.md`](../../docs/provenance/README.md).
+The Python files of this package are shared with the garment project ([egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation), `src/handumi_collector/`): identical copies, see [`docs/provenance/README.md`](../../docs/provenance/README.md).

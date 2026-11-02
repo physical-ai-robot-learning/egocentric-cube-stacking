@@ -32,7 +32,7 @@ scripts/training/c8old/c8old_chain.sh            # Gen-1 C-old chain (4090)
 - `rebot/eval/rel16_audit/` — Gen-2 checkpoint audits and gate watchers; `rebot/eval/c8old/` — Gen-1 offline evaluator
 - `rebot/hra/` — single-arm approach (HRA) pipeline: `hra_red/`, `hra_a100/` (see `docs/hra/README.md`)
 - The laundry / garment material that used to sit here (`rebot/laundry/`, `rebot/parity/`, `umi_teleop_eval/`) lives in
-  [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation) since 2026-11-01.
+  [egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation) since 2026-11-01.
 - `rebot/loaders/` — checkpoint → UI loaders and auto-swappers; earlier per-run loaders are in [`legacy/loaders/`](../legacy/loaders/) (superseded)
 - `training/node4090/`, `training/node5090/` — node launchers; `training/hra_node/`, `training/mac_chains/`, `training/ego_cart20/` — wrappers and Mac-side chains;
   `training/archivers/` — checkpoint archivers; `training/c8old/` — Gen-1 trainer, patches and the C-old ladder (superseded by `src/training/relonly`)

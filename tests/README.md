@@ -21,7 +21,7 @@ pytest tests/test_ui_routes.py -q       # the reBot smoke UI vs its pre-split go
 ```
 
 The former `tests/experimental/vteleop` (tests of `visual_teleop`, which did not collect: `ImportError: gripper_cmd_from_g`) moved with
-`visual_teleop` to [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation) on 2026-11-01.
+`visual_teleop` to [egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation) on 2026-11-01.
 The tests of `handumi_collector`, `ego_teleop` and `ego_collector` (`tests/collector`, `tests/experimental/{teleop,v0}`)
 were briefly kept in a separate shared package (2026-11-01) and are back here since 2026-11-02, unchanged; the packages
 are identical copies shared with egocentric-garment-manipulation ([`docs/provenance/README.md`](../docs/provenance/README.md#shared-packages-2026-11-01)).

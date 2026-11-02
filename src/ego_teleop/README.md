@@ -29,4 +29,4 @@ python -m ego_teleop.tools.kalibr_export ... / kalibr_import ... / imu_allan ...
 
 See [`docs/experimental/README.md`](../../docs/experimental/README.md) and [`docs/provenance/experimental_MANIFEST.md`](../../docs/provenance/experimental_MANIFEST.md). Tests: `tests/experimental/teleop/`.
 
-The Python files of this package are shared with the garment project ([egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation), `src/ego_teleop/`): identical copies, see [`docs/provenance/README.md`](../../docs/provenance/README.md).
+The Python files of this package are shared with the garment project ([egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation), `src/ego_teleop/`): identical copies, see [`docs/provenance/README.md`](../../docs/provenance/README.md).

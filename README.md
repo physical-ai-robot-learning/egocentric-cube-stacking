@@ -5,10 +5,10 @@ stacking demonstrations → metric wrist poses → the robot's own relative-Cart
 on human data → fine-tuning on robot data → closed-loop execution on a reBot B601**, with every reported number
 re-checkable from this repository.
 
-[![CI](https://github.com/physical-ai-vla/egocentric-cube-stacking/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
+[![CI](https://github.com/physical-ai-robot-learning/egocentric-cube-stacking/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial-orange.svg)](LICENSE)
 
-Part of **[physical-ai-vla](https://github.com/physical-ai-vla)** — Physical AI / robot learning projects.
+Part of **[physical-ai-robot-learning](https://github.com/physical-ai-robot-learning)** — Physical AI / robot learning projects.
 
 **Technical report:** [`report/report_en.pdf`](report/report_en.pdf) ([한국어](report/report_ko.pdf)) ·
 **Claims check:** `python analysis/verify_claims.py` → `736 claims checked, 0 failed.` ([how](#results-and-how-to-verify)) ·
@@ -79,13 +79,13 @@ flowchart LR
 Each component has a README with its inputs/outputs, entry points and layout. The old → new path table for the
 2026-11-01 restructure is in [`docs/provenance/README.md`](docs/provenance/README.md). `handumi_collector`,
 `ego_collector`, `ego_teleop` and `umi` (the `umi.common.pose_util` stand-in) are shared with the garment project
-([egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation)): both repositories
+([egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation)): both repositories
 hold identical copies in `src/` (record and md5s: [`docs/provenance/README.md`](docs/provenance/README.md#shared-packages-2026-11-01)).
 
 ## Installation
 
 ```bash
-git clone https://github.com/physical-ai-vla/egocentric-cube-stacking.git
+git clone https://github.com/physical-ai-robot-learning/egocentric-cube-stacking.git
 cd egocentric-cube-stacking
 pip install -e ".[collector,experimental,dev]"     # or: uv pip install -e ".[collector,experimental,dev]"
 pytest tests/cart20 tests/experimental/teleop tests/experimental/v0 -q
@@ -182,7 +182,7 @@ All reports now cite the upstream HandUMI hardware repository.
 The Part I full version 4.1 (2026-10-12) adds Sec. III, *HandUMI hardware*: the upstream HandUMI project (murobotics-ai/handumi-hw by BrikHMP18,
 formerly robonet-ai; we built `e58de33` and forked handumi-sw at `33cc437`, the fork not used for the reported data), print and electronics, our deviations (no VR tracking, added Teensy 4.1 + ICM-42688-P wrist IMU, fixed-focus head
 C922), our three modified parts (Fig. 2, `report/figures/make_fig10_handumi_mods.py`) and device-identity pitfalls. The hardware
-files are in `hardware/` and in our build copy [`physical-ai-vla/umihand`](https://github.com/physical-ai-vla/umihand); the design itself is
+files are in `hardware/` and in our build copy [`physical-ai-robot-learning/umihand`](https://github.com/physical-ai-robot-learning/umihand); the design itself is
 upstream [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw).
 
 ### Demonstration videos
@@ -324,7 +324,7 @@ every release are in [`docs/history.md`](docs/history.md):
 
 `ego_teleop` (`src/ego_teleop/`) is experimental (not deployed). After the v5 report (2026-10-12) the HandUMI work moved to T-shirt
 flattening; that project, including the material formerly kept here (`scripts/rebot/laundry/`, `scripts/rebot/parity/`,
-`src/visual_teleop/`, `scripts/umi_teleop_eval/`), lives in [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation).
+`src/visual_teleop/`, `scripts/umi_teleop_eval/`), lives in [egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation).
 Item-by-item table: [`docs/provenance/README.md`](docs/provenance/README.md#superseded-items-kept-not-deleted).
 
 Conventions: lengths in the CART20 contract are metres (`*_m` fields in `src/ego_cart20/config.py`); frames, gripper signs and other
@@ -341,7 +341,7 @@ The capture device is **HandUMI**, an open-source hand-worn UMI variant designed
 |---|---|---|
 | Original hardware design | [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw) (first published as `robonet-ai/handumi-hw`, which now redirects) | the source of the design; we printed it from commit `e58de33` |
 | Original software | [murobotics-ai/handumi-sw](https://github.com/murobotics-ai/handumi-sw) (formerly `robonet-ai/handumi-sw`) | we forked it at `33cc437` for an early path; the reported data were not recorded with it |
-| Our build copy | [physical-ai-vla/umihand](https://github.com/physical-ai-vla/umihand) | the upstream print files and STEP/BOM as we used them, plus our own changes: 3 modified parts (`mods/`) and the wrist-IMU firmware |
+| Our build copy | [physical-ai-robot-learning/umihand](https://github.com/physical-ai-robot-learning/umihand) | the upstream print files and STEP/BOM as we used them, plus our own changes: 3 modified parts (`mods/`) and the wrist-IMU firmware |
 | In this repository | [`hardware/`](hardware/), [`upstream/`](upstream/) (licence, NOTICE, our patch) | same build copy; the technical report, Sec. III, describes the upstream design and what we changed |
 
 Our own contributions on the hardware side are limited to the three modified parts (connector, camera mount, servo
@@ -349,7 +349,7 @@ cover), the added Teensy 4.1 + ICM-42688-P wrist IMU that replaces upstream VR t
 
 **Gripper signal.** The cube-stacking gripper labels come from the HandUMI **Feetech jaw servo read as an encoder**
 (`src/rebot_prep/grip/`, aperture 0.0675 m). The servos were off from 10-13 to 10-28 (laundry project) and were reinstalled
-on 10-29 as torque-off jaw encoders ([egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation)).
+on 10-29 as torque-off jaw encoders ([egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation)).
 
 ### Running it
 
@@ -410,6 +410,6 @@ hardware and software are Apache-2.0 (`upstream/LICENSE-handumi-hw-apache-2.0.tx
   author = {Lee, Jeong Hwan},
   title  = {Egocentric Human Demonstrations for Robot Manipulation},
   year   = {2026},
-  url    = {https://github.com/physical-ai-vla/egocentric-cube-stacking}
+  url    = {https://github.com/physical-ai-robot-learning/egocentric-cube-stacking}
 }
 ```

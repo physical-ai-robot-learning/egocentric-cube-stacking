@@ -538,7 +538,7 @@ for f, need in (("report/archive/part1_stacking_en_full.tex", "The capture devic
 # The unified report merges Part I full, Part II full and Methods. Every string required above must be in it; where the
 # unified text words a value differently, the same value is required in its new wording.
 uni = " ".join(open(R / "report/report_en.tex").read().split())
-check("v5_unified", "repository is public: no 'available on request', URL present", "True", str("available on request" not in uni and "github.com/physical-ai-vla/egocentric-cube-stacking" in uni), "report/report_en.tex")
+check("v5_unified", "repository is public: no 'available on request', URL present", "True", str("available on request" not in uni and "github.com/physical-ai-robot-learning/egocentric-cube-stacking" in uni), "report/report_en.tex")
 REPHRASED = {
     "0.72 to 0.90": "0.72 at $k{=}1$ to 0.90", "3.55 of 6": "is 3.55 (chance 3.5", "36.5\\% to 56.1\\%": "v1 single anchor & 36.5\\%",
     "1.49$\\to$0.27": "from 1.49 to 0.27\\,rad", "5.6--14.7\\%": "$-14.7$ to $-5.6\\%$", "0.544 and 0.493": "& 0.544 & 0.493",

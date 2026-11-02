@@ -6,7 +6,7 @@ to one page. Numbers and wording are unchanged; only relative links were adjuste
 
 Path notes (2026-11-01): `docs/media/` is now [`media/`](../media/); the C-old v1 dataset builder (`scripts/rebot/dataset/`)
 and `scripts/rebot/loaders/legacy/` are now in [`legacy/`](../legacy/README.md). The laundry / garment material named below
-(`src/visual_teleop/`, `scripts/umi_teleop_eval/`, `scripts/rebot/laundry/`, `scripts/rebot/parity/`) moved to [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation).
+(`src/visual_teleop/`, `scripts/umi_teleop_eval/`, `scripts/rebot/laundry/`, `scripts/rebot/parity/`) moved to [egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation).
 Release tags: `report-v2-2026-09-30`, `report-v3-2026-10-04`.
 
 - [Update v2: multi-seed retargeting, robot-like collection, combined dataset](#update-v2-multi-seed-retargeting-robot-like-collection-combined-dataset)
@@ -248,7 +248,7 @@ The full working code of the project was added, so the repository is no longer o
 | `src/handumi_collector/`, `firmware/`, `configs/` | latest `handumi_collector` (robot_like_v1, HRA_red, HRA_A100 origin protocol, C922-view tile), firmware, calibration configs; imports `ego_collector.camera` |
 | `scripts/rebot/hra/` | single-arm approach pipeline: base-frame linking, robot camera and hand-eye calibration, robotcam v2 rendering, origin-plane scale, origin yaw, G frame, table-aware QP, held-out evaluation |
 | `src/rebot_deploy/`, `scripts/rebot/loaders/` | inference core, robot UI (PLAN/RTC/cube-size stop/trial logger), Pink IK, checkpoint loaders, MIT robot service |
-| `hardware/` | HandUMI print package (3MF/STL) from upstream [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw) (not our design), our modified parts (`mods/`) and build notes; our build copy is [physical-ai-vla/umihand](https://github.com/physical-ai-vla/umihand) |
+| `hardware/` | HandUMI print package (3MF/STL) from upstream [murobotics-ai/handumi-hw](https://github.com/murobotics-ai/handumi-hw) (not our design), our modified parts (`mods/`) and build notes; our build copy is [physical-ai-robot-learning/umihand](https://github.com/physical-ai-robot-learning/umihand) |
 | `src/ego_teleop/`, `src/ego_collector/`, `scripts/body_*`, `src/visual_teleop/`, `scripts/umi_teleop_eval/` | wearable teleop (VIO), AprilTag V0 collector, RGB-D body tracking, (10-20) `visual_teleop` HandUMI teleop and wrist-tracking evaluations |
 | `scripts/rebot/laundry/`, `scripts/rebot/parity/` | (10-20) UMIalign pose + visual-gripper pipeline; UMI TCP tag-rig calibration, Kalibr, UMI → reBot replay parity |
 | `upstream/` | patch and new files on top of murobotics-ai/handumi-sw (formerly robonet-ai; Apache-2.0) |
@@ -257,7 +257,7 @@ The full working code of the project was added, so the repository is no longer o
 
 Path placeholders that had been substituted for the public release were restored to the real working paths, and the reBot
 URDF and MASt3R build patch are included. Many scripts hard-code the roots they ran from; the MANIFEST files in `docs/provenance/` list
-the source of every file. Datasets and checkpoints are still not included. `physical-ai-vla/umihand` holds the hardware only (print files, modified parts,
+the source of every file. Datasets and checkpoints are still not included. `physical-ai-robot-learning/umihand` holds the hardware only (print files, modified parts,
 STEP, BOM, IMU firmware).
 
 #### Repository map additions (v4)

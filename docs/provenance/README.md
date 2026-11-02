@@ -79,7 +79,7 @@ Moves were done with `git mv`, so `git log --follow <new path>` shows each file'
 ## Laundry / garment material moved out (2026-11-01)
 
 Each project now lives in one repository. The laundry (T-shirt flattening) material that had been kept here was removed
-and is owned by [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation), which holds the same files or later versions of them:
+and is owned by [egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation), which holds the same files or later versions of them:
 
 | removed from this repository | what it was |
 |---|---|
@@ -95,7 +95,7 @@ The MANIFEST files kept in this folder still mention these paths; they are verba
 ## Shared packages (2026-11-01)
 
 `handumi_collector`, `ego_collector`, `ego_teleop` and `umi` are also used by
-[egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation), which until
+[egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation), which until
 2026-11-01 held a partial copy (34 files). Both repositories now hold the same full packages under `src/`: identical
 copies of every Python file (236 files; md5 list in [`shared_packages_MANIFEST.md`](shared_packages_MANIFEST.md)). Only
 the three package `README.md` files differ between the two repositories. Import names are unchanged.

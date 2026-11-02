@@ -28,4 +28,4 @@ python -m ego_collector --help
 
 See [`docs/experimental/README.md`](../../docs/experimental/README.md) and [`docs/provenance/experimental_MANIFEST.md`](../../docs/provenance/experimental_MANIFEST.md). Tests: `tests/experimental/v0/`.
 
-The Python files of this package are shared with the garment project ([egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation), `src/ego_collector/`): identical copies, see [`docs/provenance/README.md`](../../docs/provenance/README.md).
+The Python files of this package are shared with the garment project ([egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation), `src/ego_collector/`): identical copies, see [`docs/provenance/README.md`](../../docs/provenance/README.md).
