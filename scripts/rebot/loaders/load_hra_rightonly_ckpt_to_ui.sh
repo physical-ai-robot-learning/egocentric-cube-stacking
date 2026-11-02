@@ -20,7 +20,7 @@
 set -u
 # [2026-11-01] the UI runs the repository code (src/rebot_deploy/mac_v4_smoke_ui.py + smoke_ui/); ~/holobrain-mac-model (the old
 # inference checkout) no longer exists -- only its ckpt_UI_* checkpoint cache path is kept (parent created on demand).
-REPO=${EGO_CUBE_REPO:-$HOME/egocentric-human-demos-rebot}; EGOC=${EGOCENTRIC_SRC:-$HOME/physical-ai-vla-repos/egocentric/src}
+REPO=${EGO_CUBE_REPO:-$HOME/egocentric-human-demos-rebot}
 STEP=$(printf "%06d" "${1:?step}"); PORT=${2:-8056};
 [ "$PORT" = 8053 ] && { echo "8053 is the stacking / cotrain UI -- use 8056 (or another free port) for HRA"; exit 1; }
  EXEC_K=${EXEC_K:-4}; DWELL=${DWELL:-1.0}
@@ -96,7 +96,7 @@ try:
     print(f\"k={c['k']}&stream={b(c['stream'])}&speed={c['speed_pct']}&interp={b(c['goal_interp'])}&remote={b(c['remote'])}&prefetch={b(c['prefetch'])}&rtc={b(c['rtc'])}&pass={b(c['pass'])}&dwell={c['dwell_s']}&pflead={c.get('prefetch_lead', -1)}&passlast={b(c.get('pass_last', True))}&plan={b(c.get('plan', False))}&planema={c.get('plan_ema', 0.35)}&planxf={c.get('plan_xfade', 4)}&plansm={c.get('plan_smooth_deg', 3)}&planmin={c.get('plan_min_exec', 6)}\")   # [2026-10-07] PLAN details persist across reloads too
 except Exception: pass" 2>/dev/null)
 kill $(lsof -nP -iTCP:$PORT -sTCP:LISTEN -t) 2>/dev/null; sleep 3
-export PYTHONPATH="$REPO/src:$EGOC${PYTHONPATH:+:$PYTHONPATH}"   # [2026-11-01] ego_paths + umi (shared egocentric package), this UI process only
+export PYTHONPATH="$REPO/src${PYTHONPATH:+:$PYTHONPATH}"   # [2026-11-01] ego_paths + umi (both in src/), this UI process only
 export REBOT_URDF=${REBOT_URDF:-$REPO/src/training/robot/reBot_B601_DM_dualarm.urdf}   # was ~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf (same file)
 cd $REPO/src/rebot_deploy || exit 1
 IKF=$HOME/umi_bridge/.auto_ui_d20_e5/$PORT.ikprofile   # [2026-10-06] the IK profile sticks per port like the remote choice

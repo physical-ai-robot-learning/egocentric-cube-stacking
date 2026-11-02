@@ -12,7 +12,7 @@
 set -u
 # [2026-11-01] the UI runs the repository code (src/rebot_deploy/mac_v4_smoke_ui.py + smoke_ui/); ~/holobrain-mac-model (the old
 # inference checkout) no longer exists -- only its ckpt_UI_* checkpoint cache path is kept (parent created on demand).
-REPO=${EGO_CUBE_REPO:-$HOME/egocentric-human-demos-rebot}; EGOC=${EGOCENTRIC_SRC:-$HOME/physical-ai-vla-repos/egocentric/src}
+REPO=${EGO_CUBE_REPO:-$HOME/egocentric-human-demos-rebot}
 STEP=$(printf "%06d" "${1:?step}"); PORT=${2:-8037}; EXEC_K=${EXEC_K:-4}; DWELL=${DWELL:-1.0}; RUN=${RUN:?set RUN}; DS_EXPECT=${DS_EXPECT:?set DS_EXPECT}
 K=$((10#$STEP / 1000)); LOCAL=$HOME/holobrain-mac-model/ckpt_UI_${RUN}_${K}k_pinklockwy
 mkdir -p "$(dirname "$LOCAL")"   # [2026-11-01] checkpoint cache dir unchanged; its parent may be missing
@@ -52,7 +52,7 @@ curl -s -m 10 -X POST http://localhost:$PORT/stop > /dev/null 2>&1
 kill $(lsof -nP -iTCP:$PORT -sTCP:LISTEN -t) 2>/dev/null; sleep 3
 # [2026-10-03 user "추론 5090 통해서"] the 5090 inference server reads the training run's own checkpoint (no copy)
 [ -n "${V4_REMOTE_INFER:-}" ] && [ "${V4_REMOTE_ENABLE:-0}" = 1 ] && export V4_REMOTE_CKPT=$SRC && echo "[loader] remote inference ckpt $SRC"
-export PYTHONPATH="$REPO/src:$EGOC${PYTHONPATH:+:$PYTHONPATH}"   # [2026-11-01] ego_paths + umi (shared egocentric package), this UI process only
+export PYTHONPATH="$REPO/src${PYTHONPATH:+:$PYTHONPATH}"   # [2026-11-01] ego_paths + umi (both in src/), this UI process only
 export REBOT_URDF=${REBOT_URDF:-$REPO/src/training/robot/reBot_B601_DM_dualarm.urdf}   # was ~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf (same file)
 cd $REPO/src/rebot_deploy || exit 1
 export CKSEL_LOADER=$REPO/scripts/rebot/loaders/load_relonly_5090_run_ckpt_to_ui.sh CKSEL_NODE=$N:$R/$RUN/checkpoints CKSEL_SSD_PREFIX=5090_

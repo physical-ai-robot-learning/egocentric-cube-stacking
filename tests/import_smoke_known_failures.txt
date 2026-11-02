@@ -6,6 +6,7 @@ ego_cart20.scripts.export_lerobot_right_only_robotcam  # FileNotFoundError
 ego_cart20.scripts.report_dataset  # IndexError
 ego_cart20.scripts.validate_dataset  # IndexError
 ego_cart20.scripts.validate_dataset_softfold  # IndexError
+handumi_collector.tools.metric_qa  # IndexError
 mast3r_pose.cp6_scale  # FileNotFoundError
 rebot_deploy.learned_ik.build_lik0_data  # ValueError
 rebot_deploy.learned_ik.eval_ik_backends  # ModuleNotFoundError

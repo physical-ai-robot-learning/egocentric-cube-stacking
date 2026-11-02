@@ -1,8 +1,8 @@
 # Root project for the whole repository (src layout). Merges the former collection/pyproject.toml
 # ("handumi-collector") and experimental/pyproject.toml ("handumi-rebot-experimental"); the dependency
 # lists are the union of the two, unchanged. Install: `pip install -e ".[dev]"` (or `uv pip install -e ".[dev]"`).
-# handumi_collector, ego_collector, ego_teleop and umi come from the shared package `handumi-common` (since 2026-11-01;
-# https://github.com/physical-ai-vla/handumi-common); the extras below pass on to its extras of the same name.
+# handumi_collector, ego_collector, ego_teleop and umi are in src/ (shared with egocentric-garment-manipulation:
+# identical copies, docs/provenance/README.md).
 [project]
 name = "egocentric-cube-stacking"
 version = "0.1.0"
@@ -19,36 +19,46 @@ dependencies = [
     "pyyaml>=6.0",
     "matplotlib>=3.8",
     "tqdm>=4.66",
-    "handumi-common @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0",
 ]
 
 [project.optional-dependencies]
-# HandUMI raw collector (handumi_collector, from handumi-common); was the core dependency list of collection/pyproject.toml
-collector = ["handumi-common[collector] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
-# experimental packages (ego_collector, ego_teleop, from handumi-common); was experimental/pyproject.toml
-experimental = ["handumi-common[experimental] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
-apriltag = ["handumi-common[apriltag] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
-viz = ["handumi-common[viz] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
+# HandUMI raw collector (src/handumi_collector); was the core dependency list of collection/pyproject.toml
+collector = [
+    "mcap>=1.2",
+    "pyserial>=3.5",
+    "PySide6>=6.7",
+    "feetech-servo-sdk>=1.0.0",
+    "av>=12",
+    "trimesh>=4.0",
+]
+# experimental packages (src/ego_collector, src/ego_teleop); was experimental/pyproject.toml
+experimental = ["mediapipe>=0.10.14"]
+apriltag = ["pupil-apriltags>=1.0.4"]
+viz = ["rerun-sdk>=0.20"]
 # Aero hand branch (ego_teleop/hand3d + retarget/aero_backends): dex_retargeting/DexPilot on the Aero URDF.
 # The head RGB-D camera additionally needs `pyorbbecsdk`, installed by hand.
-aero = ["handumi-common[aero] @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0"]
+aero = ["dex-retargeting>=0.5,<1"]
 dev = ["pytest>=8.0"]
+
+[project.scripts]
+ego-collector = "ego_collector.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.hatch.metadata]
-allow-direct-references = true   # the git dependency on handumi-common
-
 [tool.hatch.build.targets.wheel]
 packages = [
+    "src/handumi_collector",
+    "src/ego_collector",
+    "src/ego_teleop",
     "src/ego_cart20",
     "src/mast3r_pose",
     "src/rebot_prep",
     "src/rebot_deploy",
     "src/training",
     "src/ego_paths",
+    "src/umi",
 ]
 
 [tool.pytest.ini_options]
