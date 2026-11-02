@@ -68,13 +68,13 @@ Moves were done with `git mv`, so `git log --follow <new path>` shows each file'
 
 | item | what it was | replaced by |
 |---|---|---|
-| `ego_collector` (shared `handumi-common` package since 2026-11-01) | V0 AprilTag-glove egocentric collector | `handumi_collector` (the `ego_collector.camera` layer is still imported) |
+| `ego_collector` (`src/ego_collector/`) | V0 AprilTag-glove egocentric collector | `handumi_collector` (the `ego_collector.camera` layer is still imported) |
 | `src/rebot_prep/pseudo_joint/`, `src/rebot_prep/census/c8_phase3.py` | Gen-1 joint-space (pseudo-joint) retargeting | Cartesian CART20 conversion in `src/ego_cart20/` (report v3) |
 | `src/rebot_prep/retarget/` v2-K / v2-Kr | multi-seed kinematic retargeting variants | v2-TR (primary) and the frozen hybrid master, same folder |
 | `legacy/c8old_dataset_v1/` (was `scripts/rebot/dataset/`) | C-old v1 dataset builder | `scripts/rebot/dataset_v2/` (C-old v2, final, frozen) |
 | `scripts/training/c8old/`, `scripts/rebot/eval/c8old/` | Gen-1 trainer (`train_bi.py` + `humanik_delta.py`), C-old chain and offline evaluator | Gen-2 REL-only training in `src/training/relonly/` |
 | `legacy/loaders/` (was `scripts/rebot/loaders/legacy/`) | earlier per-run checkpoint loaders | `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` |
-| `ego_teleop` (shared `handumi-common` package since 2026-11-01) | wearable teleoperation research | not replaced; experimental, not deployed |
+| `ego_teleop` (`src/ego_teleop/`) | wearable teleoperation research | not replaced; experimental, not deployed |
 
 ## Laundry / garment material moved out (2026-11-01)
 
@@ -92,28 +92,47 @@ and is owned by [egocentric-garment-manipulation](https://github.com/physical-ai
 
 The MANIFEST files kept in this folder still mention these paths; they are verbatim records.
 
-## Shared package `egocentric` (2026-11-01)
+## Shared packages (2026-11-01)
 
-`handumi_collector`, `ego_collector`, `ego_teleop` and `umi` were also used, as a partial copy, by
-[egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation). They now live once
-in the shared package [`handumi-common`](https://github.com/physical-ai-vla/handumi-common) (v0.3.0), which both repositories install (`pyproject.toml`:
-`handumi-common @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0`). Import names are unchanged.
+`handumi_collector`, `ego_collector`, `ego_teleop` and `umi` are also used by
+[egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation), which until
+2026-11-01 held a partial copy (34 files). Both repositories now hold the same full packages under `src/`: identical
+copies of every Python file (236 files; md5 list in [`shared_packages_MANIFEST.md`](shared_packages_MANIFEST.md)). Only
+the three package `README.md` files differ between the two repositories. Import names are unchanged.
 
-| removed from this repository | now in `egocentric` |
-|---|---|
-| `src/handumi_collector/`, `src/ego_collector/`, `src/ego_teleop/`, `src/umi/` | `src/` (same names) |
-| `tests/collector/`, `tests/experimental/teleop/`, `tests/experimental/v0/` | `tests/` (same paths) |
-| `scripts/mast3r_live_server.py` | `scripts/` (loaded by the `ego_teleop` tests) |
+**2026-11-02: copied back from the shared package (v0.3.0) because that repository is private.** On 2026-11-01 the four
+packages, their tests and `scripts/mast3r_live_server.py` had been moved out of this repository into a separate shared
+package that both repositories installed from git. That repository is private, so a public clone could no longer
+install this one. The packages were copied back from its release v0.3.0, byte-identical (the package READMEs restored
+to this repository's own text), and the git dependency was removed from `pyproject.toml`:
 
-Kept here: the guides (`docs/collector/`, `docs/experimental/`), `configs/`, `assets/`, `firmware/`, `upstream/` and every
-data record. The shared package holds byte-identical copies of the configs and assets its code reads by default. The
-shared package took the newer revision of four `ego_teleop` / `ego_collector` files from the garment copy and added six
-modules that only that copy had; its `docs/provenance.md` lists every difference and how it was resolved. Notable for this
-repository: `ego_teleop.robot.rebot_client`'s default joint limits are now the MIT bridge's clip range (used by the
-live-robot tools `hud_robot` and `m0_eef_jog` when no limits are given). No reported number depends on these packages'
-changed files (`analysis/verify_claims.py`: 736 claims, 0 failed, before and after).
+| copied back | files | notes |
+|---|---|---|
+| `src/handumi_collector/`, `src/ego_collector/`, `src/ego_teleop/`, `src/umi/` | 239 (236 `.py`, 2,009,728 bytes; 3 `README.md`) | md5 of every `.py` in [`shared_packages_MANIFEST.md`](shared_packages_MANIFEST.md) |
+| `tests/collector/`, `tests/experimental/teleop/`, `tests/experimental/v0/` | 75 | identical to the files removed on 2026-11-01 |
+| `scripts/mast3r_live_server.py` | 1 | loaded by `tests/experimental/teleop/test_mast3r_live.py`; identical to the file removed on 2026-11-01 |
 
-Import smoke test (`tests/test_imports.py`) of the 143 modules left under `src/`, with the shared package on the path
-(ok / skip / fail): `~/ego_collector/.venv` (3.11) 88 / 15 / 40, `~/xvla-mac` (3.12) 89 / 8 / 46. No remaining module
-changed status; the 230 moved modules are tested in `egocentric`, and `handumi_collector.tools.metric_qa` left the
-known-failures list with its package. `tests/cart20`: 40 passed before and after.
+`configs/`, `assets/`, `firmware/`, `upstream/` and the guides never left. `pyproject.toml` has again the extras
+`collector`, `experimental`, `apriltag`, `viz`, `aero`, `dev` with their own dependency lists and the `ego-collector`
+console script; `.github/workflows/ci.yml` again runs `tests/experimental/v0` and `tests/experimental/teleop` (without
+`test_aero_backends.py`), as before 2026-11-01.
+
+**What differs from the copy removed on 2026-11-01.** The shared package started from this repository's packages and
+took the newer revision of some files from the garment copy (taken later from the same `~/ego_collector` working tree):
+
+| file | change against this repository's 2026-11-01 copy | effect |
+|---|---|---|
+| `ego_teleop/ego_cart20_link.py`, `robot/bimanual.py`, `robot/deadman.py`, `robot/feasibility.py`, `transforms/umi_robot_frame.py`, `recorder/umi_contract_export.py` | new (were only in the garment copy) | new modules; nothing in this repository imports them |
+| `ego_collector/camera/orbbec_capture.py` | newer revision | turns the Orbbec colour auto-exposure priority off at start-up (best effort, hardware only) |
+| `ego_teleop/robot/rebot_client.py` | newer revision | follower/leader frame conversion, jaw command helpers (`gripper_cmd_from_g`, ...), IK seeded with the previous command. The default joint limits are the MIT bridge's clip range (`BRIDGE_SEEED_LIM_DEG`; the old values stay as `C30_LOWER_RAD` / `C30_UPPER_RAD`), used by the live-robot tools `hud_robot` and `m0_eef_jog` when no limits are given |
+| `ego_teleop/robot/safety.py` | newer revision | adds a pure `propose()` and a transactional `commit()`; `step()` gives the same result as before |
+| `ego_teleop/transforms/frames.py` | newer revision | docstring only |
+| `handumi_collector/devices/uvc_controls.py`, `tools/make_tracking_mesh.py`, `ego_teleop/tracking/backends/openvins.py` | `Path.home()` / `sys.path.insert(0, d)` instead of `ego_paths.HOME` / `ego_paths.prepend_sys_path(d)` | same behaviour; the shared copies do not depend on `ego_paths` |
+
+No reported number depends on these files (`analysis/verify_claims.py`: 736 claims, 0 failed, before and after).
+
+Tests in a fresh Python 3.12 environment (`pip install -e ".[collector,experimental,dev]" rosbags`, the CI install):
+`tests/cart20` 40 passed; `tests/experimental/v0` 57 passed, 2 skipped; `tests/experimental/teleop` without
+`test_aero_backends.py` 276 passed, 6 skipped; `tests/collector` 224 passed, 12 failed, 1 skipped, 3 errors (the known
+mock-gripper / camera-listing / m15 UI failures, as before 2026-11-01; not run in CI); `tests/test_imports.py` passed
+(`handumi_collector.tools.metric_qa` is back on the known-failures list).

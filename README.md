@@ -8,7 +8,7 @@ re-checkable from this repository.
 [![CI](https://github.com/physical-ai-vla/egocentric-cube-stacking/actions/workflows/ci.yml/badge.svg)](.github/workflows/ci.yml)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/license-PolyForm%20Noncommercial-orange.svg)](LICENSE)
 
-Part of **[physical-ai-vla](https://github.com/physical-ai-vla)** — Physical AI / robot learning projects; shared code in [handumi-common](https://github.com/physical-ai-vla/handumi-common).
+Part of **[physical-ai-vla](https://github.com/physical-ai-vla)** — Physical AI / robot learning projects.
 
 **Technical report:** [`report/report_en.pdf`](report/report_en.pdf) ([한국어](report/report_ko.pdf)) ·
 **Claims check:** `python analysis/verify_claims.py` → `736 claims checked, 0 failed.` ([how](#results-and-how-to-verify)) ·
@@ -62,7 +62,7 @@ flowchart LR
 | Component | Path | Stage | Status | Description |
 |---|---|---|---|---|
 | hardware | [`hardware/`](hardware/), [`firmware/`](firmware/) | device | current | HandUMI print package from upstream (not our design), our 3 modified parts, wrist-IMU firmware (Teensy 4.1 / XIAO nRF52840) |
-| handumi_collector | from the shared [`handumi-common`](https://github.com/physical-ai-vla/handumi-common) package | 0 collect | current | Raw recorder: head C922 + wrist fisheye/IMU/jaw → mp4 + `sensors.mcap`; calibration and QA tools; `robot_like_v1` protocol (guide: [`docs/collector/`](docs/collector/README.md)) |
+| handumi_collector | [`src/handumi_collector/`](src/handumi_collector/) | 0 collect | current | Raw recorder: head C922 + wrist fisheye/IMU/jaw → mp4 + `sensors.mcap`; calibration and QA tools; `robot_like_v1` protocol (guide: [`docs/collector/`](docs/collector/README.md)) |
 | configs | [`configs/`](configs/) | all | current | Versioned calibrations, collector profiles, teleop configs; `dataset_calibration/` = the calibrations the reported dataset uses |
 | mast3r_pose | [`src/mast3r_pose/`](src/mast3r_pose/) | 1 pose | current | Per-frame MASt3R-SLAM wrist pose and IMU-VI metric scale |
 | rebot_prep | [`src/rebot_prep/`](src/rebot_prep/) | 2–3 dataset, retarget | superseded (by ego_cart20) | Gen-1: gripper width, census and gates, pseudo-joint continuity IK, retarget v2 with frozen contracts |
@@ -71,30 +71,28 @@ flowchart LR
 | rebot_deploy | [`src/rebot_deploy/`](src/rebot_deploy/), [`scripts/rebot/loaders/`](scripts/rebot/loaders/) | 5 deploy | current | Inference core, robot web UI (PLAN / RTC / trial logger), Pink IK, MIT robot service, checkpoint loaders |
 | evaluation | [`scripts/rebot/eval/`](scripts/rebot/eval/), [`analysis/`](analysis/) | 5 evaluate | current | Offline checkpoint evaluation and audits; `analysis/verify_claims.py` recomputes every reported number |
 | hra | [`scripts/rebot/hra/`](scripts/rebot/hra/) | 1–5 (single arm) | current (sub-study) | Separate sub-study: right-arm approach to a cube (HRA_red, HRA_A100) — Part II of the report |
-| ego_teleop | from the shared [`handumi-common`](https://github.com/physical-ai-vla/handumi-common) package | teleop | experimental | Wearable VIO teleop research; not deployed (notes: [`docs/experimental/`](docs/experimental/README.md)) |
-| ego_collector | from the shared [`handumi-common`](https://github.com/physical-ai-vla/handumi-common) package | 0 collect | superseded (by handumi_collector) | V0 AprilTag-glove collector; its `camera` layer is still imported |
+| ego_teleop | [`src/ego_teleop/`](src/ego_teleop/) | teleop | experimental | Wearable VIO teleop research; not deployed (notes: [`docs/experimental/`](docs/experimental/README.md)) |
+| ego_collector | [`src/ego_collector/`](src/ego_collector/) | 0 collect | superseded (by handumi_collector) | V0 AprilTag-glove collector; its `camera` layer is still imported |
 | report, results | [`report/`](report/), [`results/`](results/), [`docs/`](docs/) | — | current | Technical report (EN/KO, PDF + LaTeX), result records, guides and provenance |
 | upstream | [`upstream/`](upstream/) | — | third-party | Licences, NOTICE and our patch on top of HandUMI software |
 
 Each component has a README with its inputs/outputs, entry points and layout. The old → new path table for the
 2026-11-01 restructure is in [`docs/provenance/README.md`](docs/provenance/README.md). `handumi_collector`,
-`ego_collector`, `ego_teleop` and `umi` (the `umi.common.pose_util` stand-in) are also used by the garment project, so
-since 2026-11-01 they live once in the shared package [`handumi-common`](https://github.com/physical-ai-vla/handumi-common) (v0.3.0), which `pyproject.toml` installs;
-import names are unchanged, and their tests moved with them. Their guides, the configs and the data records stay here.
+`ego_collector`, `ego_teleop` and `umi` (the `umi.common.pose_util` stand-in) are shared with the garment project
+([egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation)): both repositories
+hold identical copies in `src/` (record and md5s: [`docs/provenance/README.md`](docs/provenance/README.md#shared-packages-2026-11-01)).
 
 ## Installation
 
 ```bash
 git clone https://github.com/physical-ai-vla/egocentric-cube-stacking.git
 cd egocentric-cube-stacking
-pip install -e ".[collector,experimental,dev]"     # or: uv pip install -e ".[collector,experimental,dev]"; installs egocentric@v0.1.0
-pytest tests/cart20 -q
+pip install -e ".[collector,experimental,dev]"     # or: uv pip install -e ".[collector,experimental,dev]"
+pytest tests/cart20 tests/experimental/teleop tests/experimental/v0 -q
 python analysis/verify_claims.py                   # needs only pyyaml
 ```
 
-The root `pyproject.toml` (src layout) declares the packages under `src/` and depends on the shared package
-`handumi-common @ git+https://github.com/physical-ai-vla/handumi-common@v0.3.0`; extras (passed on to `egocentric`): `collector`
-(devices, mcap, PySide6), `experimental` (mediapipe), `apriltag`, `viz`, `aero`, `dev`. Training and MASt3R-SLAM run in separate environments on GPU
+The root `pyproject.toml` (src layout) declares the packages under `src/`; extras: `collector` (devices, mcap, PySide6), `experimental` (mediapipe), `apriltag`, `viz`, `aero`, `dev`. Training and MASt3R-SLAM run in separate environments on GPU
 nodes (LeRobot with X-VLA, MASt3R-SLAM checkout); see [Where each part ran](#running-it). Modules under `src/` use package
 imports, so run them after `pip install -e .` (or with `PYTHONPATH=src`), e.g. `python -m ego_cart20.scripts.convert_dataset`.
 
@@ -119,9 +117,10 @@ Component guides with the full command lines: [`docs/collector/`](docs/collector
 
 ## Codebase guide
 
-**The split.** Importable code lives in `src/` as one package per concern (`mast3r_pose`, `rebot_prep`, `ego_cart20`,
-`training`, `rebot_deploy`); the collector `handumi_collector`, the experimental `ego_teleop`, the superseded
-`ego_collector` and `umi` come from the shared `handumi-common` package. Command-line tools and machine-specific run bundles live in `scripts/`; configs and
+**The split.** Importable code lives in `src/` as one package per concern (`handumi_collector`, `mast3r_pose`,
+`rebot_prep`, `ego_cart20`, `training`, `rebot_deploy`, plus the experimental `ego_teleop`, the
+superseded `ego_collector` and the `umi` stand-in; `handumi_collector`, `ego_collector`, `ego_teleop` and `umi` are
+identical copies shared with the garment project). Command-line tools and machine-specific run bundles live in `scripts/`; configs and
 calibrations in `configs/`; result records in `results/`; the claims checker and post-hoc analyses in `analysis/`.
 Machine-specific data roots (`~/c8`, `~/umi_bridge`, `/home/bh-aiteam`, ...) are defined once in `src/ego_paths/` with
 environment overrides (`EGO_DATA_ROOT`, ...; defaults = the original paths); `src/` does not edit `sys.path` except
@@ -319,11 +318,11 @@ every release are in [`docs/history.md`](docs/history.md):
 | retarget v2-TR + frozen hybrid master (`src/rebot_prep/retarget/`) | v1 single-anchor retarget; v2-K / v2-Kr variants |
 | C-old v2 dataset builders (`scripts/rebot/dataset_v2/`) | C-old v1 builder (`legacy/c8old_dataset_v1/`) |
 | REL-only X-VLA training (`src/training/relonly/`) | Gen-1 trainer and chain (`scripts/training/c8old/`, `scripts/rebot/eval/c8old/`) |
-| `handumi_collector` (shared `handumi-common` package) | V0 AprilTag collector `ego_collector` (shared `handumi-common` package; camera layer still used) |
+| `handumi_collector` (`src/handumi_collector/`) | V0 AprilTag collector `ego_collector` (`src/ego_collector/`; camera layer still used) |
 | `scripts/rebot/loaders/load_*_ckpt_to_ui.sh` | `legacy/loaders/` |
 | one technical report `report/report_{en,ko}` (v5.1) | split reports `report/part*`, `report/methods_*`, `report/archive/` |
 
-`ego_teleop` (shared `handumi-common` package) is experimental (not deployed). After the v5 report (2026-10-12) the HandUMI work moved to T-shirt
+`ego_teleop` (`src/ego_teleop/`) is experimental (not deployed). After the v5 report (2026-10-12) the HandUMI work moved to T-shirt
 flattening; that project, including the material formerly kept here (`scripts/rebot/laundry/`, `scripts/rebot/parity/`,
 `src/visual_teleop/`, `scripts/umi_teleop_eval/`), lives in [egocentric-garment-manipulation](https://github.com/physical-ai-vla/egocentric-garment-manipulation).
 Item-by-item table: [`docs/provenance/README.md`](docs/provenance/README.md#superseded-items-kept-not-deleted).
@@ -369,12 +368,12 @@ Upstream dependencies (not vendored unless noted):
 
 - LeRobot with X-VLA: <https://github.com/huggingface/lerobot>. The base weights are `lerobot/xvla-base` on the Hugging Face Hub.
 - MASt3R-SLAM: <https://github.com/rmurai0610/MASt3R-SLAM>. The pinned commit is in `src/mast3r_pose/INSTALLED_COMMIT` and the checkpoint MD5s are in `MD5SUMS`.
-- Universal Manipulation Interface (`umi.common.pose_util`): <https://github.com/real-stanford/universal_manipulation_interface> (MIT). A stand-in with the same API is in the shared `handumi-common` package as `umi` ([`upstream/README.md`](upstream/README.md)).
+- Universal Manipulation Interface (`umi.common.pose_util`): <https://github.com/real-stanford/universal_manipulation_interface> (MIT). A stand-in with the same API is vendored in [`src/umi/`](src/umi/) ([`upstream/README.md`](upstream/README.md)).
 - Python packages: `mcap`, `numpy`, `scipy`, `opencv-python`, `av`, `pandas`, `pyarrow`, `torch`, `pyyaml`, `PySide6`, `pyserial`, `scservo_sdk` (Feetech).
 
 Not included (these live in other internal packages):
 
-- `ego_collector.camera.capture` / `orbbec_capture`: the camera capture backend imported by `handumi_collector/devices/camera.py` (listed here before the full code was added on 2026-10-07; now `ego_collector/camera/` in the shared `handumi-common` package).
+- `ego_collector.camera.capture` / `orbbec_capture`: the camera capture backend imported by `handumi_collector/devices/camera.py` (listed here before the full code was added on 2026-10-07; now `src/ego_collector/camera/`).
 - `handumi_collector.tools.pose_process`, `pose.run` and `pose.backends`: the legacy offline VO pipeline. `tools/camera_imu_offset.py` imports `pose_process.episodes_under`.
 - `handumi.robots` (the `rebot_b601` embodiment and IK solver): imported by `src/rebot_prep/pseudo_joint/eef_kin.py`.
 - `umi_bridge/track_c/data/r150_q_tcp.npz`, the robot reference joint/TCP data used by `c8_phase3.py`, and the R150 robot dataset used by the fine-tune stage of `c8old_chain.sh`.
