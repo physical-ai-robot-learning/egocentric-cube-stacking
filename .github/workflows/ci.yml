@@ -4,7 +4,8 @@ on:
   pull_request:
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    # The goldens were recorded on Apple Silicon (Linux libm / image decoders differ in the last bits): same platform, pinned versions.
+    runs-on: macos-15
     env:
       QT_QPA_PLATFORM: offscreen
     steps:
@@ -12,18 +13,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: System libraries for OpenCV / Qt wheels
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1 libxkbcommon0
       - name: Byte-compile every Python file (src, scripts, analysis, tests and archive)
         run: python -m compileall -q -x '/\.git/' .
       - name: Claims check (every number in the README, docs/history.md and the technical report)
         run: |
           pip install pyyaml numpy
           python analysis/verify_claims.py
-      - name: Install (package + collector extra + CPU torch / flask / pinocchio for the deploy tests)
+      - name: Install (pinned test environment = package deps + collector extra + torch / flask / pinocchio for the deploy tests)
         run: |
-          pip install torch --index-url https://download.pytorch.org/whl/cpu
-          pip install -e ".[collector,dev]" flask requests pin pin-pink
+          pip install -r configs/envs/requirements-test.txt
+          pip install -e . --no-deps
       - name: Package tests (characterization tests in src/<pkg>/tests) and the CART20 contract tests
         run: pytest -q src tests/cart20
       - name: reBot UI against its golden record
