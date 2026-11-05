@@ -1,0 +1,14 @@
+[
+ "[-h] [--downscale DOWNSCALE] [--start-at-go] [--imu-preroll-ms IMU_PREROLL_MS] episode {left,right} out",
+ "",
+ "positional arguments:",
+ "  episode",
+ "  {left,right}",
+ "  out",
+ "",
+ "options:",
+ "  -h, --help            show this help message and exit",
+ "  --downscale DOWNSCALE",
+ "  --start-at-go",
+ "  --imu-preroll-ms IMU_PREROLL_MS"
+]

@@ -1,0 +1,8 @@
+{
+ "eval_ref": "r150full",
+ "group": [
+  "a=b"
+ ],
+ "out": "o.json",
+ "parity_offline": null
+}
