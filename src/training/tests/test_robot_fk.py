@@ -30,8 +30,8 @@ def test_numpy_fk_poses_and_eef(synthUrdf, golden):
     golden.check("fk/side_pose_right", tModel.side_pose(Q14[7:13], "right"))
     golden.check("fk/eef_tip", tModel.eef(Q14))
     golden.check("fk/eef_no_tip", tModel.eef(Q14, tip=False))
-    golden.check("fk/rot_axis", tFk._rot_axis([1.0, 2.0, 2.0], 0.7))
-    golden.check("fk/T", tFk._T([0.1, 0.2, 0.3], [0.3, -0.2, 0.1]))
+    golden.check("fk/rot_axis", tFk._rotAxis([1.0, 2.0, 2.0], 0.7))
+    golden.check("fk/T", tFk._transform([0.1, 0.2, 0.3], [0.3, -0.2, 0.1]))
 
 
 def test_torch_fk_matches_numpy_and_is_batched(synthUrdf, golden):

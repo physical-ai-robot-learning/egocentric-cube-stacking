@@ -43,14 +43,14 @@ def _rpy(r, p, y):
                      [-tSp, tCp * tSr, tCp * tCr]])
 
 
-def _T(xyz, rpy):
+def _transform(xyz, rpy):
     tT = np.eye(4)
     tT[:3, :3] = _rpy(*rpy)
     tT[:3, 3] = xyz
     return tT
 
 
-def _rot_axis(axis, th):
+def _rotAxis(axis, th):
     tA = np.asarray(axis, float)
     tA /= np.linalg.norm(tA)
     tK = np.array([[0, -tA[2], tA[1]], [tA[2], 0, -tA[0]], [-tA[1], tA[0], 0]])
@@ -75,7 +75,7 @@ class ReBotFK:
             tRpy = _floats(tOrigin.get("rpy", "0 0 0") if tOrigin is not None else "0 0 0")
             tAxisXyz = _floats(tAxis.get("xyz")) if tAxis is not None else [0, 0, 1]
             self.joints[tJoint.get("name")] = dict(type=tJoint.get("type"), parent=tJoint.find("parent").get("link"),
-                                                   child=tJoint.find("child").get("link"), T=_T(tXyz, tRpy), axis=tAxisXyz)
+                                                   child=tJoint.find("child").get("link"), T=_transform(tXyz, tRpy), axis=tAxisXyz)
         self.chains = {}
         for tSide in SIDES:
             self.chains[tSide] = [f"{tSide}_mount"] + [f"{tSide}_joint{tI}" for tI in range(1, N_ARM_JOINTS + 1)] \
@@ -91,7 +91,7 @@ class ReBotFK:
             tJoint = self.joints[tName]
             tT = tT @ tJoint["T"]
             if tJoint["type"] == "revolute":
-                tT = tT @ _rot_axis(tJoint["axis"], q6[tK])
+                tT = tT @ _rotAxis(tJoint["axis"], q6[tK])
                 tK += 1
         return tT
 
