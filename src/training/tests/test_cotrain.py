@@ -44,6 +44,7 @@ def _loadCotrain(fakeLerobot, monkeypatch, egoPerBatch=None):
 
     tLt.make_dataset = make_dataset
     tMod = importlib.import_module("training.relonly.train_cotrain")
+    assert tMod.main() == 0
     return tMod, tLt, tRuns, tMade
 
 
@@ -57,7 +58,7 @@ def test_cotrain_runs_the_8bit_wrapper_with_patched_lerobot_train(fakeLerobot, m
                      ("rebot/ego_cart20_v2b_robot100_train", "/data/ego_cart20_v2b_robot100_train/")]
     assert tCfg.dataset.root == "/data/r312c"                      # the robot cfg is not touched (deep copy)
     assert (tDs.num_frames, tDs.num_episodes, tDs.meta, tDs.episodes) == (16, 5, "meta-robot", None)
-    assert sorted(tDs.keys) == ["action", "observation.state", "task"]
+    assert sorted(tDs.mKeys) == ["action", "observation.state", "task"]
     assert len(tDs) == 16
     assert tDs[3] == {"action": ("robot", 3), "observation.state": ("robot", 3), "task": ("robot", 3)}
     assert tDs[~2] == {"action": ("ego", 2), "observation.state": ("ego", 2), "task": ("ego", 2)}
@@ -70,7 +71,7 @@ def test_cotrain_runs_the_8bit_wrapper_with_patched_lerobot_train(fakeLerobot, m
 
 def test_balanced_sampler_draws_exact_counts_without_replacement(fakeLerobot, monkeypatch, golden):
     tMod, *_ = _loadCotrain(fakeLerobot, monkeypatch, egoPerBatch=3)
-    tDs = SimpleNamespace(robot=list(range(7)), ego=list(range(5)))
+    tDs = SimpleNamespace(mRobot=list(range(7)), mEgo=list(range(5)))
     tSampler = tMod.BalancedBatchSampler(tDs, 4, seed=7)
     assert len(tSampler) == 3
     tEpochs = [list(tSampler) for _ in range(3)]

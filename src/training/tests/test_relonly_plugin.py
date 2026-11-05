@@ -75,7 +75,7 @@ def test_lossmask_install_keeps_mask_and_masks_the_loss(fakeLerobot, golden, cap
     assert tPolicy.forward(tBatch) == "orig-forward"
     tSpace = tPolicy.model.action_space
     golden.check("lossmask/stored_mask", tSpace._lossmask)
-    golden.check("lossmask/dims_supervised", tL._S["dims_supervised"])
+    golden.check("lossmask/dims_supervised", tL.COUNTERS["dims_supervised"])
     tGen = torch.Generator().manual_seed(5)
     tPred = torch.randn(2, 16, 32, generator=tGen)
     tPred[..., 20:32] = 0
@@ -86,18 +86,20 @@ def test_lossmask_install_keeps_mask_and_masks_the_loss(fakeLerobot, golden, cap
     assert tSpace._lossmask is None
     tPlain = tSpace.compute_loss(tPred, tTarget)["rel_loss"]
     golden.check("lossmask/losses", torch.stack([tMasked, tPlain]))
-    golden.check("lossmask/counters", {tK: tV for tK, tV in tL._S.items() if tK != "dims_supervised"})
+    golden.check("lossmask/counters", {tK: tV for tK, tV in tL.COUNTERS.items() if tK != "dims_supervised"})
     golden.check("lossmask/stdout", capsys.readouterr().out)
 
 
 def test_lossmask_rejects_an_all_masked_batch(fakeLerobot):
     tL = importlib.import_module("training.relonly.rel16_relonly_lossmask")
     with pytest.raises(RuntimeError, match="no supervised action element"):
-        tL.masked_rel_loss(torch.zeros(1, 2, 20), torch.zeros(1, 2, 20), torch.zeros(1, 20, dtype=torch.bool))
+        tL.maskedRelLoss(torch.zeros(1, 2, 20), torch.zeros(1, 2, 20), torch.zeros(1, 20, dtype=torch.bool))
 
 
 def _runEntry(name):
-    runpy.run_path(str(RELONLY_DIR / name), run_name="__main__")
+    with pytest.raises(SystemExit) as tExit:                         # sys.exit(main()) after lerobot_train returns
+        runpy.run_path(str(RELONLY_DIR / name), run_name="__main__")
+    assert tExit.value.code == 0
 
 
 @pytest.mark.parametrize("entry", ["train_rel16_relonly.py", "train_rel16_relonly_lossmask.py"])
@@ -120,7 +122,7 @@ def test_train_entry_preflight_gradient_hooks(fakeLerobot, monkeypatch, entry, c
         import rel16_relonly_lossmask as tPlugin                      # the flat-imported copy the entry installed
         tSup = torch.ones(20, dtype=torch.bool)
         tSup[:3] = False
-        tPlugin._S["dims_supervised"] = tSup
+        tPlugin.COUNTERS["dims_supervised"] = tSup
     tGradW = torch.zeros(2, tDec.input_size * tDec.output_size)
     tGradW.view(2, tDec.input_size, tDec.output_size)[..., 3:20] = 0.5
     (tDec.fc.weight * tGradW).sum().backward()

@@ -45,6 +45,7 @@ def shimModule(fakeLerobot, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["train_relonly_adamw8bit.py", "--steps=1"])
     tPath = list(sys.path)
     tMod = importlib.import_module("training.relonly.train_relonly_adamw8bit")
+    assert tMod.main() == 0
     tMod.runs, tMod.addedPath = tRuns, [tP for tP in sys.path if tP not in tPath]
     sys.path[:] = tPath
     return tMod

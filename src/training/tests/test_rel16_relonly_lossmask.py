@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 
-from training.relonly.rel16_relonly_lossmask import masked_rel_loss
+from training.relonly.rel16_relonly_lossmask import maskedRelLoss as masked_rel_loss
 
 
 def test_no_mask_equals_relonly_mean():
