@@ -75,7 +75,8 @@ class Golden:
                 self.mArrays[key] = value
                 return
             tWant = self.mArrays[key]
-            assert value.shape == tWant.shape and value.dtype == tWant.dtype, (key, value.shape, tWant.shape, value.dtype, tWant.dtype)
+            assert value.shape == tWant.shape and value.dtype == tWant.dtype, \
+                (key, value.shape, tWant.shape, value.dtype, tWant.dtype)
             if np.issubdtype(tWant.dtype, np.floating):
                 np.testing.assert_allclose(value, tWant, rtol=FLOAT_RTOL, atol=FLOAT_ATOL, err_msg=key)
             else:

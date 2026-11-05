@@ -1,47 +1,96 @@
-#!/usr/bin/env python3
 """raw ego episodes -> processed ego_cart20_v2 tree (spec 23): episodes/<id>/..., metadata.json, {train,val,test}_manifest.jsonl.
-usage: convert_dataset.py <raw_root> <out_root> [--split frozen_handumi|hash] [--workers N]"""
-import argparse, collections, hashlib, json, pathlib, sys, time
-from ego_cart20.config import CONTRACT, Cart20Config
-from ego_cart20.convert import convert_episode
-from ego_cart20.dataset.splits import frozen_handumi_split, hash_split
-from ego_cart20.io.processed_writer import write_episode
-from ego_cart20.io.raw_episode_loader import load_raw_episode
+
+Every <raw_root>/<id> with a raw_episode.json is converted (convert.convertEpisode, one process per episode); episodes with
+at least one training row are split (frozen HandUMI split or sha1 hash split) into the manifests.  The output tree is
+write-once.  --discontinuity-filter / --jump-* select the v2b raw jump filter.
+
+Pipeline stage: dataset stage (after handumi_export, before validate_dataset / export_lerobot).
+usage: python -m ego_cart20.scripts.convert_dataset <raw_root> <out_root> [--split frozen_handumi|hash] [--workers N]
+"""
+from __future__ import annotations
+
+import argparse
+import collections
+import hashlib
+import json
+import pathlib
+import sys
+import time
+
+from ..config import CONTRACT, Cart20Config
+from ..convert import convertEpisode
+from ..processed_episode import writeEpisode
+from ..raw_episode import loadRawEpisode
+from ..splits import frozenHandumiSplit, hashSplit
+
+SPLITS = ("train", "val", "test")
+CODE_SHA_HEX_DIGITS = 16
 
 
-def one(args):
-    raw_dir, out_root, cfg = args
+def _convertOne(args):
+    """worker: (raw_dir, out_root, cfg) -> conversion record (status ok / error) (was one)"""
+    tRawDir, tOutRoot, tCfg = args
     try:
-        raw = load_raw_episode(raw_dir); ep = convert_episode(raw, cfg)
-        write_episode(pathlib.Path(out_root) / "episodes" / raw.episode_id, ep); m = ep["metadata"]
-        return dict(episode_id=raw.episode_id, status="ok", stack_order=m["stack_order"], instruction=m["instruction"],
-                    frames_rows=m["frames_rows"], rows_valid=m["rows_valid"], train_rows=m["train_rows"], era=raw.meta.get("era"),
-                    jump_events=m.get("jump_events"))
-    except Exception as ex:
-        return dict(episode_id=pathlib.Path(raw_dir).name, status="error", reason=f"{type(ex).__name__}: {ex}")
+        tRaw = loadRawEpisode(tRawDir)
+        tEp = convertEpisode(tRaw, tCfg)
+        writeEpisode(pathlib.Path(tOutRoot) / "episodes" / tRaw.mEpisodeId, tEp)
+        tMeta = tEp["metadata"]
+        return dict(episode_id=tRaw.mEpisodeId, status="ok", stack_order=tMeta["stack_order"], instruction=tMeta["instruction"],
+                    frames_rows=tMeta["frames_rows"], rows_valid=tMeta["rows_valid"], train_rows=tMeta["train_rows"],
+                    era=tRaw.mMeta.get("era"), jump_events=tMeta.get("jump_events"))
+    except Exception as tEx:
+        return dict(episode_id=pathlib.Path(tRawDir).name, status="error", reason=f"{type(tEx).__name__}: {tEx}")
+
+
+def buildParser() -> argparse.ArgumentParser:
+    tParser = argparse.ArgumentParser()
+    tParser.add_argument("raw_root")
+    tParser.add_argument("out_root")
+    tParser.add_argument("--split", default="frozen_handumi")
+    tParser.add_argument("--workers", type=int, default=6)
+    tParser.add_argument("--discontinuity-filter", action="store_true",
+                         help="v2b: drop raw MASt3R silent jumps (pose_filter.discontinuity_filter)")
+    tParser.add_argument("--jump-window", default="frame", choices=["frame", "row"])
+    tParser.add_argument("--jump-isolated-step-m", type=float, default=None)
+    return tParser
+
+
+def _codeSha256() -> dict:
+    """{path relative to the package: sha256[:16]} of every .py file of the ego_cart20 package"""
+    tPackage = pathlib.Path(__file__).resolve().parents[1]
+    return {str(tP.relative_to(tPackage)): hashlib.sha256(tP.read_bytes()).hexdigest()[:CODE_SHA_HEX_DIGITS]
+            for tP in sorted(tPackage.rglob("*.py"))}
+
+
+def main(argv: list[str] | None = None) -> int:
+    tArgs = buildParser().parse_args(argv)
+    tCfg = Cart20Config(mDiscontinuityFilter=tArgs.discontinuity_filter, mJumpWindow=tArgs.jump_window,
+                        mJumpIsolatedStepM=tArgs.jump_isolated_step_m)
+    tOut = pathlib.Path(tArgs.out_root)
+    assert not tOut.exists(), f"{tOut} exists (processed trees are write-once)"
+    (tOut / "episodes").mkdir(parents=True)
+    tRaws = sorted(tP for tP in pathlib.Path(tArgs.raw_root).iterdir() if (tP / "raw_episode.json").exists())
+    from concurrent.futures import ProcessPoolExecutor
+    with ProcessPoolExecutor(tArgs.workers) as tEx:
+        tResults = list(tEx.map(_convertOne, [(str(tR), str(tOut), tCfg) for tR in tRaws]))
+    tOk = [tR for tR in tResults if tR["status"] == "ok" and tR["train_rows"] > 0]
+    tSplit, tRule = (frozenHandumiSplit if tArgs.split == "frozen_handumi" else hashSplit)([tR["episode_id"] for tR in tOk])
+    for tS in SPLITS:
+        with open(tOut / f"{tS}_manifest.jsonl", "w") as tF:
+            for tR in tOk:
+                if tSplit[tR["episode_id"]] == tS:
+                    tF.write(json.dumps(dict(tR, split=tS, path=f"episodes/{tR['episode_id']}")) + "\n")
+    tCounts = {tS: dict(episodes=sum(tSplit[tR["episode_id"]] == tS for tR in tOk),
+                        train_rows=sum(tR["train_rows"] for tR in tOk if tSplit[tR["episode_id"]] == tS),
+                        orders=dict(collections.Counter(tR["stack_order"] for tR in tOk if tSplit[tR["episode_id"]] == tS)))
+               for tS in SPLITS}
+    tMeta = dict(schema="ego_cart20_v2/v1", created=time.strftime("%F %T"), raw_root=str(pathlib.Path(tArgs.raw_root).resolve()),
+                 contract=CONTRACT, config=tCfg.toDict(), split=tRule, counts=tCounts, conversion=tResults,
+                 code_sha256=_codeSha256())
+    json.dump(tMeta, open(tOut / "metadata.json", "w"), indent=1)
+    print("DONE", json.dumps(tCounts), collections.Counter(tR["status"] for tR in tResults))
+    return 0
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("raw_root"); ap.add_argument("out_root")
-    ap.add_argument("--split", default="frozen_handumi"); ap.add_argument("--workers", type=int, default=6)
-    ap.add_argument("--discontinuity-filter", action="store_true", help="v2b: drop raw MASt3R silent jumps (pose_filter.discontinuity_filter)")
-    ap.add_argument("--jump-window", default="frame", choices=["frame", "row"]); ap.add_argument("--jump-isolated-step-m", type=float, default=None); a = ap.parse_args()
-    CFG = Cart20Config(discontinuity_filter=a.discontinuity_filter, jump_window=a.jump_window, jump_isolated_step_m=a.jump_isolated_step_m)
-    out = pathlib.Path(a.out_root); assert not out.exists(), f"{out} exists (processed trees are write-once)"; (out / "episodes").mkdir(parents=True)
-    raws = sorted(p for p in pathlib.Path(a.raw_root).iterdir() if (p / "raw_episode.json").exists())
-    from concurrent.futures import ProcessPoolExecutor
-    with ProcessPoolExecutor(a.workers) as ex: res = list(ex.map(one, [(str(r), str(out), CFG) for r in raws]))
-    ok = [r for r in res if r["status"] == "ok" and r["train_rows"] > 0]
-    sp, rule = (frozen_handumi_split if a.split == "frozen_handumi" else hash_split)([r["episode_id"] for r in ok])
-    for s in ("train", "val", "test"):
-        with open(out / f"{s}_manifest.jsonl", "w") as f:
-            for r in ok:
-                if sp[r["episode_id"]] == s: f.write(json.dumps(dict(r, split=s, path=f"episodes/{r['episode_id']}")) + "\n")
-    cnt = {s: dict(episodes=sum(sp[r["episode_id"]] == s for r in ok), train_rows=sum(r["train_rows"] for r in ok if sp[r["episode_id"]] == s),
-                   orders=dict(collections.Counter(r["stack_order"] for r in ok if sp[r["episode_id"]] == s))) for s in ("train", "val", "test")}
-    meta = dict(schema="ego_cart20_v2/v1", created=time.strftime("%F %T"), raw_root=str(pathlib.Path(a.raw_root).resolve()), contract=CONTRACT,
-                config=CFG.to_dict(), split=rule, counts=cnt, conversion=res,
-                code_sha256={str(p.relative_to(pathlib.Path(__file__).resolve().parents[1])): hashlib.sha256(p.read_bytes()).hexdigest()[:16]
-                             for p in sorted(pathlib.Path(__file__).resolve().parents[1].rglob("*.py"))})
-    json.dump(meta, open(out / "metadata.json", "w"), indent=1)
-    print("DONE", json.dumps(cnt), collections.Counter(r["status"] for r in res))
+    sys.exit(main())

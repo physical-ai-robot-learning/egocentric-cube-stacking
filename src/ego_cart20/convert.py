@@ -4,96 +4,120 @@
     2  task start t_s = first raw instant at which BOTH arms are valid; row grid t_s + n / 15 Hz up to the last instant
        both arms have a valid raw sample
     3  rows: both arms sampled at the row time (position lerp, rotation SLERP, gripper lerp)
-    4  canonical / state pose: per arm inv(T(t_s)) @ T(t)                    (canonical_frame.per_arm_task_start_v1)
+    4  canonical / state pose: per arm inv(T(t_s)) @ T(t)                    (canonical_frame, per_arm_task_start_v1)
     5  state.npy (RELCART20 [L9|R9|gL gR]); state_prevrel.npy with T(t - UMI_DT) from the raw track (diagnostic)
     6  CART20 chunk per row: A_k = inv(T(t)) T(t + k UMI_DT), k = 1..16, raw-track interpolation; packed to [16,32]
     7  a TRAINING row needs: both arms valid at t, all 16 targets of both arms valid, every required camera frame within
        image_tol_s.  Nothing is padded.  Invalid rows keep NaN state and are never sampled.
+(v2b: the raw discontinuity filter runs before step 1 when Cart20Config.mDiscontinuityFilter is set.)
+
+In: RawEpisode (raw_episode.py).  Out: dict with the ARRAYS of processed_episode.py + cameras + metadata (+ _anchor, _tracks).
+Pipeline stage: dataset stage (scripts/convert_dataset.py, scripts/convert_episode.py).
 """
+from __future__ import annotations
+
 import numpy as np
 
-from .config import ARMS, CONTRACT, HORIZON, Cart20Config
-from .geometry import canonical_frame
-from .io.raw_episode_loader import CAMERAS
-from .labels.build_cart20 import build_cart20_chunk
-from .labels.build_state20 import build_state20_prevrel, build_state20_relcart20
-from .labels.pack_action32 import check_action32, pack_cart20_to_action32
-from .labels.stage import stage_ids
-from .preprocessing.gripper import validate_gripper
-from .preprocessing.pose_filter import discontinuity_filter
-from .preprocessing.resample import PoseTrack, canonical_times
-from .preprocessing.synchronize import common_end_time, nearest_index, task_start_time
+from . import canonical_frame
+from .config import ARMS, CART_DIM, CONTRACT, HORIZON, Cart20Config
+from .gripper import validateGripper
+from .labels import buildCart20Chunk, buildState20Prevrel, buildState20Relcart20, checkAction32, packCart20ToAction32, stageIds
+from .pose_filter import discontinuityFilter
+from .raw_episode import CAMERAS, RawEpisode
+from .resample import PoseTrack, canonicalTimes, commonEndTime, nearestIndex, taskStartTime
+
+CAMERA_DT_PERCENTILE = 99
+MS_PER_S = 1e3
 
 
-def convert_episode(raw, cfg=Cart20Config()):
-    valid = {a: raw.arms[a].valid for a in ARMS}; jump_events = {}
-    if cfg.discontinuity_filter:                                                   # v2b: raw MASt3R silent-jump filter (before anything else)
-        for a in ARMS:
-            valid[a], jump_events[a] = discontinuity_filter(raw.arms[a].t_s, raw.arms[a].T, raw.arms[a].valid,
-                                                            cfg.jump_max_trans_per_row_m, cfg.jump_max_rot_per_row_deg,
-                                                            window=cfg.jump_window, isolated_step_m=cfg.jump_isolated_step_m)
-    tr = {a: PoseTrack(raw.arms[a].t_s, raw.arms[a].T, valid[a], raw.arms[a].gripper, cfg.max_raw_gap_s) for a in ARMS}
-    for a in ARMS: validate_gripper(tr[a].g[tr[a].valid], f"{a} raw gripper")
-    t_s = task_start_time([tr[a] for a in ARMS]); t_e = common_end_time([tr[a] for a in ARMS])
-    times = canonical_times(t_s, t_e, cfg.row_fps); N = len(times)
-    S = {a: tr[a].sample(times) for a in ARMS}                                 # (T, g, ok)
-    row_valid = S["left"][2] & S["right"][2]; assert row_valid[0], "row 0 must be the task start"
-    anchor = {a: S[a][0][0].copy() for a in ARMS}
+def convertEpisode(raw: RawEpisode, cfg: Cart20Config = Cart20Config()) -> dict:
+    """the whole label pipeline for one episode (steps 1-7 above)"""
+    tValid = {tArm: raw.mArms[tArm].mValid for tArm in ARMS}
+    tJumpEvents = {}
+    if cfg.mDiscontinuityFilter:                   # v2b: raw MASt3R silent-jump filter (before anything else)
+        for tArm in ARMS:
+            tValid[tArm], tJumpEvents[tArm] = discontinuityFilter(
+                raw.mArms[tArm].mTimeS, raw.mArms[tArm].mPose, raw.mArms[tArm].mValid, cfg.mJumpMaxTransPerRowM,
+                cfg.mJumpMaxRotPerRowDeg, window=cfg.mJumpWindow, isolatedStepM=cfg.mJumpIsolatedStepM)
+    tTracks = {tArm: PoseTrack(raw.mArms[tArm].mTimeS, raw.mArms[tArm].mPose, tValid[tArm], raw.mArms[tArm].mGripper,
+                               cfg.mMaxRawGapS) for tArm in ARMS}
+    for tArm in ARMS:
+        validateGripper(tTracks[tArm].mGripper[tTracks[tArm].mValid], f"{tArm} raw gripper")
+    tStartS = taskStartTime([tTracks[tArm] for tArm in ARMS])
+    tEndS = commonEndTime([tTracks[tArm] for tArm in ARMS])
+    tTimes = canonicalTimes(tStartS, tEndS, cfg.mRowFps)
+    tN = len(tTimes)
+    tSampled = {tArm: tTracks[tArm].sample(tTimes) for tArm in ARMS}          # (T, g, ok)
+    tRowValid = tSampled["left"][2] & tSampled["right"][2]
+    assert tRowValid[0], "row 0 must be the task start"
+    tAnchor = {tArm: tSampled[tArm][0][0].copy() for tArm in ARMS}
 
     # canonical poses (NaN on invalid rows)
-    pose = {}
-    for a in ARMS:
-        P = canonical_frame.canonicalize(S[a][0], anchor[a]); P[~row_valid] = np.nan; pose[a] = P
-    g = {a: np.where(row_valid, S[a][1], np.nan) for a in ARMS}
+    tPose = {}
+    for tArm in ARMS:
+        tCanon = canonical_frame.canonicalize(tSampled[tArm][0], tAnchor[tArm])
+        tCanon[~tRowValid] = np.nan
+        tPose[tArm] = tCanon
+    tGrip = {tArm: np.where(tRowValid, tSampled[tArm][1], np.nan) for tArm in ARMS}
 
     # state (main) -- RELCART20 task anchor
-    state = build_state20_relcart20(anchor["left"], S["left"][0], S["left"][1], anchor["right"], S["right"][0], S["right"][1])
-    state[~row_valid] = np.nan
+    tState = buildState20Relcart20(tAnchor["left"], tSampled["left"][0], tSampled["left"][1],
+                                   tAnchor["right"], tSampled["right"][0], tSampled["right"][1])
+    tState[~tRowValid] = np.nan
 
     # state_prevrel (diagnostic) -- inv(T(t)) T(t - UMI_DT) on the raw track; identity + mask 0 where history is invalid
-    Pv = {a: tr[a].sample(times - cfg.target_dt_s) for a in ARMS}
-    prev_ok = Pv["left"][2] & Pv["right"][2] & row_valid
-    Tp = {a: np.where(prev_ok[:, None, None], Pv[a][0], S[a][0]) for a in ARMS}
-    state_prevrel = build_state20_prevrel(Tp["left"], S["left"][0], S["left"][1], Tp["right"], S["right"][0], S["right"][1])
-    state_prevrel[~row_valid] = np.nan
-    state_prev_valid = prev_ok.astype(np.float32)
+    tPrevSampled = {tArm: tTracks[tArm].sample(tTimes - cfg.mTargetDtS) for tArm in ARMS}
+    tPrevOk = tPrevSampled["left"][2] & tPrevSampled["right"][2] & tRowValid
+    tPrevPose = {tArm: np.where(tPrevOk[:, None, None], tPrevSampled[tArm][0], tSampled[tArm][0]) for tArm in ARMS}
+    tStatePrevrel = buildState20Prevrel(tPrevPose["left"], tSampled["left"][0], tSampled["left"][1],
+                                        tPrevPose["right"], tSampled["right"][0], tSampled["right"][1])
+    tStatePrevrel[~tRowValid] = np.nan
+    tStatePrevValid = tPrevOk.astype(np.float32)
 
     # cameras: nearest frame within tolerance, per row
-    cam_valid = np.zeros((N, len(CAMERAS)), bool); cameras = {}
-    for ci, c in enumerate(CAMERAS):
-        if c not in raw.cams: continue
-        ct, cf = raw.cams[c]; j, dt = nearest_index(ct, times, cfg.image_tol_s)
-        cam_valid[:, ci] = j >= 0
-        cameras[c] = dict(frame_index=np.where(j >= 0, cf[np.maximum(j, 0)], -1).astype(np.int64),
-                          video=raw.meta.get("videos", {}).get(c), tol_s=cfg.image_tol_s,
-                          dt_ms_p99=float(np.percentile(dt[j >= 0], 99) * 1e3) if (j >= 0).any() else None)
-    need = np.ones(N, bool)
-    for c in cfg.required_cameras: need &= cam_valid[:, CAMERAS.index(c)]
+    tCamValid = np.zeros((tN, len(CAMERAS)), bool)
+    tCameras = {}
+    for tCi, tCam in enumerate(CAMERAS):
+        if tCam not in raw.mCams:
+            continue
+        tCamT, tCamFrame = raw.mCams[tCam]
+        tJ, tDt = nearestIndex(tCamT, tTimes, cfg.mImageTolS)
+        tCamValid[:, tCi] = tJ >= 0
+        tDtP99 = float(np.percentile(tDt[tJ >= 0], CAMERA_DT_PERCENTILE) * MS_PER_S) if (tJ >= 0).any() else None
+        tCameras[tCam] = dict(frame_index=np.where(tJ >= 0, tCamFrame[np.maximum(tJ, 0)], -1).astype(np.int64),
+                              video=raw.mMeta.get("videos", {}).get(tCam), tol_s=cfg.mImageTolS, dt_ms_p99=tDtP99)
+    tNeed = np.ones(tN, bool)
+    for tCam in cfg.mRequiredCameras:
+        tNeed &= tCamValid[:, CAMERAS.index(tCam)]
 
     # CART20 chunks
-    rows, chunks = [], []
-    for r in np.flatnonzero(row_valid & need):
-        c, ok = build_cart20_chunk(tr["left"], tr["right"], times[r], cfg.horizon, cfg.target_dt_s,
-                                   T_left_t=S["left"][0][r], T_right_t=S["right"][0][r])
-        if ok: rows.append(r); chunks.append(c)
-    cart20 = np.stack(chunks).astype(np.float32) if chunks else np.zeros((0, HORIZON, 20), np.float32)
-    action = pack_cart20_to_action32(cart20); check_action32(action, cart20)
-    train_rows = np.asarray(rows, np.int64)
+    tRows, tChunks = [], []
+    for tRow in np.flatnonzero(tRowValid & tNeed):
+        tChunk, tOk = buildCart20Chunk(tTracks["left"], tTracks["right"], tTimes[tRow], cfg.mHorizon, cfg.mTargetDtS,
+                                       leftNow=tSampled["left"][0][tRow], rightNow=tSampled["right"][0][tRow])
+        if tOk:
+            tRows.append(tRow)
+            tChunks.append(tChunk)
+    tCart20 = np.stack(tChunks).astype(np.float32) if tChunks else np.zeros((0, HORIZON, CART_DIM), np.float32)
+    tAction = packCart20ToAction32(tCart20)
+    checkAction32(tAction, tCart20)
+    tTrainRows = np.asarray(tRows, np.int64)
 
-    st, st_info = stage_ids(times, g["left"], g["right"], row_valid)
-    meta = dict(
-        episode_id=raw.episode_id, source=raw.meta.get("source", "human_egocentric"), task=raw.meta["task"],
-        instruction=raw.meta["instruction"], stack_order=raw.meta["stack_order"],
-        fps=cfg.row_fps, **CONTRACT, canonical_frame=canonical_frame.NAME,
-        task_start_time_s=float(t_s), clock_offset_ns=int(raw.t0_ns), duration_s=float(times[-1] - times[0]),
-        frames_raw={a: int(len(raw.arms[a].t_s)) for a in ARMS}, frames_rows=int(N), rows_valid=int(row_valid.sum()),
-        train_rows=int(len(train_rows)), cameras=list(cameras), camera_order=list(CAMERAS),
-        camera_available={c: bool(c in cameras) for c in CAMERAS}, stage=st_info, config=cfg.to_dict(),
-        tool_frame=raw.meta.get("tool_frame"), gripper_calibration=raw.meta.get("gripper_calibration"),
-        raw_provenance=raw.meta.get("provenance"), jump_events=jump_events if cfg.discontinuity_filter else None,
+    tStage, tStageInfo = stageIds(tTimes, tGrip["left"], tGrip["right"], tRowValid)
+    tMeta = dict(
+        episode_id=raw.mEpisodeId, source=raw.mMeta.get("source", "human_egocentric"), task=raw.mMeta["task"],
+        instruction=raw.mMeta["instruction"], stack_order=raw.mMeta["stack_order"],
+        fps=cfg.mRowFps, **CONTRACT, canonical_frame=canonical_frame.NAME,
+        task_start_time_s=float(tStartS), clock_offset_ns=int(raw.mT0Ns), duration_s=float(tTimes[-1] - tTimes[0]),
+        frames_raw={tArm: int(len(raw.mArms[tArm].mTimeS)) for tArm in ARMS}, frames_rows=int(tN),
+        rows_valid=int(tRowValid.sum()),
+        train_rows=int(len(tTrainRows)), cameras=list(tCameras), camera_order=list(CAMERAS),
+        camera_available={tCam: bool(tCam in tCameras) for tCam in CAMERAS}, stage=tStageInfo, config=cfg.toDict(),
+        tool_frame=raw.mMeta.get("tool_frame"), gripper_calibration=raw.mMeta.get("gripper_calibration"),
+        raw_provenance=raw.mMeta.get("provenance"), jump_events=tJumpEvents if cfg.mDiscontinuityFilter else None,
     )
-    return dict(timestamps=times.astype(np.float64), row_valid=row_valid, train_rows=train_rows, state=state,
-                state_prevrel=state_prevrel, state_prev_valid=state_prev_valid, cart20=cart20, action=action,
-                left_pose=pose["left"], right_pose=pose["right"], left_gripper=g["left"].astype(np.float32),
-                right_gripper=g["right"].astype(np.float32), stage_id=st.astype(np.int8), camera_valid=cam_valid,
-                cameras=cameras, metadata=meta, _anchor=anchor, _tracks=tr)
+    return dict(timestamps=tTimes.astype(np.float64), row_valid=tRowValid, train_rows=tTrainRows, state=tState,
+                state_prevrel=tStatePrevrel, state_prev_valid=tStatePrevValid, cart20=tCart20, action=tAction,
+                left_pose=tPose["left"], right_pose=tPose["right"], left_gripper=tGrip["left"].astype(np.float32),
+                right_gripper=tGrip["right"].astype(np.float32), stage_id=tStage.astype(np.int8), camera_valid=tCamValid,
+                cameras=tCameras, metadata=tMeta, _anchor=tAnchor, _tracks=tTracks)

@@ -27,7 +27,7 @@ def render(edge=0.05, units=1.0, yaw=35, pitch=-30, dist=0.25, occlude=0.0, hw=(
 def test_recovers_scale_with_units_and_sim3():
     X, C, I = render(units=2.7)                                     # MASt3R units = 2.7 x metres
     s_k = 0.8                                                       # keyframe Sim3 scale: world = 0.8 * cam
-    r = CS.frame_scale(X, C, I, s_k, None, 2)
+    r = CS.frameScale(X, C, I, s_k, None, 2)
     assert r["ok"], r
     want = 1.0 / (2.7 * 0.8)                                        # metres per world unit
     assert abs(r["s_frame"] / want - 1) < 0.08, (r["s_frame"], want)
@@ -35,7 +35,7 @@ def test_recovers_scale_with_units_and_sim3():
 
 def test_episode_median_and_partial_occlusion_rejected():
     X, C, I = render(units=1.0, occlude=0.55)                       # hand covers most of the cube
-    r = CS.frame_scale(X, C, I, 1.0, None, 2)
+    r = CS.frameScale(X, C, I, 1.0, None, 2)
     assert not r["ok"] or abs(r["s_frame"] - 1.0) < 0.15            # either rejected or still right, never silently wrong
     import tempfile
     frames = [render(units=2.0, yaw=y, pitch=p, seed=i) for i, (y, p) in enumerate([(30, -25), (40, -35), (25, -30), (45, -20)])]
@@ -43,13 +43,13 @@ def test_episode_median_and_partial_occlusion_rejected():
         np.savez(pathlib.Path(d) / "kf.npz", X_cam=np.stack([f[0] for f in frames]).astype(np.float16), C=np.stack([f[1] for f in frames]),
                  img=np.stack([f[2] for f in frames]), T_WC=np.tile([0, 0, 0, 0, 0, 0, 1, 1.0], (4, 1)), frame_idx=np.arange(4), stride=2,
                  hw=np.array([384, 512]), K=np.eye(3))
-        e = CS.episode_scale(pathlib.Path(d) / "kf.npz")
+        e = CS.episodeScale(pathlib.Path(d) / "kf.npz")
     assert e["valid"] and abs(e["s_cube"] - 0.5) / 0.5 < 0.08, CS.strip(e)
 
 
 def test_no_cube_is_invalid():
     X, C, I = render(); I[:] = 120
-    assert not CS.frame_scale(X, C, I, 1.0, None, 2)["ok"]
+    assert not CS.frameScale(X, C, I, 1.0, None, 2)["ok"]
 
 
 
@@ -60,7 +60,7 @@ def test_pnp_gate_directions():
     rng = np.random.default_rng(1); n = CP.MIN_FRAMES; k = 2.0                     # world units per metre
     c = np.array([0.3, -0.1, 0.5]); p = rng.normal(0, 0.3, (n, 3))
     R = np.tile(np.eye(3), (n, 1, 1)); t = (c - p) / k                              # metric cube-centre vectors, R = I
-    u = np.einsum("nij,nj->ni", R, t); fs = CP.fit_scale(p, u)
+    u = np.einsum("nij,nj->ni", R, t); fs = CP.fitScale(p, u)
     assert abs(fs["s"] - 1 / k) < 1e-6 and fs["centre_resid_m"] < 1e-6
     assert n == 10 and CP.MAX_REL_SPREAD == 0.10 and CP.MAX_CENTRE_RESID_M == 0.02
 

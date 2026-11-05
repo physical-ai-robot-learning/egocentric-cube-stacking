@@ -46,24 +46,26 @@ def renderPointmap(edge=0.05, units=1.0, yaw=35, pitch=-30, dist=0.25, occlude=0
 
 
 def test_cube_scale_primitives(golden):
-    golden.check("cs.constants", [CS.CUBE_EDGE_M, CS.MIN_MASK_PX, CS.MIN_FACE_PTS, CS.MAX_RESID_FRAC, CS.SQUARE_TOL, CS.MAX_VIEW_DEG,
+    golden.check("cs.constants", [CS.CUBE_EDGE_M, CS.MIN_MASK_PX, CS.MIN_FACE_PTS, CS.MAX_RESID_FRAC, CS.SQUARE_TOL,
+                                  CS.MAX_VIEW_DEG,
                                   CS.ORTHO_TOL_DEG, CS.MIN_FRAMES, CS.MAX_SPREAD, CS.CONF_MIN])
-    golden.check("cs.quat_to_R", CS.quat_to_R([0.1, -0.2, 0.3, 0.9]))
+    golden.check("cs.quat_to_R", CS.quatToR([0.1, -0.2, 0.3, 0.9]))
     tX, tC, tRgb = renderPointmap()
-    golden.check("cs.red_mask", CS.red_mask(tRgb))
-    golden.check("cs.red_mask_eroded", CS.red_mask(tRgb, erode=2))
-    golden.check("cs.red_mask_empty", CS.red_mask(np.full((20, 20, 3), 120, np.uint8)))
-    tP = tX[CS.red_mask(tRgb)].astype(np.float64)
-    tCentre, tNormal, tAxes = CS.fit_plane(tP[:500])
+    golden.check("cs.red_mask", CS.redMask(tRgb))
+    golden.check("cs.red_mask_eroded", CS.redMask(tRgb, erode=2))
+    golden.check("cs.red_mask_empty", CS.redMask(np.full((20, 20, 3), 120, np.uint8)))
+    tP = tX[CS.redMask(tRgb)].astype(np.float64)
+    tCentre, tNormal, tAxes = CS.fitPlane(tP[:500])
     golden.check("cs.fit_plane", np.concatenate([tCentre, tNormal, tAxes.ravel()]))
-    golden.check("cs.ransac_plane", CS.ransac_plane(tP, 0.002))
-    golden.check("cs.ransac_plane_degenerate", CS.ransac_plane(np.zeros((5, 3)), 0.01, iters=5) is None)
-    golden.check("cs.face_rect", CS.face_rect(np.random.default_rng(0).uniform(-1, 1, (300, 2)) * [2.0, 1.0]))
-    tFaces = CS.faces_of(tP, tP / np.linalg.norm(tP, axis=1, keepdims=True))
+    golden.check("cs.ransac_plane", CS.ransacPlane(tP, 0.002))
+    golden.check("cs.ransac_plane_degenerate", CS.ransacPlane(np.zeros((5, 3)), 0.01, iters=5) is None)
+    golden.check("cs.face_rect", CS.faceRect(np.random.default_rng(0).uniform(-1, 1, (300, 2)) * [2.0, 1.0]))
+    tFaces = CS.facesOf(tP, tP / np.linalg.norm(tP, axis=1, keepdims=True))
     golden.check("cs.faces_of", tFaces)
 
 
-@pytest.mark.parametrize("case", [dict(units=2.7, s_k=0.8), dict(units=1.0, occlude=0.55, s_k=1.0), dict(units=1.0, s_k=1.0, no_cube=True),
+@pytest.mark.parametrize("case", [dict(units=2.7, s_k=0.8), dict(units=1.0, occlude=0.55, s_k=1.0),
+                                  dict(units=1.0, s_k=1.0, no_cube=True),
                                   dict(units=1.0, s_k=1.0, dist=2.5), dict(units=1.0, s_k=1.0, yaw=0, pitch=0)])
 def test_cube_scale_frame(golden, case):
     tCase = dict(case)
@@ -72,22 +74,24 @@ def test_cube_scale_frame(golden, case):
     tX, tC, tRgb = renderPointmap(**tCase)
     if tNoCube:
         tRgb[:] = 120
-    golden.check("cs.frame_" + "_".join(f"{k}{v}" for k, v in sorted(case.items())), CS.frame_scale(tX, tC, tRgb, tSk, None, 2))
+    golden.check("cs.frame_" + "_".join(f"{k}{v}" for k, v in sorted(case.items())), CS.frameScale(tX, tC, tRgb, tSk, None, 2))
 
 
 def test_cube_scale_episode(golden, tmp_path):
-    tFrames = [renderPointmap(units=2.0, yaw=tY, pitch=tP, seed=tI) for tI, (tY, tP) in enumerate([(30, -25), (40, -35), (25, -30), (45, -20)])]
+    tFrames = [renderPointmap(units=2.0, yaw=tY, pitch=tP, seed=tI)
+               for tI, (tY, tP) in enumerate([(30, -25), (40, -35), (25, -30), (45, -20)])]
     tRoi = [renderPointmap(units=2.0, yaw=50, pitch=-30, seed=9, hw=(96, 128), f=90.0)]
     np.savez(tmp_path / "kf.npz", X_cam=np.stack([f[0] for f in tFrames]).astype(np.float16), C=np.stack([f[1] for f in tFrames]),
-             img=np.stack([f[2] for f in tFrames]), T_WC=np.tile([0, 0, 0, 0, 0, 0, 1, 1.0], (4, 1)), frame_idx=np.arange(4), stride=2,
+             img=np.stack([f[2] for f in tFrames]), T_WC=np.tile([0, 0, 0, 0, 0, 0, 1, 1.0], (4, 1)), frame_idx=np.arange(4),
+             stride=2,
              hw=np.array([384, 512]), K=np.eye(3), roi_src=np.array([10, 11, 12]), roi_X=np.stack([tRoi[0][0]] * 3),
              roi_C=np.stack([tRoi[0][1]] * 3), roi_img=np.stack([tRoi[0][2]] * 3))
     (tmp_path / "ss1.csv").write_text("frame_idx,sim3_scale,is_lost\n10,0.9,False\n11,1.1,True\n")
-    tRec = CS.episode_scale(tmp_path / "kf.npz")
+    tRec = CS.episodeScale(tmp_path / "kf.npz")
     golden.check("cs.episode", tRec)
     golden.check("cs.episode_strip", CS.strip(tRec))
-    golden.check("cs.episode_roi_only", CS.episode_scale(tmp_path / "kf.npz", ss1_csv=tmp_path / "ss1.csv", use_keyframes=False))
-    golden.check("cs.episode_edge", CS.strip(CS.episode_scale(tmp_path / "kf.npz", edge_m=0.038)))
+    golden.check("cs.episode_roi_only", CS.episodeScale(tmp_path / "kf.npz", ss1Csv=tmp_path / "ss1.csv", useKeyframes=False))
+    golden.check("cs.episode_edge", CS.strip(CS.episodeScale(tmp_path / "kf.npz", edgeM=0.038)))
 
 
 # ---------------------------------------------------------------------------------------------------------------- cube_pnp
@@ -117,7 +121,8 @@ def renderFisheyeCube(tCentre, rCube, edge=CP.CUBE_EDGE_M, size=PNP_SIZE, jaw=Fa
 
 
 def _settingText(path: pathlib.Path) -> pathlib.Path:
-    tLines = [f"Camera1.fx: {PNP_K[0, 0]}", f"Camera1.fy: {PNP_K[1, 1]}", f"Camera1.cx: {PNP_K[0, 2]}", f"Camera1.cy: {PNP_K[1, 2]}"]
+    tLines = [f"Camera1.fx: {PNP_K[0, 0]}", f"Camera1.fy: {PNP_K[1, 1]}", f"Camera1.cx: {PNP_K[0, 2]}",
+              f"Camera1.cy: {PNP_K[1, 2]}"]
     tLines += [f"Camera1.k{tI + 1}: {tV}" for tI, tV in enumerate(PNP_K_COEFFS)]
     tLines += [f"Camera.width: {PNP_SIZE[0]}", f"Camera.height: {PNP_SIZE[1]}"]
     path.write_text("%YAML:1.0\n" + "\n".join(tLines) + "\n")
@@ -125,33 +130,36 @@ def _settingText(path: pathlib.Path) -> pathlib.Path:
 
 
 def test_cube_pnp_primitives(golden, tmp_path):
-    golden.check("cp.constants", [CP.CUBE_EDGE_M, CP.MIN_AREA_PX, CP.MIN_SOLIDITY, CP.MAX_REPROJ_PX, CP.FACE_MAX_VIEW_DEG, CP.MIN_FRAMES,
+    golden.check("cp.constants", [CP.CUBE_EDGE_M, CP.MIN_AREA_PX, CP.MIN_SOLIDITY, CP.MAX_REPROJ_PX, CP.FACE_MAX_VIEW_DEG,
+                                  CP.MIN_FRAMES,
                                   CP.MAX_REL_SPREAD, CP.MAX_CENTRE_RESID_M])
     golden.check("cp.models", {tK: [tV[0], sorted(tV[1])] for tK, tV in CP.MODELS.items()})
-    tK, tD, tSize = CP.read_setting(_settingText(tmp_path / "s.yaml"))
+    tK, tD, tSize = CP.readSetting(_settingText(tmp_path / "s.yaml"))
     golden.check("cp.read_setting", [tK, tD, list(tSize)])
     tP, tUnd = CP.undistorter(tK, tD, tSize)
     golden.check("cp.undistorter_P", tP)
-    golden.check("cp.quat_xyzw_to_R", CP.quat_xyzw_to_R([0.1, -0.2, 0.3, 0.9]))
-    for tName, tCentre, tRot in (("oblique", np.array([0.01, 0.0, 0.22]), Rotation.from_euler("yx", [35, -30], degrees=True).as_matrix()),
+    golden.check("cp.quat_xyzw_to_R", CP.quatXyzwToR([0.1, -0.2, 0.3, 0.9]))
+    tOblique = Rotation.from_euler("yx", [35, -30], degrees=True).as_matrix()
+    tTilted = Rotation.from_euler("x", [-35], degrees=True).as_matrix()
+    for tName, tCentre, tRot in (("oblique", np.array([0.01, 0.0, 0.22]), tOblique),
                                  ("headon", np.array([0.0, 0.0, 0.2]), np.eye(3)),
-                                 ("twoface", np.array([0.0, 0.0, 0.2]), Rotation.from_euler("x", [-35], degrees=True).as_matrix())):
+                                 ("twoface", np.array([0.0, 0.0, 0.2]), tTilted)):
         tImg = tUnd(renderFisheyeCube(tCentre, tRot))
-        tMask = CP.cube_blob(tImg)
+        tMask = CP.cubeBlob(tImg)
         golden.check(f"cp.blob_{tName}", tMask)
         tHex, tSol = CP.hexagon(tMask)
         golden.check(f"cp.hexagon_{tName}", [tHex, tSol])
         if tHex is not None:
-            golden.check(f"cp.pnp_cube_{tName}", CP.pnp_cube(tHex, tP))
+            golden.check(f"cp.pnp_cube_{tName}", CP.pnpCube(tHex, tP))
             if len(tHex) == 4:
-                golden.check(f"cp.occluded_{tName}", CP.occluded_below(tImg, tHex))
-                golden.check(f"cp.pnp_face_{tName}", CP.pnp_face(tHex, tP, edge=0.05))
-    assert CP.cube_blob(np.full((240, 320, 3), 120, np.uint8)) is None
+                golden.check(f"cp.occluded_{tName}", CP.occludedBelow(tImg, tHex))
+                golden.check(f"cp.pnp_face_{tName}", CP.pnpFace(tHex, tP, edge=0.05))
+    assert CP.cubeBlob(np.full((240, 320, 3), 120, np.uint8)) is None
     tJaw = tUnd(renderFisheyeCube(np.array([0.0, 0.0, 0.2]), np.eye(3), jaw=True))
-    tJawHex, _ = CP.hexagon(CP.cube_blob(tJaw)) if CP.cube_blob(tJaw) is not None else (None, None)
+    tJawHex, _ = CP.hexagon(CP.cubeBlob(tJaw)) if CP.cubeBlob(tJaw) is not None else (None, None)
     golden.check("cp.jaw_hex", tJawHex)
     if tJawHex is not None and len(tJawHex) == 4:
-        golden.check("cp.jaw_occluded", CP.occluded_below(tJaw, tJawHex))
+        golden.check("cp.jaw_occluded", CP.occludedBelow(tJaw, tJawHex))
 
 
 def test_cube_pnp_sharpen(golden):
@@ -166,7 +174,7 @@ def test_cube_pnp_sharpen(golden):
     tVerts = tHexTrue * 0.97 + 3
     golden.check("cp.sharpen", CP.sharpen(tContour, tVerts))
     golden.check("cp.sharpen_rev", CP.sharpen(tContour, tVerts[::-1].copy()))
-    golden.check("cp.sharpen_ordered", CP.sharpen_ordered(tContour, tVerts, [0, 100, 200, 300, 400, 500], (0.2, 0.8)))
+    golden.check("cp.sharpen_ordered", CP.sharpenOrdered(tContour, tVerts, [0, 100, 200, 300, 400, 500], (0.2, 0.8)))
     golden.check("cp.sharpen_dup", CP.sharpen(tContour, np.vstack([tVerts[:5], tVerts[4:5]])))
     assert len(tT) == 600
 
@@ -178,11 +186,11 @@ def test_cube_pnp_fit_scale(golden):
     tP = tRng.normal(0, 0.3, (tN, 3))
     tU = (tC - tP) / 2.0 + tRng.normal(0, 0.002, (tN, 3))
     tU[3] += 0.3                                         # one outlier frame
-    golden.check("cp.solve_k", CP.solve_k(tP, tU))
-    golden.check("cp.solve_k_degenerate", CP.solve_k(tP, np.zeros_like(tP)))
-    golden.check("cp.fit_scale", CP.fit_scale(tP, tU))
-    golden.check("cp.fit_scale_rng", CP.fit_scale(tP, tU, trim_iter=1, rng=np.random.default_rng(5)))
-    golden.check("cp.fit_scale_neg", CP.fit_scale(tP, -tU))
+    golden.check("cp.solve_k", CP.solveK(tP, tU))
+    golden.check("cp.solve_k_degenerate", CP.solveK(tP, np.zeros_like(tP)))
+    golden.check("cp.fit_scale", CP.fitScale(tP, tU))
+    golden.check("cp.fit_scale_rng", CP.fitScale(tP, tU, trimIter=1, rng=np.random.default_rng(5)))
+    golden.check("cp.fit_scale_neg", CP.fitScale(tP, -tU))
 
 
 def _pnpEpisode(tmpPath: pathlib.Path, nFrames: int = 16, lostEvery: int = 5):
@@ -200,7 +208,8 @@ def _pnpEpisode(tmpPath: pathlib.Path, nFrames: int = 16, lostEvery: int = 5):
         tWriter.write(renderFisheyeCube(tCentreCam, tCubeRot))
         tQ = tRcw.as_quat()
         tPw = tCamM * tK
-        tRows.append(f"{tI},{tPw[0]},{tPw[1]},{tPw[2]},{tQ[0]},{tQ[1]},{tQ[2]},{tQ[3]},{'True' if tI % lostEvery == 4 else 'False'}")
+        tLost = "True" if tI % lostEvery == 4 else "False"
+        tRows.append(f"{tI},{tPw[0]},{tPw[1]},{tPw[2]},{tQ[0]},{tQ[1]},{tQ[2]},{tQ[3]},{tLost}")
     tWriter.release()
     (tmpPath / "ss1.csv").write_text("\n".join(tRows) + "\n")
     return tmpPath / "v.avi", _settingText(tmpPath / "s.yaml"), tmpPath / "ss1.csv"
@@ -212,8 +221,8 @@ def _strip(rec):
 
 def test_episode_pnp_scale(golden, tmp_path):
     tVideo, tSetting, tCsv = _pnpEpisode(tmp_path)
-    tRec = CP.episode_pnp_scale(tVideo, tSetting, tCsv)
+    tRec = CP.episodePnpScale(tVideo, tSetting, tCsv)
     golden.check("cp.episode_frames_ok", [tF["ok"] for tF in tRec["frames"]])
     golden.check("cp.episode", _strip(tRec))
-    golden.check("cp.episode_frac", _strip(CP.episode_pnp_scale(tVideo, tSetting, tCsv, stride=2, max_frac=0.5)))
-    golden.check("cp.episode_edge", _strip(CP.episode_pnp_scale(tVideo, tSetting, tCsv, edge=0.05)))
+    golden.check("cp.episode_frac", _strip(CP.episodePnpScale(tVideo, tSetting, tCsv, stride=2, maxFrac=0.5)))
+    golden.check("cp.episode_edge", _strip(CP.episodePnpScale(tVideo, tSetting, tCsv, edge=0.05)))

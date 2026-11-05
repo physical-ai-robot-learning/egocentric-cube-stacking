@@ -9,7 +9,11 @@ Decisions that override spec v2 text (user, 2026-10-01):
   D2  gripper: 0 = fully closed, 1 = fully open (aperture mm / 80 mm), the v4 / R312c RELCART20 / ego gcal1 polarity.
   D3  state.npy = v4 RELCART20 task-anchor state [L pose9 | R pose9 | gL | gR] (grippers at dims 18, 19).
       The spec's previous-relative state is kept as state_prevrel.npy (diagnostic / ablation only, never the default).
+
+Pipeline stage: configuration of the dataset stage (read by convert.py, the scripts and the validators).
 """
+from __future__ import annotations
+
 from dataclasses import asdict, dataclass
 
 UMI_DT = 3.0 / 59.94                 # 50.05 ms, the v4 contract target / history spacing (UMI76_CONTRACT 2b)
@@ -38,24 +42,39 @@ PR_GRIP = {"left": 9, "right": 19}
 
 @dataclass(frozen=True)
 class Cart20Config:
-    row_fps: float = ROW_FPS
-    target_dt_s: float = UMI_DT
-    horizon: int = HORIZON
-    max_raw_gap_s: float = 0.050        # interpolation only between two VALID raw samples at most this far apart
-    image_tol_s: float = 0.020          # a row needs a camera frame within 20 ms (the C8 V3 pairing rule)
-    required_cameras: tuple = ("head",)
-    gripper_convention: str = "0_closed_1_open"
-    rot6d_convention: str = "first_two_rows"   # umi pose_util.mat_to_rot6d = R[:2, :]
-    aux_mode: str = "zero"
-    stage_weights: tuple = (1.0, 1.0, 1.0, 2.0)
-    discontinuity_filter: bool = False    # v2 = False (unchanged); v2b = True (pose_filter.discontinuity_filter, user 2026-10-01)
-    jump_max_trans_per_row_m: float = 0.100
-    jump_max_rot_per_row_deg: float = 45.0
-    jump_window: str = "frame"            # "frame" (rate checked per raw step) | "row" (displacement over one 66.7 ms row)
-    jump_isolated_step_m: float = None    # also flag a single raw step > this with both neighbouring steps < 0.3 m/s
+    """Conversion settings of one processed dataset.  Written into every metadata.json under the snake_case keys of
+    SERIALISED_KEYS (the file format predates the m-prefixed field names)."""
+    mRowFps: float = ROW_FPS
+    mTargetDtS: float = UMI_DT
+    mHorizon: int = HORIZON
+    mMaxRawGapS: float = 0.050           # interpolation only between two VALID raw samples at most this far apart
+    mImageTolS: float = 0.020            # a row needs a camera frame within 20 ms (the C8 V3 pairing rule)
+    mRequiredCameras: tuple = ("head",)
+    mGripperConvention: str = "0_closed_1_open"
+    mRot6dConvention: str = "first_two_rows"   # umi pose_util.mat_to_rot6d = R[:2, :]
+    mAuxMode: str = "zero"
+    mStageWeights: tuple = (1.0, 1.0, 1.0, 2.0)
+    mDiscontinuityFilter: bool = False   # v2 = False (unchanged); v2b = True (pose_filter.discontinuityFilter, user 2026-10-01)
+    mJumpMaxTransPerRowM: float = 0.100
+    mJumpMaxRotPerRowDeg: float = 45.0
+    mJumpWindow: str = "frame"           # "frame" (rate checked per raw step) | "row" (displacement over one 66.7 ms row)
+    mJumpIsolatedStepM: float | None = None   # also flag a single raw step > this with both neighbouring steps < 0.3 m/s
 
-    def to_dict(self):
-        return asdict(self)
+    def toDict(self) -> dict:
+        """the metadata.json form: snake_case keys in field order (was to_dict)"""
+        tFields = asdict(self)
+        return {tKey: tFields[tField] for tField, tKey in SERIALISED_KEYS}
+
+
+# Cart20Config field -> metadata.json key, in the order the keys are written
+SERIALISED_KEYS = (
+    ("mRowFps", "row_fps"), ("mTargetDtS", "target_dt_s"), ("mHorizon", "horizon"), ("mMaxRawGapS", "max_raw_gap_s"),
+    ("mImageTolS", "image_tol_s"), ("mRequiredCameras", "required_cameras"), ("mGripperConvention", "gripper_convention"),
+    ("mRot6dConvention", "rot6d_convention"), ("mAuxMode", "aux_mode"), ("mStageWeights", "stage_weights"),
+    ("mDiscontinuityFilter", "discontinuity_filter"), ("mJumpMaxTransPerRowM", "jump_max_trans_per_row_m"),
+    ("mJumpMaxRotPerRowDeg", "jump_max_rot_per_row_deg"), ("mJumpWindow", "jump_window"),
+    ("mJumpIsolatedStepM", "jump_isolated_step_m"),
+)
 
 
 CONTRACT = dict(

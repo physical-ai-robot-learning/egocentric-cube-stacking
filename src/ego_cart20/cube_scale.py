@@ -17,15 +17,18 @@ Per keyframe:
     -> L_raw(frame) = median of the accepted face edges (world units);  s_frame = L_real / L_raw
 Per episode:  s_cube = median(s_frame) over >= MIN_FRAMES accepted frames with spread (MAD / median) <= MAX_SPREAD,
               else INVALID with the reason.  Every number goes into the QC record (user list 2026-10-03).
+
+Pipeline stage: pose stage, metric scale (alternative to the IMU-VI scale and to cube_pnp.py).
 """
 from __future__ import annotations
-import json
+
 import pathlib
 import warnings
 
 import numpy as np
 
-warnings.filterwarnings("ignore", message=".*encountered in matmul")   # numpy 2 + macOS Accelerate: spurious
+# numpy 2 + macOS Accelerate: spurious matmul warnings (installed on import, as before the restyle)
+warnings.filterwarnings("ignore", message=".*encountered in matmul")
 CUBE_EDGE_M = 0.05             # the task cube.  CONFIRM with the operator before freezing the dataset
 MIN_MASK_PX = 150              # at the dumped (stride-2) resolution
 MIN_FACE_PTS = 60
@@ -37,117 +40,187 @@ MIN_FRAMES = 3
 MAX_SPREAD = 0.15              # MAD / median of s_frame inside an episode
 CONF_MIN = 1.5                 # MASt3R confidence (same default C_conf_threshold as the SLAM viewer)
 
+# red cube in OpenCV HSV (hue 0..180): the HRA cube is orange-red, hue ~10, sat ~230
+RED_HUE_LOW_MAX = 18
+RED_HUE_HIGH_MIN = 170
+RED_SAT_MIN = 150
+RED_VAL_MIN = 50
+OPEN_KERNEL_PX = 3
+CLOSE_KERNEL_PX = 5
+RANSAC_ITERS = 200
+RANSAC_THR_FRAC = 0.04         # plane inlier distance = this fraction of the blob's 3-97 % extent diagonal
+EXTENT_PCT = (3, 97)
+NORM_EPS = 1e-9               # keeps a threshold / divisor away from zero
+DEGENERATE_NORMAL = 1e-12      # a 3-point sample with a shorter normal is collinear
+FACE_TRIM = 0.01
+MAX_FACES = 3
+TINY = 1e-12
 
-def quat_to_R(q):
-    x, y, z, w = q
-    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
-                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+
+def quatToR(q) -> np.ndarray:
+    """xyzw quaternion -> rotation matrix (was quat_to_R)"""
+    tX, tY, tZ, tW = q
+    return np.array([[1 - 2 * (tY * tY + tZ * tZ), 2 * (tX * tY - tZ * tW), 2 * (tX * tZ + tY * tW)],
+                     [2 * (tX * tY + tZ * tW), 1 - 2 * (tX * tX + tZ * tZ), 2 * (tY * tZ - tX * tW)],
+                     [2 * (tX * tZ - tY * tW), 2 * (tY * tZ + tX * tW), 1 - 2 * (tX * tX + tY * tY)]])
 
 
-def red_mask(rgb: np.ndarray, *, erode: int = 0) -> np.ndarray:
+def redMask(rgb: np.ndarray, *, erode: int = 0) -> np.ndarray:
+    """largest orange-red blob of an RGB image (bool mask, all False if none)"""
     import cv2
-    hsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
-    h, s, v = hsv[..., 0].astype(int), hsv[..., 1].astype(int), hsv[..., 2].astype(int)
-    m = (((h <= 18) | (h >= 170)) & (s >= 150) & (v >= 50)).astype(np.uint8)   # the HRA cube is orange-red: hue ~10, sat ~230
-    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)); m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
-    n, lab, st, _ = cv2.connectedComponentsWithStats(m)
-    if n <= 1: return np.zeros_like(m, bool)
-    k = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA])); m = (lab == k).astype(np.uint8)
-    if erode: m = cv2.erode(m, np.ones((2 * erode + 1, 2 * erode + 1), np.uint8))
-    return m.astype(bool)
+    tHsv = cv2.cvtColor(rgb, cv2.COLOR_RGB2HSV)
+    tH, tS, tV = tHsv[..., 0].astype(int), tHsv[..., 1].astype(int), tHsv[..., 2].astype(int)
+    tMask = (((tH <= RED_HUE_LOW_MAX) | (tH >= RED_HUE_HIGH_MIN)) & (tS >= RED_SAT_MIN) & (tV >= RED_VAL_MIN)).astype(np.uint8)
+    tMask = cv2.morphologyEx(tMask, cv2.MORPH_OPEN, np.ones((OPEN_KERNEL_PX, OPEN_KERNEL_PX), np.uint8))
+    tMask = cv2.morphologyEx(tMask, cv2.MORPH_CLOSE, np.ones((CLOSE_KERNEL_PX, CLOSE_KERNEL_PX), np.uint8))
+    tN, tLabels, tStats, _ = cv2.connectedComponentsWithStats(tMask)
+    if tN <= 1:
+        return np.zeros_like(tMask, bool)
+    tK = 1 + int(np.argmax(tStats[1:, cv2.CC_STAT_AREA]))
+    tMask = (tLabels == tK).astype(np.uint8)
+    if erode:
+        tMask = cv2.erode(tMask, np.ones((2 * erode + 1, 2 * erode + 1), np.uint8))
+    return tMask.astype(bool)
 
 
-def fit_plane(P):
-    c = P.mean(0); _, sv, vt = np.linalg.svd(P - c, full_matrices=False); return c, vt[2], vt[:2]
+def fitPlane(points):
+    """least-squares plane -> (centre, normal, two in-plane axes (2, 3))"""
+    tC = points.mean(0)
+    _, _, tVt = np.linalg.svd(points - tC, full_matrices=False)
+    return tC, tVt[2], tVt[:2]
 
 
-def ransac_plane(P, thr, iters=200, rng=None):
-    rng = rng or np.random.default_rng(0); best = None
+def ransacPlane(points, thr, iters=RANSAC_ITERS, rng=None):
+    """inlier mask of the best 3-point plane (None if every sample was degenerate)"""
+    tRng = rng or np.random.default_rng(0)
+    tBest = None
     for _ in range(iters):
-        i = rng.choice(len(P), 3, replace=False); n = np.cross(P[i[1]] - P[i[0]], P[i[2]] - P[i[0]])
-        if np.linalg.norm(n) < 1e-12: continue
-        n /= np.linalg.norm(n); inl = np.abs((P - P[i[0]]) @ n) < thr
-        if best is None or inl.sum() > best.sum(): best = inl
-    return best
+        tI = tRng.choice(len(points), 3, replace=False)
+        tN = np.cross(points[tI[1]] - points[tI[0]], points[tI[2]] - points[tI[0]])
+        if np.linalg.norm(tN) < DEGENERATE_NORMAL:
+            continue
+        tN /= np.linalg.norm(tN)
+        tInliers = np.abs((points - points[tI[0]]) @ tN) < thr
+        if tBest is None or tInliers.sum() > tBest.sum():
+            tBest = tInliers
+    return tBest
 
 
-def face_rect(uv, trim=0.01):
+def faceRect(uv, trim=FACE_TRIM) -> np.ndarray:
     """side lengths of the minimum-area rectangle around the in-plane points, after dropping the `trim` fraction farthest
     from the median.  Orientation-free: a PCA extent is undefined for a square (isotropic) face and reads up to sqrt(2) L."""
     import cv2
-    d = np.linalg.norm(uv - np.median(uv, 0), axis=1); keep = d <= np.quantile(d, 1 - trim)
-    (_, _), (w, h), _ = cv2.minAreaRect(uv[keep].astype(np.float32)); return np.array([w, h], float)
+    tD = np.linalg.norm(uv - np.median(uv, 0), axis=1)
+    tKeep = tD <= np.quantile(tD, 1 - trim)
+    (_, _), (tW, tH), _ = cv2.minAreaRect(uv[tKeep].astype(np.float32))
+    return np.array([tW, tH], float)
 
 
-def faces_of(P, view_dirs, *, max_faces=3):
-    """sequential RANSAC faces. P (n,3) camera-frame points (any unit), view_dirs (n,3) unit rays."""
-    out, rest = [], np.arange(len(P))
-    ext = np.percentile(P, 97, axis=0) - np.percentile(P, 3, axis=0); thr = 0.04 * float(np.linalg.norm(ext)) + 1e-9
-    for _ in range(max_faces):
-        if len(rest) < MIN_FACE_PTS: break
-        inl = ransac_plane(P[rest], thr)
-        if inl is None or inl.sum() < MIN_FACE_PTS: break
-        idx = rest[inl]; c, n, ax = fit_plane(P[idx]); resid = float(np.sqrt(np.mean(((P[idx] - c) @ n) ** 2)))
-        e = face_rect(((P[idx] - c) @ ax.T))
-        view = float(np.degrees(np.arccos(min(1.0, abs(float(np.mean(view_dirs[idx], 0) @ n) / max(np.linalg.norm(np.mean(view_dirs[idx], 0)), 1e-9))))))
-        out.append(dict(n_pts=int(len(idx)), normal=n, edges=e, resid=resid, view_deg=view)); rest = rest[~inl]
-    return out
+def facesOf(points, viewDirs, *, maxFaces=MAX_FACES) -> list:
+    """sequential RANSAC faces. points (n,3) camera-frame points (any unit), viewDirs (n,3) unit rays."""
+    tOut, tRest = [], np.arange(len(points))
+    tExtent = np.percentile(points, EXTENT_PCT[1], axis=0) - np.percentile(points, EXTENT_PCT[0], axis=0)
+    tThr = RANSAC_THR_FRAC * float(np.linalg.norm(tExtent)) + NORM_EPS
+    for _ in range(maxFaces):
+        if len(tRest) < MIN_FACE_PTS:
+            break
+        tInliers = ransacPlane(points[tRest], tThr)
+        if tInliers is None or tInliers.sum() < MIN_FACE_PTS:
+            break
+        tIdx = tRest[tInliers]
+        tC, tN, tAxes = fitPlane(points[tIdx])
+        tResid = float(np.sqrt(np.mean(((points[tIdx] - tC) @ tN) ** 2)))
+        tEdges = faceRect(((points[tIdx] - tC) @ tAxes.T))
+        tMeanRay = np.mean(viewDirs[tIdx], 0)
+        tView = float(np.degrees(np.arccos(min(1.0, abs(float(tMeanRay @ tN) / max(np.linalg.norm(tMeanRay), NORM_EPS))))))
+        tOut.append(dict(n_pts=int(len(tIdx)), normal=tN, edges=tEdges, resid=tResid, view_deg=tView))
+        tRest = tRest[~tInliers]
+    return tOut
 
 
-def frame_scale(X_cam, C, rgb, s_k, K, stride, *, edge_m=CUBE_EDGE_M) -> dict:
-    m = red_mask(rgb); rec = dict(mask_px=int(m.sum()))
-    if m.sum() < MIN_MASK_PX: return dict(rec, ok=False, why="mask_small")
-    good = m & (C >= CONF_MIN) & np.isfinite(X_cam).all(-1)
-    P = X_cam[good].astype(np.float64); rec["pts"] = int(len(P))
-    if len(P) < MIN_FACE_PTS: return dict(rec, ok=False, why="few_points")
-    vd = P / np.linalg.norm(P, axis=1, keepdims=True)
-    fs = faces_of(P, vd); acc = []; why = []
-    for j, f in enumerate(fs):
-        if j and abs(float(f["normal"] @ fs[0]["normal"])) > np.sin(np.radians(ORTHO_TOL_DEG)): why.append("not_orthogonal"); continue
-        a, b = sorted(f["edges"]); L = float(np.sqrt(a * b))
-        if b / max(a, 1e-12) > 1 + SQUARE_TOL: why.append("occluded_or_partial"); continue
-        if f["view_deg"] > MAX_VIEW_DEG: why.append("edge_on"); continue
-        if f["resid"] / max(L, 1e-12) > MAX_RESID_FRAC: why.append("residual"); continue
-        acc.append(dict(L_cam=L, a=a, b=b, resid_frac=f["resid"] / L, view_deg=f["view_deg"], n_pts=f["n_pts"]))
-    rec.update(faces=len(fs), faces_ok=len(acc), reject=why)
-    if not acc: return dict(rec, ok=False, why="no_valid_face:" + ",".join(sorted(set(why))) if why else "no_face")
-    L_raw = float(s_k * np.median([f["L_cam"] for f in acc]))
-    return dict(rec, ok=True, L_raw=L_raw, s_frame=edge_m / L_raw, face_resid_frac=float(np.median([f["resid_frac"] for f in acc])),
-                aspect=float(np.median([f["b"] / f["a"] for f in acc])), view_deg=float(np.median([f["view_deg"] for f in acc])))
+def frameScale(xCam, conf, rgb, sK, k, stride, *, edgeM=CUBE_EDGE_M) -> dict:
+    """one keyframe: pointmap xCam (H, W, 3), confidence (H, W), RGB, keyframe Sim3 scale sK -> QC record with s_frame
+    (k and stride are unused; kept in the signature of the kfdump call)"""
+    tMask = redMask(rgb)
+    tRec = dict(mask_px=int(tMask.sum()))
+    if tMask.sum() < MIN_MASK_PX:
+        return dict(tRec, ok=False, why="mask_small")
+    tGood = tMask & (conf >= CONF_MIN) & np.isfinite(xCam).all(-1)
+    tP = xCam[tGood].astype(np.float64)
+    tRec["pts"] = int(len(tP))
+    if len(tP) < MIN_FACE_PTS:
+        return dict(tRec, ok=False, why="few_points")
+    tViewDirs = tP / np.linalg.norm(tP, axis=1, keepdims=True)
+    tFaces = facesOf(tP, tViewDirs)
+    tAccepted = []
+    tWhy = []
+    for tJ, tFace in enumerate(tFaces):
+        if tJ and abs(float(tFace["normal"] @ tFaces[0]["normal"])) > np.sin(np.radians(ORTHO_TOL_DEG)):
+            tWhy.append("not_orthogonal")
+            continue
+        tA, tB = sorted(tFace["edges"])
+        tL = float(np.sqrt(tA * tB))
+        if tB / max(tA, TINY) > 1 + SQUARE_TOL:
+            tWhy.append("occluded_or_partial")
+            continue
+        if tFace["view_deg"] > MAX_VIEW_DEG:
+            tWhy.append("edge_on")
+            continue
+        if tFace["resid"] / max(tL, TINY) > MAX_RESID_FRAC:
+            tWhy.append("residual")
+            continue
+        tAccepted.append(dict(L_cam=tL, a=tA, b=tB, resid_frac=tFace["resid"] / tL, view_deg=tFace["view_deg"],
+                              n_pts=tFace["n_pts"]))
+    tRec.update(faces=len(tFaces), faces_ok=len(tAccepted), reject=tWhy)
+    if not tAccepted:
+        return dict(tRec, ok=False, why="no_valid_face:" + ",".join(sorted(set(tWhy))) if tWhy else "no_face")
+    tLRaw = float(sK * np.median([tF["L_cam"] for tF in tAccepted]))
+    return dict(tRec, ok=True, L_raw=tLRaw, s_frame=edgeM / tLRaw,
+                face_resid_frac=float(np.median([tF["resid_frac"] for tF in tAccepted])),
+                aspect=float(np.median([tF["b"] / tF["a"] for tF in tAccepted])),
+                view_deg=float(np.median([tF["view_deg"] for tF in tAccepted])))
 
 
-def episode_scale(kf_npz: pathlib.Path, *, ss1_csv: pathlib.Path | None = None, edge_m=CUBE_EDGE_M, use_keyframes: bool = True) -> dict:
+def episodeScale(kfNpz: pathlib.Path, *, ss1Csv: pathlib.Path | None = None, edgeM=CUBE_EDGE_M,
+                 useKeyframes: bool = True) -> dict:
     """keyframes (final Sim3 scale) + tracked-frame red ROIs at full resolution (Sim3 scale of that frame from ss1.csv,
     the same re-expression on the final keyframes the trajectory uses)"""
-    z = np.load(kf_npz, allow_pickle=True)
-    frames = []
-    if use_keyframes and len(z["T_WC"]):
-        X, C, I, T = z["X_cam"].astype(np.float32), z["C"].astype(np.float32), z["img"], z["T_WC"]
-        for k in range(len(T)):
-            r = frame_scale(X[k], C[k], I[k], float(T[k, 7]), z["K"], int(z["stride"]), edge_m=edge_m)
-            r.update(src="kf", kf=k, frame_idx=int(z["frame_idx"][k])); frames.append(r)
-    if "roi_src" in z.files and len(z["roi_src"]):
+    tZ = np.load(kfNpz, allow_pickle=True)
+    tFrames = []
+    if useKeyframes and len(tZ["T_WC"]):
+        tX, tC, tImg, tTwc = tZ["X_cam"].astype(np.float32), tZ["C"].astype(np.float32), tZ["img"], tZ["T_WC"]
+        for tK in range(len(tTwc)):
+            tRec = frameScale(tX[tK], tC[tK], tImg[tK], float(tTwc[tK, 7]), tZ["K"], int(tZ["stride"]), edgeM=edgeM)
+            tRec.update(src="kf", kf=tK, frame_idx=int(tZ["frame_idx"][tK]))
+            tFrames.append(tRec)
+    if "roi_src" in tZ.files and len(tZ["roi_src"]):
         import pandas as pd
-        ss = pd.read_csv(ss1_csv if ss1_csv else pathlib.Path(kf_npz).with_name("ss1.csv")).set_index("frame_idx")
-        for j, src in enumerate(z["roi_src"]):
-            src = int(src)
-            if src not in ss.index or str(ss.loc[src, "is_lost"]).lower() == "true": continue
-            r = frame_scale(z["roi_X"][j].astype(np.float32), z["roi_C"][j].astype(np.float32), z["roi_img"][j],
-                            float(ss.loc[src, "sim3_scale"]), z["K"], 1, edge_m=edge_m)
-            r.update(src="roi", frame_idx=src); frames.append(r)
-    ok = [f for f in frames if f["ok"]]; s = np.array([f["s_frame"] for f in ok])
-    out = dict(n_keyframes=len(frames), n_frames_ok=len(ok), cube_edge_m=edge_m, frames=frames,
-               reject_counts={w: sum(1 for f in frames if not f["ok"] and f["why"].startswith(w.split(":")[0]))
-                              for w in sorted(set(f["why"].split(":")[0] for f in frames if not f["ok"]))})
-    if len(ok) < MIN_FRAMES: return dict(out, valid=False, reason=f"only {len(ok)} keyframes with a measurable cube (< {MIN_FRAMES})")
-    med = float(np.median(s)); spread = float(np.median(np.abs(s - med)) / med)
-    out.update(s_cube=med, spread=spread, cube_edge_raw=float(edge_m / med),
-               fit_residual=float(np.median([f["face_resid_frac"] for f in ok])), num_cube_points=int(np.median([f["pts"] for f in ok])))
-    if spread > MAX_SPREAD: return dict(out, valid=False, reason=f"s_frame spread {spread:.2f} > {MAX_SPREAD}")
-    return dict(out, valid=True, reason="")
+        tSs = pd.read_csv(ss1Csv if ss1Csv else pathlib.Path(kfNpz).with_name("ss1.csv")).set_index("frame_idx")
+        for tJ, tSrc in enumerate(tZ["roi_src"]):
+            tSrc = int(tSrc)
+            if tSrc not in tSs.index or str(tSs.loc[tSrc, "is_lost"]).lower() == "true":
+                continue
+            tRec = frameScale(tZ["roi_X"][tJ].astype(np.float32), tZ["roi_C"][tJ].astype(np.float32), tZ["roi_img"][tJ],
+                              float(tSs.loc[tSrc, "sim3_scale"]), tZ["K"], 1, edgeM=edgeM)
+            tRec.update(src="roi", frame_idx=tSrc)
+            tFrames.append(tRec)
+    tOk = [tF for tF in tFrames if tF["ok"]]
+    tS = np.array([tF["s_frame"] for tF in tOk])
+    tOut = dict(n_keyframes=len(tFrames), n_frames_ok=len(tOk), cube_edge_m=edgeM, frames=tFrames,
+                reject_counts={tW: sum(1 for tF in tFrames if not tF["ok"] and tF["why"].startswith(tW.split(":")[0]))
+                               for tW in sorted(set(tF["why"].split(":")[0] for tF in tFrames if not tF["ok"]))})
+    if len(tOk) < MIN_FRAMES:
+        return dict(tOut, valid=False, reason=f"only {len(tOk)} keyframes with a measurable cube (< {MIN_FRAMES})")
+    tMed = float(np.median(tS))
+    tSpread = float(np.median(np.abs(tS - tMed)) / tMed)
+    tOut.update(s_cube=tMed, spread=tSpread, cube_edge_raw=float(edgeM / tMed),
+                fit_residual=float(np.median([tF["face_resid_frac"] for tF in tOk])),
+                num_cube_points=int(np.median([tF["pts"] for tF in tOk])))
+    if tSpread > MAX_SPREAD:
+        return dict(tOut, valid=False, reason=f"s_frame spread {tSpread:.2f} > {MAX_SPREAD}")
+    return dict(tOut, valid=True, reason="")
 
 
 def strip(rec: dict) -> dict:
     """QC row without the per-frame detail"""
-    return {k: v for k, v in rec.items() if k != "frames"}
+    return {tK: tV for tK, tV in rec.items() if tK != "frames"}

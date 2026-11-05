@@ -12,7 +12,7 @@ import numpy as np
 import pytest
 
 from ego_cart20.scripts import export_lerobot as EL
-from ego_cart20.sources import handumi_export as HE
+from ego_cart20 import handumi_export as HE
 
 from .synthetic import writeRawRoot, writeVideo
 
@@ -22,7 +22,7 @@ MOD_CONVERT_EPISODE = "ego_cart20.scripts.convert_episode"
 MOD_VALIDATE = "ego_cart20.scripts.validate_dataset"
 MOD_REPORT = "ego_cart20.scripts.report_dataset"
 MOD_EXPORT_LEROBOT = "ego_cart20.scripts.export_lerobot"
-MOD_HANDUMI_EXPORT = "ego_cart20.sources.handumi_export"
+MOD_HANDUMI_EXPORT = "ego_cart20.handumi_export"
 VOLATILE_DATASET_META = ("created", "raw_root", "code_sha256")
 
 
@@ -69,7 +69,8 @@ def test_convert_dataset_cli(golden, converted):
         golden.check(f"cli.convert_{tName}_meta_keys", list(json.loads((tOut / "metadata.json").read_text())))
         for tS in ("train", "val", "test"):
             golden.check(f"cli.convert_{tName}_{tS}_manifest", (tOut / f"{tS}_manifest.jsonl").read_text())
-        golden.check(f"cli.convert_{tName}_files", sorted(str(p.relative_to(tOut)) for p in tOut.rglob("*") if p.name != "metadata.json"))
+        tFiles = sorted(str(tP.relative_to(tOut)) for tP in tOut.rglob("*") if tP.name != "metadata.json")
+        golden.check(f"cli.convert_{tName}_files", tFiles)
     with pytest.raises(AssertionError, match="exists"):
         _run(MOD_CONVERT_DATASET, tRoot / "raw", tRoot / "hash")
 
@@ -152,22 +153,22 @@ def test_export_lerobot_fix_stats(golden, tmp_path):
         pq.write_table(tTable, tmp_path / "data" / "chunk-000" / f"file-{tI:03d}.parquet")
     (tmp_path / "meta" / "stats.json").write_text(json.dumps({"aux.q_t": {"mean": [1.0] * 12, "std": [2.0] * 12, "count": [14]},
                                                               "other": {"mean": [3.0]}}))
-    golden.check("el.fix_stats", EL.fix_stats(tmp_path))
+    golden.check("el.fix_stats", EL.fixStats(tmp_path))
     golden.check("el.fix_stats_json", json.loads((tmp_path / "meta" / "stats.json").read_text()))
 
 
 def test_export_lerobot_write_shard_resumes_from_marker(tmp_path):
     (tmp_path / "shards").mkdir()
     (tmp_path / "shards" / "ep1.complete").write_text(json.dumps({"episode_id": "ep1", "frames": 3}))
-    assert EL.write_shard((str(tmp_path / "ep1"), str(tmp_path / "shards" / "ep1"))) == {"episode_id": "ep1", "frames": 3}
+    assert EL.writeShard((str(tmp_path / "ep1"), str(tmp_path / "shards" / "ep1"))) == {"episode_id": "ep1", "frames": 3}
 
 
 # ---------------------------------------------------------------------------------------------------------------- handumi_export
 def test_handumi_export_layout(golden, tmp_path, monkeypatch):
     golden.check("he.consts", [HE.HRL_SESSION, list(HE.SIDES), str(HE.RAW_OLD.relative_to(HE.EGO_COLLECTOR_HOME)),
                                str(HE.RAW_HRL.relative_to(HE.EGO_COLLECTOR_HOME)), str(HE.V2K.relative_to(HE.UMI_BRIDGE))])
-    golden.check("he.episode_dir_old", str(HE._episode_dir("20260901_120000_0007").relative_to(HE.EGO_COLLECTOR_HOME)))
-    golden.check("he.episode_dir_hrl", str(HE._episode_dir("20260928_101010_0012").relative_to(HE.EGO_COLLECTOR_HOME)))
+    golden.check("he.episode_dir_old", str(HE._episodeDir("20260901_120000_0007").relative_to(HE.EGO_COLLECTOR_HOME)))
+    golden.check("he.episode_dir_hrl", str(HE._episodeDir("20260928_101010_0012").relative_to(HE.EGO_COLLECTOR_HOME)))
     (tmp_path / "c8").mkdir()
     (tmp_path / "c8" / "phase3_census.json").write_text(json.dumps({"episodes": {
         "e3": {"first_fail": None, "left": {"scale_valid": True}, "right": {"scale_valid": True}},
@@ -176,7 +177,8 @@ def test_handumi_export_layout(golden, tmp_path, monkeypatch):
         "e4": {"first_fail": None, "left": {"scale_valid": True}, "right": {"scale_valid": False}},
         "e5": {"first_fail": None, "right": {"scale_valid": True}}}}))
     (tmp_path / "v2k").mkdir()
-    (tmp_path / "v2k" / "hrl80_split_frozen.json").write_text(json.dumps({"train_source_episodes": ["h3", "h1"], "val_source_episodes": ["h2"]}))
+    (tmp_path / "v2k" / "hrl80_split_frozen.json").write_text(
+        json.dumps({"train_source_episodes": ["h3", "h1"], "val_source_episodes": ["h2"]}))
     monkeypatch.setattr(HE, "C8", tmp_path / "c8")
     monkeypatch.setattr(HE, "V2K", tmp_path / "v2k")
-    golden.check("he.source_list", HE.source_list())
+    golden.check("he.source_list", HE.sourceList())
