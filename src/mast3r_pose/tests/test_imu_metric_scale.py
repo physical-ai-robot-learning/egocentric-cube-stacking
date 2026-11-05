@@ -12,7 +12,7 @@ from mast3r_pose.tests.golden import assertGolden
 from mast3r_pose.tests.synthetic import TAGS, writeBenchmark
 
 GOLDEN = Path(__file__).with_name("golden")
-MODULE = "mast3r_pose.cp6_scale"
+MODULE = "mast3r_pose.imu_metric_scale"
 
 
 def _run(base: Path, variant: str, monkeypatch, capsys) -> tuple[dict, str]:

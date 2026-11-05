@@ -17,7 +17,7 @@ from rebot_prep.tests.golden import assertGolden
 GOLDEN = Path(__file__).with_name("golden")
 SRC = Path(__file__).resolve().parents[2]
 CLIS = {"extract_grip": "rebot_prep.grip.extract_grip", "correct_grip": "rebot_prep.grip.correct_grip",
-        "input_gate": "rebot_prep.pseudo_joint.c2_input_gate", "compare": "rebot_prep.retarget.v2k_compare"}
+        "input_gate": "rebot_prep.pseudo_joint.input_gate", "compare": "rebot_prep.retarget.compare_retargets"}
 
 
 def _help(module: str, tmp_path: Path) -> list[str]:
@@ -72,3 +72,12 @@ def namespaceOf(module: str, argv: list[str], home: Path, src: Path = SRC) -> di
 def test_cli_defaults_are_unchanged(name, tmp_path):
     _help(CLIS[name], tmp_path)                                         # builds the roots under tmp_path/home
     assertGolden(GOLDEN, f"namespace_{name}", namespaceOf(CLIS[name], ARGV[name], tmp_path / "home"))
+
+
+def test_multi_seed_retarget_defaults(tmp_path):
+    """added with the rewrite (the original could not be imported without its data): values read off the original argparse"""
+    from rebot_prep.retarget.multi_seed_retarget import buildParser
+    tNs = vars(buildParser().parse_args(["--episodes-json", "e.json", "--raw-root", "r", "--runs", "u", "--export", "x", "--out", "o"]))
+    assert tNs == dict(episodes_json="e.json", raw_root="r", prefix="Hpilot", runs="u", export=["x"], out="o", part="0/1", mode="v2k")
+    with pytest.raises(SystemExit):
+        buildParser().parse_args(["--episodes-json", "e", "--raw-root", "r", "--runs", "u", "--export", "x", "--out", "o", "--mode", "v3"])

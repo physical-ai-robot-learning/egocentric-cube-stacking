@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 from pathlib import Path
 
 import numpy as np
@@ -121,12 +122,9 @@ def test_continuity_ik_soft_and_convergence_statuses(pipeline):
 
 
 # ---------------------------------------------------------------- C2 input gate (raw TCP quality metrics)
-GATE_PATH = Path(__file__).resolve().parents[1] / "pseudo_joint" / "c2_input_gate.py"
-
-
 def _gateMetrics():
-    from rebot_prep.tests.scriptdefs import loadDefs
-    return loadDefs(GATE_PATH, {"POS_PAIR_MM", "ROT_PAIR_DEG", "REV_COS", "metrics"}, {"__name__": "gate_defs"})["metrics"]
+    from rebot_prep.pseudo_joint.input_gate import metrics
+    return metrics
 
 
 def test_input_gate_metrics_on_a_zigzag_path():
@@ -141,3 +139,42 @@ def test_input_gate_metrics_on_a_zigzag_path():
     tPlain = _gateMetrics()(humanMotion(tN))
     assert "_near_step" not in tPlain and "lost_adjacent_frac" not in tPlain
     assertGolden(GOLDEN, "input_gate_metrics", dict(m=tM, near=_round(tNearStep), plain=tPlain))
+
+
+def writeGateInputs(trackC: Path, produce: Path, grip: Path) -> None:
+    """R150 reference (track_c/data/r150_q_tcp.npz) and two episodes of produce npz + width files for the input gate"""
+    from scipy.spatial.transform import Rotation
+    tRng = np.random.default_rng(0)
+    (trackC / "data").mkdir(parents=True)
+    tS = np.arange(3000) / 30
+    tRef = dict(ends=np.array([1000, 2000, 3000]))
+    for tArm in range(2):
+        tRef[f"pos{tArm}"] = np.stack([0.3 + 0.05 * np.sin(tS * (1 + tArm)), 0.1 * np.cos(tS), 0.2 + 0.01 * tS], -1)
+        tRef[f"rv{tArm}"] = np.stack([0.3 * np.sin(tS), 0.2 * np.cos(0.5 * tS), 0.1 * np.ones(3000)], -1) + tRng.normal(0, 0.01, (3000, 3))
+    np.savez(trackC / "data/r150_q_tcp.npz", **tRef)
+    produce.mkdir()
+    grip.mkdir()
+    for tE in ("20260917_150545_0", "20260917_150545_1"):
+        for tSide in ("left", "right"):
+            tT = np.arange(120) / 15
+            tPos = np.stack([0.2 * np.sin(tT), 0.1 * tT, 0.05 * np.cos(2 * tT)], -1) + tRng.normal(0, 0.004, (120, 3))
+            tQuat = Rotation.from_rotvec(np.stack([0.2 * np.sin(tT), 0.1 * tT, 0 * tT], -1)).as_quat()
+            tQuat[70] = 0
+            np.savez(produce / f"{tE}_{tSide}.npz", frame_idx=np.arange(120) * 2, cam_pos=tPos, cam_quat=tQuat,
+                     seg_id=np.repeat(np.arange(4), 30), lost=np.isin(np.arange(120), [33, 70]).astype(int))
+        np.savez(grip / f"{tE}.npz", x=np.zeros(1))
+
+
+def test_input_gate_end_to_end(roots, pipeline, tmp_path, capsys):
+    """added with the rewrite; the golden was produced by the rewritten module and checked identical (stdout, census_segments.csv,
+    census.json, hist_data.npz) to the pre-rewrite c2_input_gate.py run as a flat script on the inputs of writeGateInputs"""
+    from rebot_prep.pseudo_joint import input_gate
+    tTrackC = roots["UMI_BRIDGE"] / "track_c"
+    tProduce, tGrip = tmp_path / "produce", tmp_path / "grip"
+    writeGateInputs(tTrackC, tProduce, tGrip)
+    assert input_gate.main(["--produce", str(tProduce), "--grip", str(tGrip)]) == 0
+    tOut = tTrackC / "reports/c2/raw"
+    tCensus = json.loads((tOut / "census.json").read_text())
+    tCensus["produce"] = "<produce>"
+    assertGolden(GOLDEN, "input_gate_e2e", dict(stdout=capsys.readouterr().out.replace(str(tOut), "<out>").splitlines(), census=tCensus,
+                                                csv=(tOut / "census_segments.csv").read_text().splitlines()))

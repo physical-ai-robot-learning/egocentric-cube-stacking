@@ -52,3 +52,8 @@ def test_prepend_sys_path_keeps_the_argument_order(monkeypatch):
     ego_paths.prepend_sys_path("a")
     ego_paths.prepend_sys_path(Path("b"), "c")
     assert sys.path == ["b", "c", "a", "z"]
+
+
+def test_calibration_dir_defaults_to_the_repository_and_follows_its_variable(tmp_path):
+    assert _constants({"HOME": str(tmp_path)})["CALIBRATION_DIR"] == str(SRC.parent / "configs" / "calibration")
+    assert _constants({"HOME": str(tmp_path), "EGO_CALIBRATION_DIR": "/x/cal"})["CALIBRATION_DIR"] == "/x/cal"

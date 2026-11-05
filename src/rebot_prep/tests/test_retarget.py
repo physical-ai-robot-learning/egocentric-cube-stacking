@@ -3,6 +3,7 @@ rollouts, TR reference windows), the comparison metrics, the rescued-tail diagno
 pre-registered report and the kinematic seed bank (fake reBot solver)."""
 from __future__ import annotations
 
+import dataclasses
 import importlib
 import json
 import runpy
@@ -15,15 +16,13 @@ import pytest
 from rebot_prep.tests import synthetic_phase3 as P3S
 from rebot_prep.tests import synthetic_retarget as SR
 from rebot_prep.tests.golden import assertGolden
-from rebot_prep.tests.scriptdefs import loadDefs
 
 GOLDEN = Path(__file__).with_name("golden")
-RETARGET_DIR = Path(__file__).resolve().parents[1] / "retarget"
-COMPARE = "rebot_prep.retarget.v2k_compare"
-TAIL = "rebot_prep.retarget.v2k_tail"
+COMPARE = "rebot_prep.retarget.compare_retargets"
+TAIL = "rebot_prep.retarget.rescued_tail"
 HYBRID = "rebot_prep.retarget.hybrid_merge"
 HRL80 = "rebot_prep.retarget.hrl80_prereg_report"
-SEEDBANK = "rebot_prep.retarget.v2k_seedbank"
+SEEDBANK = "rebot_prep.retarget.seed_bank"
 OLD_EPISODES = [f"20260917_15054{k}_{n}" for k in range(3) for n in range(2)]
 HRL_EPISODES = ["20260928_101010_0", "20260928_101010_1", "20260928_101010_2"]
 
@@ -70,7 +69,7 @@ def test_compare_summary(refTree, tmp_path, monkeypatch, capsys, evalRef):
 
 
 def test_compare_manifold_of_nothing_is_empty(refTree, monkeypatch):
-    assert _freshCompare([], monkeypatch).manifold([], []) == {}
+    assert _freshCompare([], monkeypatch).manifold(None, [], []) == {}
 
 
 def test_rescued_tail_report(refTree, tmp_path, monkeypatch, capsys):
@@ -116,6 +115,9 @@ def test_hrl80_prereg_report(refTree, tmp_path, monkeypatch, capsys):
     tRaw = refTree["EGO_COLLECTOR_HOME"] / "datasets/human_handumi_raw/HRL80/HRL80_20260928_101010"
     for tK, tE in enumerate(HRL_EPISODES):
         SR.writeOfflineCheck(tRaw / f"episode_{tE.rsplit('_', 1)[1]}" / "derived/robot_like/offline_check.json", 40 + tK)
+    import rebot_prep.retarget as tPkg                                # no reference module cached by an earlier test
+    monkeypatch.delitem(sys.modules, COMPARE, raising=False)
+    monkeypatch.delattr(tPkg, COMPARE.rsplit(".", 1)[1], raising=False)
     _run(HRL80, ["--eval-ref", "heldout120"], monkeypatch)
     tRep = json.loads((tRl / "hrl80_prereg_report.json").read_text())
     assert capsys.readouterr().out.strip() == json.dumps(tRep, indent=1)
@@ -123,12 +125,14 @@ def test_hrl80_prereg_report(refTree, tmp_path, monkeypatch, capsys):
 
 
 # ---------------------------------------------------------------- multi-seed retarget core (phase3 context + fake solver)
-RETARGET_NAMES = {"K_ROLL", "VARIANT_RAD", "MAX_VARIANTS", "WS_MIN", "D_HARD", "TR_T", "TR_ROT_M", "ws_batch", "rel_traj", "fk_T",
-                  "rollout", "_feat", "build_windows", "solve_ref", "rollout_tr", "do_segment_tr", "do_segment"}
+RETARGET = "rebot_prep.retarget.multi_seed_retarget"
 
 
 @pytest.fixture
 def retargetCore(pipeline, roots, monkeypatch):
+    """(multi_seed_retarget module, its context on a Phase-3 interface built from phase3_segments, clearance, phase3 module)"""
+    from types import SimpleNamespace
+
     from rebot_prep.tests.test_census import PHASE3
     P3S.buildTrackDirs(roots["UMI_BRIDGE"])
     P3S.buildC8(roots["DATA_ROOT"], roots["EGO_COLLECTOR_HOME"] / "datasets/human_handumi_raw/Hpilot")
@@ -136,11 +140,12 @@ def retargetCore(pipeline, roots, monkeypatch):
         monkeypatch.delenv(tVar, raising=False)
     monkeypatch.delitem(sys.modules, PHASE3, raising=False)
     tP3 = importlib.import_module(PHASE3)
-    tP3.init()
-    from rebot_prep.census.c8_collision_v1 import Clearance
-    tNs = loadDefs(RETARGET_DIR / "v2k_retarget.py", RETARGET_NAMES, {"__name__": "v2k_retarget_defs"})
-    tNs.update(P3=tP3, P=tP3.P, MODE="v2k", LAMBDA=0.0, K_MANI=8, Q_TREE=None, BANK_D=None, WIN=dict(q=None, feat=None, tree=None))
-    return tNs, Clearance(tP3.ik.kin), tP3
+    tP3.loadInputs()
+    tCtx = tP3.init()
+    from rebot_prep.census.arm_clearance import Clearance
+    tM = importlib.import_module(RETARGET)
+    tIface = SimpleNamespace(TREE=tCtx.mTree, WR=tCtx.mWr, ik=tCtx.mIk, P=tCtx.mP)       # the external c8_phase3 interface
+    return tM, tM.RetargetContext(tIface, tCtx.mP), Clearance(tCtx.mIk.kin), tP3
 
 
 def _segment(p3, start: int = 11):
@@ -160,44 +165,46 @@ def _pack(res):
 
 @pytest.mark.parametrize("mode", ["v2k", "v2kr", "r30"])
 def test_multi_seed_segment(retargetCore, mode):
-    tNs, tClr, tP3 = retargetCore
+    tM, tCtx, tClr, tP3 = retargetCore
     from scipy.spatial import cKDTree
     tRng = np.random.default_rng(9)
     tBank = np.radians(P3S.ANCHOR_DEG12) + tRng.normal(0, 0.12, (12, 12))
     tD150 = np.load(Path(tP3.TC) / "data/r150_q_tcp.npz")
     tQTree = cKDTree(np.radians(np.c_[tD150["J"][:, :6], tD150["J"][:, 7:13]])[::3])
-    tNs.update(BANK=tBank, BANK_T0=np.array([np.stack(tNs["fk_T"](q)) for q in tBank]), MODE=mode, LAMBDA=0.5 if mode != "v2k" else 0.0,
-               Q_TREE=tQTree, BANK_D=tQTree.query(tBank)[0], K_ROLL=3, K_MANI=2)
+    tCtx = dataclasses.replace(tCtx, mBank=tBank, mBankT0=np.array([np.stack(tM.fkT(tCtx, q)) for q in tBank]), mMode=mode,
+                               mLambda=0.5 if mode != "v2k" else 0.0, mQTree=tQTree, mBankD=tQTree.query(tBank)[0], mKRoll=3, mKMani=2)
     tTL, tTR = _segment(tP3)
-    tRes = tNs["do_segment"](tTL, tTR, tClr)
-    tWs = tNs["ws_batch"](tNs["BANK_T0"][:, 0], 0)
+    tRes = tM.doSegment(tCtx, tTL, tTR, tClr)
+    tWs = tM.wsBatch(tCtx, tCtx.mBankT0[:, 0], 0)
     assertGolden(GOLDEN, f"retarget_segment_{mode}", dict(res=_pack(tRes), ws=[tWs[0].tolist(), _round(tWs[1])],
-                                                          rel=_round(tNs["rel_traj"](tTL)[::16])))
+                                                          rel=_round(tM.relTraj(tCtx, tTL)[::16])))
 
 
 def test_tr_reference_window_segment(retargetCore, capsys):
-    tNs, tClr, tP3 = retargetCore
+    tM, tCtx, tClr, tP3 = retargetCore
     from scipy.spatial import cKDTree
     tD150 = dict(np.load(Path(tP3.TC) / "data/r150_q_tcp.npz"))
     tMask = np.isin(tD150["ep"], [0, 1])
-    tNs.update(MODE="tr", LAMBDA=0.5, K_ROLL=3, Q_TREE=cKDTree(np.radians(np.c_[tD150["J"][tMask, :6], tD150["J"][tMask, 7:13]])))
-    tNs["build_windows"](tD150, tMask)
+    tCtx = dataclasses.replace(tCtx, mMode="tr", mLambda=0.5, mKRoll=3,
+                               mQTree=cKDTree(np.radians(np.c_[tD150["J"][tMask, :6], tD150["J"][tMask, 7:13]])))
+    tCtx = dataclasses.replace(tCtx, mWindows=tM.buildWindows(tCtx, tD150, tMask))
     tTL, tTR = _segment(tP3, 40)
-    tRes = tNs["do_segment_tr"](tTL, tTR, tClr)
+    tRes = tM.doSegmentTr(tCtx, tTL, tTR, tClr)
     assertGolden(GOLDEN, "retarget_segment_tr", dict(res=_pack(tRes), out=capsys.readouterr().out.splitlines(),
-                                                     feat=_round(tNs["_feat"](tNs["rel_traj"](tTL), tNs["rel_traj"](tTR)))))
+                                                     feat=_round(tM.trFeature(tM.relTraj(tCtx, tTL), tM.relTraj(tCtx, tTR)))))
 
 
 # ---------------------------------------------------------------- seed bank
 @pytest.fixture
 def seedbank(pipeline, refTree, monkeypatch, tmp_path):
-    (refTree["DATA_ROOT"] / "c8_collision_v1.py").write_text(P3S.SHIM.format(mod="rebot_prep.census.c8_collision_v1"))
+    (refTree["DATA_ROOT"] / "c8_collision_v1.py").write_text(P3S.SHIM.format(mod="rebot_prep.census.arm_clearance"))
     monkeypatch.delitem(sys.modules, SEEDBANK, raising=False)
     tMod = importlib.import_module(SEEDBANK)
     tOut = tmp_path / "bank"
     tOut.mkdir()
     (tOut / "r30_episodes.json").write_text(json.dumps({"episodes": list(range(1, 32))}))
     monkeypatch.setattr(tMod, "OUT", tOut)
+    monkeypatch.setattr(tMod, "CONTRACTS", tOut)
     monkeypatch.setattr(tMod, "SOBOL_M", 7)
     return tMod, tOut
 

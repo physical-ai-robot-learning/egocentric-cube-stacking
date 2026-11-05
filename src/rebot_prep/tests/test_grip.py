@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import json
 import runpy
-import shutil
 from pathlib import Path
 
 import numpy as np
@@ -16,8 +15,8 @@ from rebot_prep.tests import synthetic_raw as S
 from rebot_prep.tests.golden import assertGolden
 
 GOLDEN = Path(__file__).with_name("golden")
-GRIP_CENSUS = "rebot_prep.grip.c8_grip"
-EPISODE_CENSUS = "rebot_prep.census.c8_census_pre"
+GRIP_CENSUS = "rebot_prep.grip.grip_census"
+EPISODE_CENSUS = "rebot_prep.census.sensor_sync_census"
 LEGACY_JOB = ".claude/jobs/e649aef3/tmp"
 
 
@@ -56,12 +55,12 @@ def test_align_picks_the_nearest_sample_and_reports_the_error():
 
 
 def test_read_episode_from_sensors_mcap(tree):
-    tFrames, tGrip = extract_grip.read_episode(S.SESSION_MAIN, "0")
+    tFrames, tGrip = extract_grip.readEpisode(S.SESSION_MAIN, "0")
     assert sorted(tFrames) == ["left_wrist", "right_wrist"] and len(tFrames["left_wrist"]) == 90
     assert tFrames["left_wrist"][:2] == tree["rec"][f"{S.SESSION_MAIN}_0"]["frames"]["left_wrist"][:2]
     assert [g[2] for g in tGrip["left"]] == tree["rec"][f"{S.SESSION_MAIN}_0"]["raw"]["left"].tolist()
     assert tGrip["left"][0][3] == 0.0 and tGrip["left"][1][3] == 1.0
-    assert extract_grip.read_episode(S.SESSION_EARLY, "2") is None
+    assert extract_grip.readEpisode(S.SESSION_EARLY, "2") is None
 
 
 def _extractAndCorrect(tree, monkeypatch, capsys) -> dict:
@@ -92,7 +91,7 @@ def test_extract_and_correct_grip_outputs(tree, monkeypatch, capsys):
 
 
 def test_session_meta_ticks_reads_every_session(tree):
-    assert correct_grip.session_meta_ticks() == {s: {k: tuple(v) for k, v in S.TICKS[s].items()} for s in sorted(S.TICKS)}
+    assert correct_grip.sessionMetaTicks() == {s: {k: tuple(v) for k, v in S.TICKS[s].items()} for s in sorted(S.TICKS)}
 
 
 def test_grip_census_and_episode_census(tree, monkeypatch, capsys):

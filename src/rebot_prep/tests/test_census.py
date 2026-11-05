@@ -16,9 +16,9 @@ from rebot_prep.tests import synthetic_phase3 as P3S
 from rebot_prep.tests.golden import assertGolden
 
 GOLDEN = Path(__file__).with_name("golden")
-PHASE3 = "rebot_prep.census.c8_phase3"
-CLEARANCE = "rebot_prep.census.c8_collision_v1"
-IMU_VI_G = "rebot_prep.census.c8_imu_vi_g"
+PHASE3 = "rebot_prep.census.phase3_segments"
+CLEARANCE = "rebot_prep.census.arm_clearance"
+IMU_VI_G = "rebot_prep.census.imu_vi_gravity"
 
 
 def _round(a, nd=9):
@@ -26,7 +26,7 @@ def _round(a, nd=9):
 
 
 def test_segment_distance_cases():
-    tSegseg = importlib.import_module(CLEARANCE).segseg
+    tSegseg = importlib.import_module(CLEARANCE).segmentDistance
     tO, tX, tY = np.zeros(3), np.array([1.0, 0, 0]), np.array([0, 1.0, 0])
     assert tSegseg(tO, tO, tX, tX) == 1.0                                         # two points
     assert tSegseg(tO, tO, tY + tX, tY - tX) == 1.0                               # point - segment
@@ -43,7 +43,7 @@ def test_clearance_of_the_two_arms(fakeRobot, roots):
     from rebot_prep.pseudo_joint import eef_kin
     importlib.reload(eef_kin)
     tC = importlib.import_module(CLEARANCE).Clearance(eef_kin.Kin())
-    assert len(tC.links) == 20 and importlib.import_module(CLEARANCE).CHAIN[-1] == ("gripper_link", "gripper_right")
+    assert len(tC.mLinks) == 20 and importlib.import_module(CLEARANCE).CHAIN[-1] == ("gripper_link", "gripper_right")
     tOut = [tC.dmin(q) for q in (np.radians(P3S.ANCHOR_DEG12), np.zeros(12), np.r_[np.full(6, 0.3), np.full(6, -0.3)])]
     tPts = tC.points(np.zeros(12))
     assertGolden(GOLDEN, "clearance", dict(dmin=[[round(d, 12), w] for d, w in tOut], pts={k: _round(v) for k, v in tPts.items()}))
@@ -61,7 +61,7 @@ def imuViG(roots, monkeypatch, tmp_path):
 
 
 def test_imu_vi_g_equals_the_frozen_fit_plus_gravity(imuViG):
-    tNs = imuViG.load()
+    tNs = imuViG.loadFrozenFit()
     tOut = {}
     for tTag in ("valB_d1_left", "valC_d3_right"):
         tRef, tG = tNs["imu_vi_ref"](tTag, 15, False), tNs["imu_vi"](tTag, 15, False)
@@ -97,7 +97,8 @@ def phase3(pipeline, roots, monkeypatch):
 def test_phase3_nearest_and_staging(phase3, roots):
     assert phase3.nearest(np.array([0.0, 10.0, 20.0]), np.array([-5.0, 4.0, 6.0, 14.0, 26.0])).tolist() == [0, 0, 1, 1, 2]
     tTag = f"{P3S.EPISODE_OK}_left"
-    assert phase3.stage_side(tTag) == (1, 2)
+    phase3.loadInputs()
+    assert phase3.stageSide(tTag) == (1, 2)
     tStaged = (roots["DATA_ROOT"] / "stage_p3/runs" / tTag / "ss1.csv").read_text().splitlines()
     assert tStaged[1].startswith("0,") and len(tStaged) == 1 + P3S.N_CORI
     assert tStaged[1 + P3S.NAN_ROW - 2].split(",")[3] == "true"
@@ -107,14 +108,16 @@ def test_phase3_nearest_and_staging(phase3, roots):
 
 def test_phase3_episode_records(phase3, roots, monkeypatch):
     monkeypatch.setattr(sys, "path", list(sys.path))
+    phase3.loadInputs()
     phase3.init()
     for tSide in ("left", "right"):
-        phase3.stage_side(f"{P3S.EPISODE_OK}_{tSide}")
-    tRec = phase3.episode(P3S.EPISODE_OK)
-    assert phase3.episode(P3S.EPISODE_PRE_FAIL) == dict(episode=P3S.EPISODE_PRE_FAIL, domain="main_calibrated", first_fail="gripper_valid")
-    assert phase3.episode(P3S.EPISODE_NO_RUN)["first_fail"] == "mast3r_missing"
+        phase3.stageSide(f"{P3S.EPISODE_OK}_{tSide}")
+    tRec = phase3.episodeRecord(P3S.EPISODE_OK)
+    assert phase3.episodeRecord(P3S.EPISODE_PRE_FAIL) == dict(episode=P3S.EPISODE_PRE_FAIL, domain="main_calibrated",
+                                                             first_fail="gripper_valid")
+    assert phase3.episodeRecord(P3S.EPISODE_NO_RUN)["first_fail"] == "mast3r_missing"
     tZ = np.load(roots["DATA_ROOT"] / "phase3" / f"{P3S.EPISODE_OK}.npz")
-    tWs = phase3.ws_in(np.stack([np.eye(4)] * 2), 0)
+    tWs = phase3.wsIn(np.stack([np.eye(4)] * 2), 0)
     assertGolden(GOLDEN, "phase3_episode", dict(
         rec=json.loads(json.dumps(tRec, default=float)), npz={k: [list(tZ[k].shape), _round(tZ[k], 5) if tZ[k].dtype.kind == "f" else tZ[k].tolist()]
                                                               for k in sorted(tZ.files)},
@@ -123,11 +126,12 @@ def test_phase3_episode_records(phase3, roots, monkeypatch):
 
 def test_phase3_funnel_when_the_workspace_gate_passes(phase3, roots, monkeypatch):
     monkeypatch.setattr(sys, "path", list(sys.path))
+    phase3.loadInputs()
     phase3.init()
     for tSide in ("left", "right"):
-        phase3.stage_side(f"{P3S.EPISODE_OK}_{tSide}")
-    monkeypatch.setattr(phase3, "ws_in", lambda T, a: np.ones(len(T), bool))
-    tRec = phase3.episode(P3S.EPISODE_OK)
+        phase3.stageSide(f"{P3S.EPISODE_OK}_{tSide}")
+    monkeypatch.setattr(phase3, "wsIn", lambda T, a: np.ones(len(T), bool))
+    tRec = phase3.episodeRecord(P3S.EPISODE_OK)
     assert [s["first_fail"] for s in tRec["segments"]] == [None, None]
     tZ = np.load(roots["DATA_ROOT"] / "phase3" / f"{P3S.EPISODE_OK}.npz")
     assert tZ["usable"].tolist() == [True, True] and tZ["arm_usable"].tolist() == [[True, True], [True, True]]
@@ -135,19 +139,15 @@ def test_phase3_funnel_when_the_workspace_gate_passes(phase3, roots, monkeypatch
 
 
 # ---------------------------------------------------------------- Phase-1 regression helpers (ORB poses, gyro check)
-REGRESS_PATH = Path(__file__).resolve().parents[1] / "census" / "c8_regress_ref208.py"
+REGRESSION = "rebot_prep.census.mast3r_regression"
 
 
-def _regressDefs(ns: dict) -> dict:
-    from rebot_prep.tests.scriptdefs import loadDefs
-    return loadDefs(REGRESS_PATH, {"orb", "gyro_check"}, ns)
-
-
-def test_regression_orb_loader(tmp_path):
+def test_regression_orb_loader(tmp_path, monkeypatch):
     tQuat = np.array([[0, 0, 0, 1.0], [0, 0, 0, 0], [0, 0, np.sin(0.2), np.cos(0.2)], [0, 0, 0, 1.0]])
     np.savez(tmp_path / "t.npz", frame_idx=np.array([0, 1, 3, 9]), cam_quat=tQuat, cam_pos=np.arange(12.0).reshape(4, 3))
-    tNs = _regressDefs({"PRODUCE": tmp_path})
-    tT, tOk = tNs["orb"]("t", 5)
+    tMod = importlib.import_module(REGRESSION)
+    monkeypatch.setattr(tMod, "PRODUCE", tmp_path)
+    tT, tOk = tMod.orbPoses("t", 5)
     assert tOk.tolist() == [True, False, False, True, False]
     assert np.allclose(tT[3, :3, 3], [6, 7, 8]) and np.allclose(tT[1], np.eye(4))
 
@@ -169,7 +169,7 @@ def test_regression_gyro_check_on_the_synthetic_benchmark(tmp_path):
     tTelemetry["1"]["streams"]["GYRO"] = {"samples": [{"cts": s["cts"] + 3.0, "value": tRate[k].tolist()}
                                                       for k, s in enumerate(tCori[:-1])]}
     (tSide / "imu_data.json").write_text(json.dumps(tTelemetry))
-    tNs = _regressDefs({"cp6": tCp6, "EXP": lambda t: tSide})
-    tRes = tNs["gyro_check"](tT, tOk, tTag)
-    assert tNs["gyro_check"](tT[:20], tOk[:20], tTag) is None
+    tGyroCheck = importlib.import_module(REGRESSION).gyroCheck
+    tRes = tGyroCheck(tCp6, tT, tOk, tSide)
+    assert tGyroCheck(tCp6, tT[:20], tOk[:20], tSide) is None
     assertGolden(GOLDEN, "regress_gyro_check", tRes)

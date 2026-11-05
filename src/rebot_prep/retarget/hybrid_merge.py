@@ -1,45 +1,93 @@
-#!/usr/bin/env python3
-"""[2026-09-28] Build the hybrid master (hybrid_frozen.json): TR top-1 if TR has a feasible rollout, else Kr top-1.
+"""[2026-09-28] Build the hybrid master (hybrid_frozen.json): TR top-1 if TR has a feasible rollout, else Kr top-1 (Gen-1
+retarget stage).
 
-Reads ~/c8/robotlike/tr_old (TR, key v2) and ~/c8/robotlike/r30_old (v1 + Kr, key v2r) -- the same 1,229 segments.
-Writes ~/c8/robotlike/hybrid_master/<episode>.json + .npz in the v2k_retarget layout (key "v2" = the hybrid choice, "v1"
-kept for comparison), so v2k_compare.py reads it unchanged. No rollout is recomputed.
+In:  ~/c8/robotlike/tr_old (TR, key v2) and ~/c8/robotlike/r30_old (v1 + Kr, key v2r) -- the same 1,229 segments
+     (env HM_TR / HM_KR; paths only, the rule is unchanged)
+Out: ~/c8/robotlike/hybrid_master/<episode>.json + .npz (env HM_OUT) in the multi_seed_retarget layout (key "v2" = the hybrid
+     choice, "v1" kept for comparison), so compare_retargets reads it unchanged. No rollout is recomputed.
+Usage: python -m rebot_prep.retarget.hybrid_merge
 """
-from ego_paths import DATA_ROOT, HOME  # machine-specific roots (env-overridable)
-import collections, glob, json, pathlib, sys
+from __future__ import annotations
+
+import collections
+import glob
+import json
+import os
+import pathlib
+import sys
+
 import numpy as np
 
-H = HOME; R = DATA_ROOT / "robotlike"
-# paths only (rule unchanged): HM_TR / HM_KR / HM_OUT, defaults = the old259 inputs / master
-import os; TR, KR, OUT = (pathlib.Path(os.environ.get(k, R / d)) for k, d in (("HM_TR", "tr_old"), ("HM_KR", "r30_old"), ("HM_OUT", "hybrid_master")))
-OUT.mkdir(exist_ok=True); cnt = collections.Counter(); reasons = collections.Counter()
-for p in sorted(glob.glob(str(TR / "*.json"))):
-    e = pathlib.Path(p).stem; t = json.load(open(p)); k = json.load(open(KR / f"{e}.json"))
-    zt = np.load(TR / f"{e}.npz") if (TR / f"{e}.npz").exists() else None; zk = np.load(KR / f"{e}.npz") if (KR / f"{e}.npz").exists() else None
-    ks = {s["start"]: s for s in k.get("segments", [])}; rec = dict(episode=e, first_fail=t.get("first_fail"), segments=[], master="hybrid_v1"); q = {}
-    for s in t.get("segments", []):
-        if "v1" not in s: rec["segments"].append(s); continue
-        sk = ks[s["start"]]                                                           # same segment in both runs
-        trv, krv = s["v2"], sk["v2r"]
-        if trv["pass_"]:
-            method, why, src, z, key = "TR", None, trv, zt, "v2"
-        elif krv["pass_"]:
-            method, why, src, z, key = "Kr_fallback", ("no_workspace_window" if trv["n_ws_candidates"] == 0 else "no_feasible_rollout"), krv, zk, "v2r"
+from ego_paths import DATA_ROOT
+
+R = DATA_ROOT / "robotlike"
+MASTER = "hybrid_v1"
+
+
+def _paths() -> tuple[pathlib.Path, pathlib.Path, pathlib.Path]:
+    """HM_TR / HM_KR / HM_OUT, defaults = the old259 inputs / master"""
+    tDefaults = (("HM_TR", "tr_old"), ("HM_KR", "r30_old"), ("HM_OUT", "hybrid_master"))
+    return tuple(pathlib.Path(os.environ.get(tK, R / tD)) for tK, tD in tDefaults)
+
+
+def mergeEpisode(episode: str, tr: dict, kr: dict, trNpz, krNpz, counts: collections.Counter,
+                 reasons: collections.Counter) -> tuple[dict, dict]:
+    """the hybrid record and q arrays of one episode (same segments in both runs, matched by start)"""
+    tKrByStart = {tS["start"]: tS for tS in kr.get("segments", [])}
+    tRec = dict(episode=episode, first_fail=tr.get("first_fail"), segments=[], master=MASTER)
+    tQ = {}
+    for tSeg in tr.get("segments", []):
+        if "v1" not in tSeg:
+            tRec["segments"].append(tSeg)
+            continue
+        tKrSeg = tKrByStart[tSeg["start"]]                                      # same segment in both runs
+        tTrV, tKrV = tSeg["v2"], tKrSeg["v2r"]
+        tWhy = None
+        if tTrV["pass_"]:
+            tMethod, tSrc, tZ, tKey = "TR", tTrV, trNpz, "v2"
+        elif tKrV["pass_"]:
+            tMethod, tSrc, tZ, tKey = "Kr_fallback", tKrV, krNpz, "v2r"
+            tWhy = "no_workspace_window" if tTrV["n_ws_candidates"] == 0 else "no_feasible_rollout"
         else:
-            method, why, src, z, key = "none", ("no_workspace_window" if trv["n_ws_candidates"] == 0 else "no_feasible_rollout"), trv, None, None
-        cnt[method] += 1
-        if why: reasons[(method, why)] += 1
-        top = src["kept"][:1] if method != "none" else []
-        rec["segments"].append(dict(start=s["start"], v1=sk["v1"], v1_pass=sk["v1_pass"],
-            v2=dict(pass_=method != "none", kept=top, n_ws_candidates=src["n_ws_candidates"], n_rolled=src["n_rolled"], n_feasible=src["n_feasible"],
-                    variant_dist_rad=[], retarget_method=method, fallback_reason=why,
-                    tr_window_id=(trv["kept"][0]["seed"] if trv["pass_"] else None), kr_seed_id=(krv["kept"][0]["seed"] if krv["pass_"] else None),
-                    tr_feasible=trv["n_feasible"], kr_feasible=krv["n_feasible"])))
-        q[f"{s['start']}_v1"] = zk[f"{s['start']}_v1"]
-        if method != "none": q[f"{s['start']}_v2_0"] = z[f"{s['start']}_{key}_0"]
-    (OUT / f"{e}.json").write_text(json.dumps(rec, indent=1, default=float))
-    if q: np.savez_compressed(OUT / f"{e}.npz", **q)
-n = sum(cnt.values())
-print("segments", n, dict(cnt), "| usable", cnt["TR"] + cnt["Kr_fallback"], f"({(cnt['TR'] + cnt['Kr_fallback']) / n:.3f})",
-      "| TR share of usable", f"{cnt['TR'] / max(1, cnt['TR'] + cnt['Kr_fallback']):.3f}")
-print("fallback / none reasons:", {f"{a}:{b}": c for (a, b), c in reasons.items()})
+            tMethod, tSrc, tZ, tKey = "none", tTrV, None, None
+            tWhy = "no_workspace_window" if tTrV["n_ws_candidates"] == 0 else "no_feasible_rollout"
+        counts[tMethod] += 1
+        if tWhy:
+            reasons[(tMethod, tWhy)] += 1
+        tTop = tSrc["kept"][:1] if tMethod != "none" else []
+        tRec["segments"].append(dict(start=tSeg["start"], v1=tKrSeg["v1"], v1_pass=tKrSeg["v1_pass"],
+                                     v2=dict(pass_=tMethod != "none", kept=tTop, n_ws_candidates=tSrc["n_ws_candidates"],
+                                             n_rolled=tSrc["n_rolled"], n_feasible=tSrc["n_feasible"],
+                                             variant_dist_rad=[], retarget_method=tMethod, fallback_reason=tWhy,
+                                             tr_window_id=(tTrV["kept"][0]["seed"] if tTrV["pass_"] else None),
+                                             kr_seed_id=(tKrV["kept"][0]["seed"] if tKrV["pass_"] else None),
+                                             tr_feasible=tTrV["n_feasible"], kr_feasible=tKrV["n_feasible"])))
+        tQ[f"{tSeg['start']}_v1"] = krNpz[f"{tSeg['start']}_v1"]
+        if tMethod != "none":
+            tQ[f"{tSeg['start']}_v2_0"] = tZ[f"{tSeg['start']}_{tKey}_0"]
+    return tRec, tQ
+
+
+def main(argv: list[str] | None = None) -> int:
+    tTr, tKr, tOut = _paths()
+    tOut.mkdir(exist_ok=True)
+    tCounts, tReasons = collections.Counter(), collections.Counter()
+    for tPath in sorted(glob.glob(str(tTr / "*.json"))):
+        tE = pathlib.Path(tPath).stem
+        tTrRec, tKrRec = json.load(open(tPath)), json.load(open(tKr / f"{tE}.json"))
+        tTrNpz = np.load(tTr / f"{tE}.npz") if (tTr / f"{tE}.npz").exists() else None
+        tKrNpz = np.load(tKr / f"{tE}.npz") if (tKr / f"{tE}.npz").exists() else None
+        tRec, tQ = mergeEpisode(tE, tTrRec, tKrRec, tTrNpz, tKrNpz, tCounts, tReasons)
+        (tOut / f"{tE}.json").write_text(json.dumps(tRec, indent=1, default=float))
+        if tQ:
+            np.savez_compressed(tOut / f"{tE}.npz", **tQ)
+    tN = sum(tCounts.values())
+    tUsable = tCounts["TR"] + tCounts["Kr_fallback"]
+    print("segments", tN, dict(tCounts), "| usable", tUsable, f"({tUsable / tN:.3f})",
+          "| TR share of usable", f"{tCounts['TR'] / max(1, tUsable):.3f}")
+    print("fallback / none reasons:", {f"{tA}:{tB}": tC for (tA, tB), tC in tReasons.items()})
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

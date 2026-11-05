@@ -45,8 +45,10 @@ def pipeline(roots, fakeRobot, monkeypatch):
     tYaml.parent.mkdir(parents=True)
     tYaml.write_text(yaml.safe_dump({"rotation": {"R_camera_tcp": R_CAMERA_TCP.tolist()},
                                      "translation": {"t_camera_tcp_m": T_CAMERA_TCP_M}}))
+    import rebot_prep.pseudo_joint as tPkg
     for tMod in [m for m in sys.modules if m.startswith("rebot_prep.pseudo_joint.")]:
         monkeypatch.delitem(sys.modules, tMod)
+        monkeypatch.delattr(tPkg, tMod.rsplit(".", 1)[1], raising=False)       # `from package import x` reads this first
     return importlib.import_module(PIPELINE)
 
 

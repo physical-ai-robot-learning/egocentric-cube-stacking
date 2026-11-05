@@ -77,10 +77,24 @@ def test_export_start_at_go_trims_before_the_go_cue(tmp_path, monkeypatch, capsy
 def test_settings_yaml_inverts_the_camera_imu_transform():
     tT = np.eye(4)
     tT[:3, 3] = [0.1, 0.2, 0.3]
-    tText = export_episode.settings_yaml("left", 480, 270, np.diag([300.0, 310.0, 1.0]), [0.1, 0.2, 0.3, 0.4], tT,
+    tText = export_episode.settingsYaml("left", 480, 270, np.diag([300.0, 310.0, 1.0]), [0.1, 0.2, 0.3, 0.4], tT,
                                          dict(gyroscope_noise_density=1e-3, accelerometer_noise_density=2e-3,
                                               gyroscope_random_walk=3e-5, accelerometer_random_walk=4e-5, update_rate=200.0),
                                          29.97)
     assert "Camera.fps: 30" in tText
     assert "data: [1.0000000000, 0.0000000000, 0.0000000000, -0.1000000000," in tText
     assertGolden(GOLDEN, "settings_yaml", tText.splitlines())
+
+
+def test_start_at_go_without_a_go_cue_exits_with_status_1(tmp_path, monkeypatch, capsys):
+    tEp = tmp_path / "episode_0"
+    tEp.mkdir()
+    (tEp / "events.json").write_text("[]")
+    monkeypatch.setattr(export_episode, "CAL", REPO_CALIBRATION)
+    monkeypatch.setattr(export_episode.RawEpisode, "load", classmethod(lambda cls, p: FakeEpisode(0)))
+    assert export_episode.main([str(tEp), "left", str(tmp_path / "out"), "--start-at-go"]) == 1
+    assert "no go_cue in events.json; cannot --start-at-go" in capsys.readouterr().err
+
+
+def test_default_calibration_is_the_repository_folder():
+    assert export_episode.CAL == REPO_CALIBRATION
