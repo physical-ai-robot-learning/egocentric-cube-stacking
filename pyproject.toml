@@ -1,8 +1,7 @@
-# Root project for the whole repository (src layout). Merges the former collection/pyproject.toml
-# ("handumi-collector") and experimental/pyproject.toml ("handumi-rebot-experimental"); the dependency
-# lists are the union of the two, unchanged. Install: `pip install -e ".[dev]"` (or `uv pip install -e ".[dev]"`).
-# handumi_collector, ego_collector, ego_teleop and umi are in src/ (shared with egocentric-garment-manipulation:
-# identical copies, docs/provenance/README.md).
+# One installable project for the whole repository (src layout). Install: `pip install -e ".[collector,dev]"`.
+# Packages = the pipeline stages (README "Pipeline"): handumi_collector (+ ego_collector.camera) capture, mast3r_pose pose,
+# ego_cart20 / rebot_prep conversion, training, rebot_deploy deployment; ego_paths = machine-specific roots; umi = UMI
+# pose_util stand-in. Superseded and exploratory code is in archive/ (not packaged).
 [project]
 name = "egocentric-cube-stacking"
 version = "0.1.0"
@@ -31,17 +30,9 @@ collector = [
     "av>=12",
     "trimesh>=4.0",
 ]
-# experimental packages (src/ego_collector, src/ego_teleop); was experimental/pyproject.toml
-experimental = ["mediapipe>=0.10.14"]
-apriltag = ["pupil-apriltags>=1.0.4"]
-viz = ["rerun-sdk>=0.20"]
-# Aero hand branch (ego_teleop/hand3d + retarget/aero_backends): dex_retargeting/DexPilot on the Aero URDF.
-# The head RGB-D camera additionally needs `pyorbbecsdk`, installed by hand.
-aero = ["dex-retargeting>=0.5,<1"]
+# The archived V0 collector and wearable teleop (archive/) needed `mediapipe`, `pupil-apriltags`, `rerun-sdk` and
+# `dex-retargeting`; their extras were removed with them (2026-11-05). The head RGB-D camera needs `pyorbbecsdk` (by hand).
 dev = ["pytest>=8.0"]
-
-[project.scripts]
-ego-collector = "ego_collector.cli:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -51,7 +42,6 @@ build-backend = "hatchling.build"
 packages = [
     "src/handumi_collector",
     "src/ego_collector",
-    "src/ego_teleop",
     "src/ego_cart20",
     "src/mast3r_pose",
     "src/rebot_prep",
@@ -64,5 +54,6 @@ packages = [
 [tool.pytest.ini_options]
 # `src` on the path so the tests also run from a plain checkout without `pip install -e .`
 pythonpath = ["src", "."]
-testpaths = ["tests"]
-markers = ["slow: runs the real OpenVINS through ov_bridge (seconds); skipped when the bridge is not built"]
+testpaths = ["tests", "src"]
+# archive/ holds verbatim superseded code and its old tests; they are not collected
+norecursedirs = ["archive", ".git", "*.egg-info"]
