@@ -1,0 +1,114 @@
+"""Characterization of the label builders (CART20 chunk, both state20 variants, action32 packing, stage ids) and the
+frozen contract constants."""
+from __future__ import annotations
+
+import json
+
+import numpy as np
+import pytest
+
+from ego_cart20 import config as CFG
+from ego_cart20.geometry.rotation6d import quaternion_to_matrix
+from ego_cart20.geometry.transforms import make_T, pose_to_T
+from ego_cart20.labels import build_cart20 as BC
+from ego_cart20.labels import build_state20 as BS
+from ego_cart20.labels import pack_action32 as PA
+from ego_cart20.labels import stage as ST
+from ego_cart20.preprocessing.resample import PoseTrack
+
+from .synthetic import rawArrays
+
+
+def _poses(n, seed):
+    tRng = np.random.default_rng(seed)
+    return make_T(quaternion_to_matrix(tRng.normal(size=(n, 4))), tRng.normal(size=(n, 3)))
+
+
+def test_contract_constants(golden):
+    tConsts = {tK: getattr(CFG, tK) for tK in ("UMI_DT", "ROW_FPS", "HORIZON", "ARM_DIM", "CART_DIM", "AUX_DIM",
+                                              "MODEL_ACTION_DIM", "STATE_DIM", "ARMS", "ACT_GRIP", "ST_GRIP", "PR_GRIP")}
+    golden.check("cfg.constants", tConsts)
+    tSlices = {tK: {tA: [tS.start, tS.stop] for tA, tS in getattr(CFG, tK).items()} for tK in ("ACT_POS", "ACT_ROT", "ST_POSE", "PR_POSE")}
+    golden.check("cfg.slices", tSlices)
+    assert (CFG.AUX.start, CFG.AUX.stop) == (20, 32)
+    golden.check("cfg.contract", CFG.CONTRACT)
+    assert list(json.loads(json.dumps(CFG.CONTRACT))) == list(CFG.CONTRACT)
+
+
+def test_cart20_config_serialisation(golden):
+    golden.check("cfg.default_dict", CFG.Cart20Config().to_dict())
+    tCfg = CFG.Cart20Config(discontinuity_filter=True, jump_window="row", jump_isolated_step_m=0.05)
+    golden.check("cfg.v2b_dict", tCfg.to_dict())
+    assert tCfg == CFG.Cart20Config(discontinuity_filter=True, jump_window="row", jump_isolated_step_m=0.05)
+    with pytest.raises(Exception):
+        tCfg.horizon = 3
+
+
+def test_cart20_from_poses_and_chunk(golden):
+    tA = _poses(2, 0)
+    tF = _poses(32, 1)
+    tG = np.linspace(0, 1, 32)
+    golden.check("bc.from_poses", BC.cart20_from_poses(tA[0], tF[:16], tG[:16], tA[1], tF[16:], tG[16:]))
+    golden.check("bc.target_times", BC.target_times(1.25))
+    golden.check("bc.target_times_custom", BC.target_times(0.5, 4, 0.1))
+    tArr = rawArrays(0)
+    tTracks = []
+    for tSide in ("left", "right"):
+        tT = (tArr[f"{tSide}_t_ns"] - tArr["left_t_ns"][0]) / 1e9
+        tTracks.append(PoseTrack(tT, pose_to_T(tArr[f"{tSide}_position"], tArr[f"{tSide}_quaternion"]), tArr[f"{tSide}_valid"],
+                                 tArr[f"{tSide}_gripper"]))
+    for tTime in (0.5, 1.2, 3.0, 5.5):
+        tC, tOk = BC.build_cart20_chunk(tTracks[0], tTracks[1], tTime)
+        golden.check(f"bc.chunk_{tTime}", tC)
+        golden.check(f"bc.chunk_ok_{tTime}", tOk)
+    tT0 = tTracks[0].sample([2.0])[0][0]
+    tC, tOk = BC.build_cart20_chunk(tTracks[0], tTracks[1], 2.0, 8, 0.03, T_left_t=tT0, T_right_t=None)
+    golden.check("bc.chunk_given_T0", tC)
+    assert tOk is True
+
+
+def test_state20(golden):
+    tP = _poses(6, 2)
+    tCur = _poses(10, 3)
+    tGl = np.linspace(0, 1, 5)
+    tGr = 1 - tGl
+    golden.check("bs.relcart20", BS.build_state20_relcart20(tP[0], tCur[:5], tGl, tP[1], tCur[5:], tGr))
+    golden.check("bs.prevrel", BS.build_state20_prevrel(tP[1:6], tCur[:5], tGl, tP[0], tCur[5:], tGr))
+    golden.check("bs.relcart20_single", BS.build_state20_relcart20(tP[0], tCur[0], 0.3, tP[1], tCur[1], 0.6))
+    assert BS.build_state20 is BS.build_state20_relcart20
+
+
+def test_pack_action32(golden):
+    tC = np.random.default_rng(5).normal(size=(3, 16, 20))
+    tA = PA.pack_cart20_to_action32(tC)
+    golden.check("pa.pack", tA)
+    PA.check_action32(tA, tC.astype(np.float32))
+    with pytest.raises(AssertionError, match=r"CART20 must be \[\.\.\., 16, 20\], got \(16, 19\)"):
+        PA.pack_cart20_to_action32(np.zeros((16, 19)))
+    tBad = tA.copy()
+    tBad[0, 0, 0] += 1
+    with pytest.raises(AssertionError, match=r"action\[:, :20\] != CART20"):
+        PA.check_action32(tBad, tC.astype(np.float32))
+    tBad = tA.copy()
+    tBad[1, 2, 30] = 1
+    tBad[0, 2, 21] = 2
+    with pytest.raises(ValueError, match="AUX12 must be exactly zero for ego-only data: 2 non-zero entries"):
+        PA.check_action32(tBad, tC.astype(np.float32))
+    with pytest.raises(AssertionError):
+        PA.check_action32(np.zeros((16, 31), np.float32), np.zeros((16, 20), np.float32))
+
+
+def test_stage_ids(golden, tmp_path):
+    tTimes = np.linspace(0, 10, 41)
+    tIds, tInfo = ST.stage_ids(tTimes, None, None, None)
+    golden.check("st.none_ids", tIds)
+    golden.check("st.none_info", tInfo)
+    tIds, tInfo = ST.stage_ids(tTimes, None, None, None, starts=[1.0, 3.0, 3.0, 7.5])
+    golden.check("st.annot_ids", tIds)
+    golden.check("st.annot_info", tInfo)
+    with pytest.raises(AssertionError):
+        ST.stage_ids(tTimes, None, None, None, starts=[1.0, 3.0, 2.0, 7.5])
+    assert ST.ANNOTATION_ENV == "EGO_CART20_STAGE_ANNOTATIONS"
+    assert ST.load_annotations(tmp_path / "missing.json") == {}
+    (tmp_path / "a.json").write_text(json.dumps({"ep": [0, 1, 2, 3]}))
+    assert ST.load_annotations(str(tmp_path / "a.json")) == {"ep": [0, 1, 2, 3]}
