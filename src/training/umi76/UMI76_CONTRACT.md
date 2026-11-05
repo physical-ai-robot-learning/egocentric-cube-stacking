@@ -169,7 +169,7 @@ that padding raise instead of pad. The flag is off by default so other runs keep
 
 ## 7. Deployment path (built 2026-09-25, before any checkpoint existed)
 
-`infer_core_v4.py` keeps the slim20 path untouched and branches on `V4_STATE_MODE`:
+`xvla_inference.py` keeps the slim20 path untouched and branches on `V4_STATE_MODE`:
 
 ```
 V4_STATE_MODE = slim20 | umi76      default slim20

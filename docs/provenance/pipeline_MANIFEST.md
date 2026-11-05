@@ -1,5 +1,7 @@
 # pipeline/ MANIFEST
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](../refactor_2026-11.md) (old → new map) and [`archive/README.md`](../../archive/README.md).
+
 This folder holds the human-data pipeline: HandUMI export, MASt3R pose and scale, gripper extraction, census, Gen-1 pseudo-joint retargeting,
 the C-old dataset builders, retarget v2 with its frozen contracts, and the Gen-2 CART20 package. Assembled 2026-10-07. Sources were not modified.
 

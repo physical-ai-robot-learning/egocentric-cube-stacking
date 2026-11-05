@@ -2,7 +2,7 @@
 
 X-VLA training plugins and dataset tooling that run on the GPU nodes: REL-only loss (Gen-2), UMI76/RELCART20 dataset derivation and gates, reBot FK.
 
-**Status:** current (Gen-2). The Gen-1 trainer (`train_bi.py`, `humanik_delta.py`) is in `scripts/training/c8old/`.
+**Status:** current (Gen-2). The Gen-1 trainer (`train_bi.py`, `humanik_delta.py`) is archived in `archive/gen1_c8old/training/`.
 
 ## Inputs → Outputs
 

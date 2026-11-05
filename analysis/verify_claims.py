@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check every quantitative claim of the report (version 4: report/part1_stacking_en.tex + report/part2_approach_en.tex;
+"""Check every quantitative claim of the report (version 4: report/archive/part1_stacking_en.tex + report/archive/part2_approach_en.tex, moved to archive/ on 2026-11-05;
 the Korean versions are translations of these) against the files in this repository.
 
 Each row: claim as written in the report, value recomputed from the evidence file, PASS/FAIL. Numbers are compared at
@@ -468,7 +468,7 @@ check("v4_hra", "10-07 cube-size stops / user stops", "69/58", f"{sum(r['end_cla
 # Full-length v4 reports (report/archive/*_full.tex) carry every detail; the short main reports (5 + 2 pages) a subset.
 tex = open(R / "report/archive/part1_stacking_en_full.tex").read() + open(R / "report/archive/part2_approach_en_full.tex").read()
 _full_needs = []  # every string required in the full-length reports; re-checked in the unified report below
-short = " ".join((open(R / "report/part1_stacking_en.tex").read() + open(R / "report/part2_approach_en.tex").read()).split())
+short = " ".join((open(R / "report/archive/part1_stacking_en.tex").read() + open(R / "report/archive/part2_approach_en.tex").read()).split())
 for need in ("349", "561 (43.0\\%)", "233 train / 26", "39.9\\mm", "0.72 to 0.90", "13--32\\%", "6.59 versus 8.68", "4.8\\mm", "3.55 of 6",
              "36.5\\% to 56.1\\%", "1.49$\\to$0.27", "58.9\\%", "5.6--14.7\\%", "48{,}411", "$-6.20$\\%", "1{,}482 of the 2{,}598", "422.5 to 90.5",
              "99.7\\% (left) and 99.5\\%", "1{,}854/1{,}487", "59/64", "slots 10--17", "$-0.05$/$-0.03$", "$+0.81$/$+0.77$", "$+0.16$", "0.69--0.90",
@@ -477,13 +477,13 @@ for need in ("349", "561 (43.0\\%)", "233 train / 26", "39.9\\mm", "0.72 to 0.90
              "median of 0.012", "95 takes", "37 of 57", "1.062 (p16--p84 0.959--1.274", "151 train, 20{,}319 rows", "0.354 (p5 0.188, p95 0.500)",
              "0.16\\,px RMS", "169.5\\mm", "0.38\\mm over 60.4\\mm", "$z=-27.1$\\mm", "0.999", "0.21\\textdegree", "12.6\\mm, minimum 7.6\\mm",
              "0.150 (0.066)", "0.299 (0.018)", "0.124 (0.110)", "0.132 (0.097)", "0.224 (0.020)", "0.190 (0.022)", "69 of the day's 127"):
-    check("text_short", f"short version contains: {need[:40]}", "True", str(need in short), "report/part*_en.tex")
+    check("text_short", f"short version contains: {need[:40]}", "True", str(need in short), "report/archive/part*_en.tex")
     _full_needs.append(need)
 for bad in ("16.5\\%", "20.8/23.8", "versus 0.09", "five early", "6.1 and 5.6", "128\\textdegree"):
-    check("text_short", f"retired value absent (short): {bad}", "True", str(bad not in short), "report/part*_en.tex")
+    check("text_short", f"retired value absent (short): {bad}", "True", str(bad not in short), "report/archive/part*_en.tex")
 for bad in ("16.5\\%", "20.8/23.8", "versus 0.09", "five early", "6.1 and 5.6", "128\\textdegree"):
     check("text", f"retired value absent: {bad}", "True", str(bad not in tex), "report/archive/part*_en_full.tex")
-check("text_short", "no 'available on request' in the short reports (repository public)", "True", str("available on request" not in short), "report/part*_en.tex")
+check("text_short", "no 'available on request' in the short reports (repository public)", "True", str("available on request" not in short), "report/archive/part*_en.tex")
 check("text", "archived full reports keep their dated wording (available on request, private 2026-10-07)", "True", str("available on request" in tex), "report/archive/part*_en_full.tex")
 for need in ("211.7k", "$-33\\%$", "$+13\\%$", "36.5\\%", "56.1\\%", "58.9\\%", "14.7", "996 segments", "4.6/17.0", "18.5/23.8", "versus 0.03", "ten early", "6.0 and 5.6", "0.24 versus 0.07", "39.9", "3.55", "233 train", "561"):
     check("text", f"value present: {need}", "True", str(need in tex), "report/archive/part*_en_full.tex")
@@ -527,11 +527,11 @@ for need, src, ev in (("\\texttt{e58de33}", "hardware/README.md", "`e58de33`"),
 # HandUMI attribution: every English report must say the device is BrikHMP18's design, not ours (user requirement 2026-10-12).
 for f, need in (("report/archive/part1_stacking_en_full.tex", "The capture device is \\emph{not our design}"),
                 ("report/archive/part1_stacking_en_full.tex", "designed and published by BrikHMP18 (not our design)"),
-                ("report/part1_stacking_en.tex", "by BrikHMP18 (not our design)"),
-                ("report/part1_stacking_en.tex", "open-source design by BrikHMP18, not ours"),
+                ("report/archive/part1_stacking_en.tex", "by BrikHMP18 (not our design)"),
+                ("report/archive/part1_stacking_en.tex", "open-source design by BrikHMP18, not ours"),
                 ("report/archive/part2_approach_en_full.tex", "designed and published by BrikHMP18, not by us"),
-                ("report/part2_approach_en.tex", "designed by BrikHMP18, not by us"),
-                ("report/methods_en.tex", "designed and published by BrikHMP18, not by us")):
+                ("report/archive/part2_approach_en.tex", "designed by BrikHMP18, not by us"),
+                ("report/archive/methods_en.tex", "designed and published by BrikHMP18, not by us")):
     check("attribution", f"{f.split('/')[-1]}: {need[:40]}", "True", str(need in open(R / f).read()), f)
 
 # ---------------------------------------------------------------- v5: unified report (report/report_en.tex)
@@ -560,16 +560,16 @@ for need in ("The capture device is \\emph{not our design}", "designed and publi
 
 # ---------------------------------------------------------------- README: the same verified values, and none of the stale ones
 # The release-by-release README narrative moved verbatim to docs/history.md on 2026-11-01; both files are checked together.
-rd = open(R / "README.md").read() + "\n" + open(R / "docs/history.md").read()
+rd = "\n".join(open(R / f).read() for f in ("README.md", "docs/results.md", "docs/history.md"))   # 2026-11-05: README detail moved to docs/results.md
 for need in ("349 recorded", "284 pass sync", "259 source", "561 bimanual", "233 train", "26 held-out", "1.5 / 5.7 mm", "11.2 / 39.9 mm",
              "4.8 mm", "3.55 of 6", "36.5 %", "56.1 %", "1.494 / 1.551", "0.272 / 0.454", "58.9 %", "0.067 vs 0.144", "996 TR segments",
              "896 / val 100", "27,776", "−10.0 %", "−14.7 to −5.6 %", "8 of 10", "211.7k", "−33 %", "+13 %", "4.6 / 17.0 %", "11.3 mm"):
-    check("readme", f"value present: {need}", "True", str(need in rd), "README.md + docs/history.md")
+    check("readme", f"value present: {need}", "True", str(need in rd), "README.md + docs/results.md + docs/history.md")
 for need in ("48,411 rows (−6.20 %)", "1,482 / 2,598", "99.7 / 99.5 %", "45.2 / 52.2 %", "1,854 / 1,487", "slots 10–17", "−0.05 / −0.03",
              "+0.81 / +0.77", "0.244 vs 0.945", "0.984 (55–60k, tie)", "1.062 (p16–p84 0.959–1.274)", "151 episodes / 20,319 rows", "49,431"):
-    check("readme", f"v3 value present: {need}", "True", str(need in rd), "README.md + docs/history.md")
+    check("readme", f"v3 value present: {need}", "True", str(need in rd), "README.md + docs/results.md + docs/history.md")
 for bad in ("is running; no results yet", "234 checks", "This repository reports no closed-loop robot results", "outcomes were not logged)."):
-    check("readme", f"stale text absent: {bad}", "True", str(bad not in rd), "README.md + docs/history.md")
+    check("readme", f"stale text absent: {bad}", "True", str(bad not in rd), "README.md + docs/results.md + docs/history.md")
 
 # ---------------------------------------------------------------- output
 nf = sum(r[-1] == "FAIL" for r in rows)

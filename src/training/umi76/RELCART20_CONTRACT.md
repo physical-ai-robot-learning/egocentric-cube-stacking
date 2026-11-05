@@ -16,7 +16,7 @@ the VLA must not be able to tell ego from real by the state.
 | 19 | g_R | same |
 
 - **TCP:** `rebot_fk_torch.tcp(q12)` in the robot base frame. This equals the dataset TCP to 0.000 mm / 0.00°. Ego uses the same FK on its pseudo-q.
-  - Deploy path: `infer_core_v4._tcp_mat` (eef_kin + V4_FRAME_FIX). It agrees with `rebot_fk_torch` to 0.0003 mm.
+  - Deploy path: `xvla_inference._tcp_mat` (eef_kin + V4_FRAME_FIX). It agrees with `rebot_fk_torch` to 0.0003 mm.
 - **Anchor:** the pose at the **first row (frame_index 0) of each LeRobot episode**.
   - Segment = episode. On the real side, an episode is one teleop recording of the whole 3-stack task, with no finer segmentation.
   - Ego must use the same semantics: the first row of each frozen ego episode. Do not re-cut segments.
@@ -61,7 +61,7 @@ It must be mapped to the same normalized aperture as real (0 = closed, 1 = open;
 ## Reference implementation
 
 - Dataset derive (node): `umi_bridge/umi76/derive_relcart20.py`, sha256 prefix 36ecf859.
-- Runtime / QA function: `holobrain-mac-model/infer_core_v4.relcart20_state(anchor, cur, w)`.
+- Runtime / QA function: `holobrain-mac-model/xvla_inference.relcart20_state(anchor, cur, w)`.
 - QA script: `umi_bridge/rel16_audit/relcart20_qa.py`.
 
 ## Gates (real results; ego must pass the same)

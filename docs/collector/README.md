@@ -1,5 +1,7 @@
 # HandUMI collector (`handumi_collector`)
 
+> **2026-11-05 refactor.** Paths and module names below follow the refactored layout ([`docs/refactor_2026-11.md`](../refactor_2026-11.md)); modules run as `python -m <package>.<module>`.
+
 > **Location (restructure of 2026-11-01).** This file was `collection/README.md`. Paths in it are relative to that old folder: `handumi_collector/` → `src/handumi_collector/`, `tests/` → `tests/collector/`, `docs/` → `docs/collector/`, `tools/` → `scripts/`; `configs/`, `scripts/`, `firmware/` and `assets/` are now at the repository root under the same names. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
 >
 > **Shared with the garment project (2026-11-01).** `handumi_collector` and `ego_collector` are in this repository's `src/` and are shared with [egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation): both repositories hold identical copies of the Python files ([`docs/provenance/README.md`](../provenance/README.md#shared-packages-2026-11-01)). Their tests are `tests/collector/`; the defaults the collector reads (`configs/handumi`, `configs/calibration`) resolve to this repository's `configs/`.
@@ -11,7 +13,7 @@ This is the raw recorder for the human (HandUMI) side of the reBot work. It does
   a Feetech STS3215 jaw encoder.
 
 Output is mp4 per stream plus one `sensors.mcap` per episode. Pose estimation, retargeting and export are offline steps
-and live elsewhere in this repo (`src/mast3r_pose/`, `src/rebot_prep/`, `src/ego_cart20/`, `scripts/rebot/hra/`). A pose failure never loses a raw episode.
+and live elsewhere in this repo (`src/mast3r_pose/`, `src/rebot_prep/`, `src/ego_cart20/`, `archive/hra_single_arm/pipeline/`). A pose failure never loses a raw episode.
 
 Source: `~/ego_collector` (branch `orbbec-rgbd`, HEAD `12db478`, plus uncommitted working tree as of 2026-10-07). See
 [`../provenance/collection_MANIFEST.md`](../provenance/collection_MANIFEST.md).
@@ -170,10 +172,10 @@ uses that device clock.
   uv run python -m handumi_collector.tools.validate_session <imu_log_dir>           # IMU rate, jitter p99, seq drops, CRC, gravity, headroom
   uv run python -m handumi_collector.tools.motion_qa ...                             # motion statistics
   uv run python -m handumi_collector.tools.wrist_exposure_qa ...                     # wrist exposure
-  bash scripts/robotlike_session_check.sh <session>                                  # robot_like_v1 offline reachability check
+  bash archive/collector_tools/robotlike_session_check.sh <session>                                  # robot_like_v1 offline reachability check
   ```
 
-  `robotlike_session_check.sh` runs on the GPU cluster via Ray. It also needs the `~/c8` chain (`c8_phase3`,
+  `robotlike_session_check.sh` runs on the GPU cluster via Ray. It also needs the `~/c8` chain (`phase3_segments`,
   `c8_collision_v1`), which is **not** in this folder.
 - **Operating rule**: collection gates only on raw integrity and task validity. VIO quality never blocks collection;
   pose and VIO problems are handled in post-processing.
@@ -183,19 +185,19 @@ uses that device clock.
 - Calibration:
   - `tools.calibrate_fisheye`, `tools.calibrate_c922`, `tools.calibrate_table_frame`, `tools.temporal_sync` (camera↔IMU
     offset).
-  - `scripts/charuco_calibrate.py`, `scripts/identify_board.py`, `scripts/generate_charuco.py`,
-    `scripts/table_frame_ui.py`, `scripts/calibrate_table_frame_charuco.py`, `scripts/fit_table_frame.py`,
-    `scripts/calib_take_qa.py`.
+  - `archive/collector_tools/charuco_calibrate.py`, `archive/collector_tools/identify_board.py`, `archive/collector_tools/generate_charuco.py`,
+    `archive/collector_tools/table_frame_ui.py`, `archive/collector_tools/calibrate_table_frame_charuco.py`, `archive/collector_tools/fit_table_frame.py`,
+    `archive/collector_tools/calib_take_qa.py`.
 - Cameras:
-  - `scripts/verify_physical_side.py`: cover a lens to confirm which wrist is which.
-  - `scripts/exposure_sweep.py`, `scripts/wrist_brightness_sweep.py`, `scripts/wrist_image_quality.py`,
-    `scripts/wrist_cam_diagnose.py`.
+  - `archive/collector_tools/verify_physical_side.py`: cover a lens to confirm which wrist is which.
+  - `archive/collector_tools/exposure_sweep.py`, `archive/collector_tools/wrist_brightness_sweep.py`, `archive/collector_tools/wrist_image_quality.py`,
+    `archive/collector_tools/wrist_cam_diagnose.py`.
   - Runbook: `docs/CAMERA_FREEZE.md`.
 - IMU: `tools.imu_monitor`, `tools.imu_logger`, `tools.imu_dual_smoke`, `tools.plot_imu`. Runbook:
   `docs/IMU_BRINGUP.md`, `docs/IMU_RING_POLICY.md`.
-- Robot-like protocol: `scripts/robotlike_replay_live.py`, `scripts/robotlike_offline_check.py`,
-  `scripts/robotlike_compare_groups.py`.
-- Export: `scripts/umi_export_orbslam.py` writes an episode in UMI ORB-SLAM3 layout. The robot-like check uses it.
+- Robot-like protocol: `archive/collector_tools/robotlike_replay_live.py`, `archive/collector_tools/robotlike_offline_check.py`,
+  `archive/collector_tools/robotlike_compare_groups.py`.
+- Export: `src/mast3r_pose/export_episode.py` writes an episode in UMI ORB-SLAM3 layout. The robot-like check uses it.
 - Design docs: `docs/PLAN.md`, `docs/POSE_V2.md` (fiducial-free pose), `docs/TEMPORAL_SYNC.md`, `docs/RGBD_POSE.md`.
 
 Run scripts from this folder (`uv run python scripts/<x>.py`), because some of them import `scripts.<module>`.

@@ -1,5 +1,7 @@
 # Provenance and the 2026-11-01 restructure
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](../refactor_2026-11.md) (old → new map) and [`archive/README.md`](../../archive/README.md).
+
 The MANIFEST files in this folder are the original per-folder provenance records (which working directory, commit and
 date each file came from). They are kept verbatim, so the paths **inside** them use the layout before 2026-11-01.
 This table maps those paths to the current ones.

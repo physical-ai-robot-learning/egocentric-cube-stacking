@@ -1,6 +1,8 @@
 # ego_cart20: ego-only CART20 pretraining data for X-VLA v4
 
-> **Location (restructure of 2026-11-01).** This file was `cart20/README.md`. Paths in it are relative to that old folder: `ego_cart20/` → `src/ego_cart20/` (so `ego_cart20/scripts/...` is `src/ego_cart20/scripts/...`), `tests/` → `tests/cart20/`, `docs/` → `docs/cart20/`, `configs/` → `configs/cart20/`; `launch/` scripts are in `scripts/training/ego_cart20/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
+> **2026-11-05 refactor.** Paths and module names below follow the refactored layout ([`docs/refactor_2026-11.md`](../refactor_2026-11.md)); modules run as `python -m <package>.<module>`.
+
+> **Location (restructure of 2026-11-01).** This file was `cart20/README.md`. Paths in it are relative to that old folder: `ego_cart20/` → `src/ego_cart20/` (so `ego_cart20/scripts/...` is `src/ego_cart20/scripts/...`), `tests/` → `tests/cart20/`, `docs/` → `docs/cart20/`, `configs/` → `configs/cart20/`; `launch/` scripts are in `scripts/train/ego_cart20/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
 
 Turns human egocentric demonstrations (HandUMI) into X-VLA v4 training samples. The samples have the same meaning and channel layout as the reBot R312c RELCART20 REL-only data used for fine-tuning.
 Status, numbers and open questions: `SPEC_STATUS_2026-10-01.md`. Training recipe: `~/umi_bridge/RELCART20_RELONLY_D6_RECIPE.md`.
@@ -26,22 +28,22 @@ Status, numbers and open questions: `SPEC_STATUS_2026-10-01.md`. Training recipe
 ```bash
 PY=~/xvla-mac/bin/python
 # 1  source adapter (HandUMI MASt3R + IMU-VI + gcal1 gripper) -> raw episodes
-$PY ego_cart20/sources/handumi_export.py --out ~/c8/ego_cart20_v2_raw
+$PY -m ego_cart20.handumi_export --out ~/c8/ego_cart20_v2_raw
 # 2  raw -> processed episodes + {train,val,test}_manifest.jsonl (frozen HandUMI split)
-$PY ego_cart20/scripts/convert_dataset.py ~/c8/ego_cart20_v2_raw ~/c8/ego_cart20_v2
+$PY -m ego_cart20.scripts.convert_dataset ~/c8/ego_cart20_v2_raw ~/c8/ego_cart20_v2
 # 3  validation (hard checks, exit 1 on failure), report + 3D samples, gcal1 parity
-$PY ego_cart20/scripts/validate_dataset.py ~/c8/ego_cart20_v2
-$PY ego_cart20/scripts/report_dataset.py ~/c8/ego_cart20_v2 ~/c8/ego_cart20_v2_report
-$PY ego_cart20/validation/parity_gcal1.py ~/c8/ego_cart20_v2_raw <episode_id> ...
+$PY -m ego_cart20.scripts.validate_dataset ~/c8/ego_cart20_v2
+$PY -m ego_cart20.scripts.report_dataset ~/c8/ego_cart20_v2 ~/c8/ego_cart20_v2_report
+$PY archive/ego_cart20_experiments/validation/parity_gcal1.py ~/c8/ego_cart20_v2_raw <episode_id> ...
 # 4  LeRobot v3 export for the REL-only D6 recipe
-$PY ego_cart20/scripts/export_lerobot.py ~/c8/ego_cart20_v2 ~/c8/ego_cart20_v2_lerobot
+$PY -m ego_cart20.scripts.export_lerobot ~/c8/ego_cart20_v2 ~/c8/ego_cart20_v2_lerobot
 # 5  submit (4090, Ray, physical GPU index)
 launch/submit_ego_cart20v2.sh 1
 # tests
 $PY tests/test_contract.py
 ```
 
-Single episode: `scripts/convert_episode.py <raw_dir> <out_dir>`. Native reader: `dataset/xvla_ego_dataset.XVLAEgoDataset(root, split, load_images)`. Weights: `.weights(order_balanced, stage_weights)`.
+Single episode: `python -m ego_cart20.scripts.convert_episode <raw_dir> <out_dir>`. Native reader: `ego_cart20.dataset.XVLAEgoDataset(root, split, loadImages)`. Weights: `.weights(orderBalanced, stageWeights)`.
 
 ## Raw episode format (`io/raw_episode_loader.py`)
 `raw_episode.json` holds episode_id, instruction, stack_order, task, videos, tool_frame, gripper_calibration and provenance.

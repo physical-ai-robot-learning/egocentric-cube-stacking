@@ -1,11 +1,13 @@
 # Release history
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](refactor_2026-11.md) (old → new map) and [`archive/README.md`](../archive/README.md).
+
 Release-by-release narrative of this repository, moved verbatim from the README on 2026-11-01 so that the README keeps
 to one page. Numbers and wording are unchanged; only relative links were adjusted for this file's location.
 `analysis/verify_claims.py` checks the README values in the README and this file together.
 
 Path notes (2026-11-01): `docs/media/` is now [`media/`](../media/); the C-old v1 dataset builder (`scripts/rebot/dataset/`)
-and `scripts/rebot/loaders/legacy/` are now in [`legacy/`](../legacy/README.md). The laundry / garment material named below
+and `scripts/rebot/loaders/legacy/` are now in [`legacy/`](../archive/README.md). The laundry / garment material named below
 (`src/visual_teleop/`, `scripts/umi_teleop_eval/`, `scripts/rebot/laundry/`, `scripts/rebot/parity/`) moved to [egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation).
 Release tags: `report-v2-2026-09-30`, `report-v3-2026-10-04`.
 

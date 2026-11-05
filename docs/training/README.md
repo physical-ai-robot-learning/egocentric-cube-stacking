@@ -1,6 +1,8 @@
-# training (`src/training/`, `scripts/training/`): X-VLA on reBot (Gen-1 joint space, Gen-2 REL-only Cartesian)
+# training (`src/training/`, `scripts/train/`): X-VLA on reBot (Gen-1 joint space, Gen-2 REL-only Cartesian)
 
-> **Location (restructure of 2026-11-01).** This file was `training/README.md`. Paths in it are relative to that old folder: `relonly/`, `umi76/`, `robot/` → `src/training/<same name>/`; `launchers/<sub>/` → `scripts/training/<sub>/`; `archivers/` → `scripts/training/archivers/`; the Gen-1 root files (`train_bi.py`, `humanik_delta.py`, `eef_delta.py`, `lr_groups.py`, `aug_defaults.py`, `keep_indices.py`, `contrastive_sampler.py`, `c8old_*.sh`) → `scripts/training/c8old/`; `docs/` → `docs/training/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
+> **2026-11-05 refactor.** Paths and module names below follow the refactored layout ([`docs/refactor_2026-11.md`](../refactor_2026-11.md)); modules run as `python -m <package>.<module>`.
+
+> **Location (restructure of 2026-11-01).** This file was `training/README.md`. Paths in it are relative to that old folder: `relonly/`, `umi76/`, `robot/` → `src/training/<same name>/`; `launchers/<sub>/` → `scripts/train/<sub>/`; `archivers/` → `scripts/train/archivers/`; the Gen-1 root files (`train_bi.py`, `humanik_delta.py`, `eef_delta.py`, `lr_groups.py`, `aug_defaults.py`, `keep_indices.py`, `contrastive_sampler.py`, `c8old_*.sh`) → `archive/gen1_c8old/training/`; `docs/` → `docs/training/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
 
 The model is X-VLA 0.9B (`lerobot/xvla-base`) through LeRobot. The node-side LeRobot checkout is
 `/home/bh-aiteam/workspace/bh_rebot_LeRobot` (4090) or `/srv/data/johann/relonly/code/lerobot-seeed` (5090). These are not copied here.
@@ -42,7 +44,7 @@ The methods summary is `report/methods_en.tex` Sec. "Model" and "Training" in `~
 - Long runs: `--log_freq` 100-200, `EE_LOG_EVERY=200`.
 - Env: `HUMANIK_DELTA=1 HUMANIK_LEAD=5 HUMANIK_ROBOT=1 HUMANIK_TARGET=cmd`, `HF_HUB_OFFLINE=1`.
 - Launch: `c8old_launch.sh` / `c8old_chain.sh` (300k pretrain on C-old ego, then R150 FT 600k). The R30-R120 ladder is in `launchers/c8old/`.
-- Offline eval: `scripts/rebot/eval/c8old/c8old_mac_eval.py` (geo score, prompt swap).
+- Offline eval: `archive/gen1_c8old/eval/c8old_mac_eval.py` (geo score, prompt swap).
 
 ### Gen-2: RELCART20 REL-only
 
@@ -70,7 +72,7 @@ The methods summary is `report/methods_en.tex` Sec. "Model" and "Training" in `~
 - **Loss mask (single arm, HRA).** `relonly/rel16_relonly_lossmask.py` + `train_rel16_relonly_lossmask.py`.
   - Each sample carries `aux.loss_mask` (20-D) and `aux.task_id`. Masked targets are replaced by the detached prediction before subtraction, which avoids NaN gradients. The loss is divided by the number of supervised elements.
   - With no mask present, it behaves as plain REL-only.
-  - Launchers: `node4090/train_hra_rightonly_lossmask_d20_b8.sh HRA <gpu>` and the size-agnostic-preflight copy `node4090/train_hra_a93_lossmask_d20_b8.sh`, used by `scripts/rebot/hra/hra_a100/pipe/chain_generic*.sh`.
+  - Launchers: `node4090/train_hra_rightonly_lossmask_d20_b8.sh HRA <gpu>` and the size-agnostic-preflight copy `node4090/train_hra_a93_lossmask_d20_b8.sh`, used by `archive/hra_single_arm/pipeline/hra_a100/pipe/chain_generic*.sh`.
 - **Fine-tune.**
   - The fine-tune starts from an ego pretrain checkpoint with a fresh optimizer and the **robot** dataset's normalization stats.
   - Episode subsets go through `--dataset.episodes` from an index file: `R30_SELECTION.json` = r312c eps 150..179, `R90_SELECTION.json`.

@@ -12,7 +12,7 @@
 \begin{document}
 \title{Egocentric Human Demonstrations\\for a Bimanual Robot\\[1mm]\Large From a Hand-Worn Gripper to Robot Policies}
 \author{\IEEEauthorblockN{Jeong Hwan Lee}
-\IEEEauthorblockA{Technical report, version 5.1, 1 November 2026 \quad alnrg2arg@gmail.com\\
+\IEEEauthorblockA{Technical report, version 5.2, 5 November 2026 \quad alnrg2arg@gmail.com\\
 Public repository: \texttt{github.com/physical-ai-robot-learning/egocentric-cube-stacking}.}}
 \maketitle
 
@@ -951,25 +951,37 @@ generalization, and a benefit on disjoint robot data require the controlled expe
 
 \appendices
 \section{Code Map and Report History}\label{app:code}
-\textbf{Code map} (paths in the repository after the 1 November 2026 restructure; old-to-new map in
-\code{docs/provenance/README.md}): collector and protocols \code{src/handumi_collector/} (\code{collector/autoloop.py},
-\code{collector/recorder.py}, \code{collector/integrity.py}); hardware and IMU firmware \code{hardware/}, \code{firmware/}; upstream
-licence, NOTICE and our patch \code{upstream/}; export and sync \code{scripts/rebot/c8/}, \code{src/rebot_prep/census/}; MASt3R-SLAM
-wrapper and scales \code{src/mast3r_pose/}, \code{src/ego_cart20/cube_pnp.py}; Gen-1 \code{src/rebot_prep/pseudo_joint/},
-\code{src/rebot_prep/retarget/}; Gen-2 \code{src/ego_cart20/} (contract, pose filter, converter, validators); single arm
-\code{scripts/rebot/hra/}; training \code{src/training/}, \code{scripts/training/}; evaluation and diagnostics \code{scripts/rebot/eval/},
-\code{analysis/}; deployment \code{src/rebot_deploy/}; claim verification \code{analysis/verify_claims.py}.
+\textbf{Code organisation.} The repository is one installable Python project. Each pipeline stage is a package under
+\code{src/} with its own README and characterization tests (\code{src/<pkg>/tests/}): capture \code{src/handumi_collector/},
+pose \code{src/mast3r_pose/}, conversion \code{src/ego_cart20/} (Gen-2) and \code{src/rebot_prep/} (Gen-1), training
+\code{src/training/}, deployment \code{src/rebot_deploy/}; machine-specific data roots are defined once in \code{src/ego_paths/}.
+\code{scripts/} holds only the launchers for the GPU nodes and the robot computer, grouped by stage; \code{configs/} the
+calibrations; \code{results/} the records behind every number; \code{archive/} keeps superseded and exploratory code verbatim,
+with an index (\code{archive/README.md}). On 5 November 2026 the main-path code was restyled without behaviour change: tests
+recorded on the old code pass unchanged (\code{docs/refactor_2026-11.md}).
+
+\textbf{Code map} (paths after the 5 November 2026 refactor; old-to-new map in \code{docs/refactor_2026-11.md}): collector and
+protocols \code{src/handumi_collector/} (\code{collector/autoloop.py}, \code{collector/recorder.py}, \code{collector/integrity.py});
+hardware and IMU firmware \code{hardware/}, \code{firmware/}; upstream licence, NOTICE and our patch \code{upstream/}; export and
+sync \code{src/mast3r_pose/export_episode.py}, \code{scripts/pose/}, \code{src/rebot_prep/census/}; MASt3R-SLAM wrapper and scales
+\code{src/mast3r_pose/} (\code{run_perframe.py}, \code{imu_metric_scale.py}), \code{src/ego_cart20/cube_pnp.py}; Gen-1
+\code{src/rebot_prep/pseudo_joint/}, \code{src/rebot_prep/retarget/}, and its dataset builders, trainer and offline evaluator
+\code{archive/gen1_c8old/}; Gen-2 \code{src/ego_cart20/} (contract, pose filter, converter, validators); single arm
+\code{archive/hra_single_arm/}; training \code{src/training/}, launchers \code{scripts/train/}; evaluation and diagnostics
+\code{analysis/}, \code{archive/rel16_audit/}; deployment \code{src/rebot_deploy/}, \code{scripts/deploy/}; claim verification
+\code{analysis/verify_claims.py}.
 
 \textbf{Repository and follow-up.} The laundry and garment work that followed this project, recorded with the same hand-worn
-grippers, continues in its own repository, \texttt{egocentric-garment-manipulation}, and is not part of this report. The packages
-shared by the two projects (\code{handumi_collector}, \code{ego_collector}, \code{ego_teleop}, \code{umi}) are identical copies in
-the \code{src/} folder of both repositories.
+grippers, continues in its own repository, \texttt{egocentric-garment-manipulation}, and is not part of this report. The capture
+packages (\code{handumi_collector}, \code{ego_collector}, \code{umi}) started as copies shared with that repository; here they are
+trimmed to the modules this pipeline imports.
 
 \textbf{Report history.} Version 2 (30 September 2026) covered Gen-1 stacking; version 3 (4 October) added Gen-2 and transfer
 diagnostics; version 4 (7 October) added the R30 ablation and split the work into Part I (stacking), Part II (approach) and a
 methods document; version 4.1 (12 October) added the hardware description. Version 5 (12 October) merged them into one report without
-changing any result; the earlier documents remain in the repository. This version 5.1 (1 November) only updates repository paths after
-the code restructure and adds the paragraph on the follow-up repository; no result changed.
+changing any result; the earlier documents remain in the repository. Version 5.1 (1 November) updated repository paths after
+the code restructure. This version 5.2 (5 November) updates the code map to the refactored layout and adds the code-organisation
+paragraph; no result changed.
 
 \begin{thebibliography}{99}\footnotesize
 \bibitem{chi2024umi} C.~Chi, Z.~Xu, C.~Pan, E.~Cousineau, B.~Burchfiel, S.~Feng, R.~Tedrake, and S.~Song, ``Universal manipulation interface: In-the-wild robot teaching without in-the-wild robots,'' in \emph{RSS}, 2024.

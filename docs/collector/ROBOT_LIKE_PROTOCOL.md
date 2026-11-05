@@ -53,14 +53,14 @@ For the same reason, inter-arm distance has no live source.
 ## Offline robot check (per session)
 
 ```bash
-scripts/robotlike_session_check.sh datasets/human_handumi_raw/HRL80/HRL80_<ts>
+archive/collector_tools/robotlike_session_check.sh datasets/human_handumi_raw/HRL80/HRL80_<ts>
 ```
 
 1. Export, using the same exporter and flags as C8.
 2. Upload to the 5090 NFS.
 3. Run MASt3R-SLAM on the RTX 5080 via Ray (`c8_run_5080.sh`, pinned `node:100.64.0.3`). This takes about 11 GPU-minutes per episode.
 4. Pull the results back.
-5. Run `scripts/robotlike_offline_check.py` with `~/xvla-mac/bin/python`, which reuses the frozen C8 Phase-3 chain from `~/c8/c8_phase3.py`:
+5. Run `archive/collector_tools/robotlike_offline_check.py` with `~/xvla-mac/bin/python`, which reuses the frozen C8 Phase-3 chain from `~/c8/phase3_segments.py`:
    - metric scale (imu_vi + degenerate guard)
    - camera_tcp_v2
    - |dt| < 20 ms sync

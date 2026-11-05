@@ -1,9 +1,3 @@
-# Checks that need no hardware, GPU, recorded data or private checkpoints. Only subsets that pass on a clean
-# Python 3.12 install are run:
-#   - tests/collector is not run: 12 known failures + 3 errors (mock-gripper gate, camera listing, m15 UI), also on main.
-#   - test_aero_backends.py is not run: it needs torch + dex-retargeting (the `aero` extra).
-#   - tests/test_imports.py (import smoke of every src/ module) is not run: its known-failure list was measured on macOS
-#     with the project venvs (docs/code_structure.md); run it locally.
 name: ci
 on:
   push:
@@ -20,16 +14,19 @@ jobs:
           python-version: "3.12"
       - name: System libraries for OpenCV / Qt wheels
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libegl1 libxkbcommon0
-      - name: Byte-compile every Python file
+      - name: Byte-compile every Python file (src, scripts, analysis, tests and archive)
         run: python -m compileall -q -x '/\.git/' .
-      - name: Claims check (every number in the report and README)
+      - name: Claims check (every number in the README, docs/history.md and the technical report)
         run: |
           pip install pyyaml numpy
           python analysis/verify_claims.py
-      - name: Install
-        run: pip install -e ".[collector,experimental,dev]" rosbags
-      - name: Tests
+      - name: Install (package + collector extra + CPU torch / flask / pinocchio for the deploy tests)
         run: |
-          pytest -q tests/cart20
-          pytest -q tests/experimental/v0
-          pytest -q tests/experimental/teleop --ignore=tests/experimental/teleop/test_aero_backends.py
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[collector,dev]" flask requests pin pin-pink
+      - name: Package tests (characterization tests in src/<pkg>/tests) and the CART20 contract tests
+        run: pytest -q src tests/cart20
+      - name: reBot UI against its golden record
+        run: pytest -q tests/test_ui_routes.py
+      - name: Import smoke test (every module under src/ imports from a clean checkout)
+        run: pytest -q tests/test_imports.py

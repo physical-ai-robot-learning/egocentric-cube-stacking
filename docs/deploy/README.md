@@ -1,18 +1,20 @@
 # rebot_deploy (`src/rebot_deploy/`): serving X-VLA checkpoints on the reBot (Mac MPS + Pink IK + MIT robot service)
 
-> **Location (restructure of 2026-11-01).** This file was `deploy/README.md`. Paths in it are relative to that old folder: the Python files, `learned_ik/` and `robot_service/` → `src/rebot_deploy/`; `loaders/` (with `legacy/`) and `swappers/` → `scripts/rebot/loaders/`; `TODO_gripper_hold.md` → `docs/deploy/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
+> **2026-11-05 refactor.** Paths and module names below follow the refactored layout ([`docs/refactor_2026-11.md`](../refactor_2026-11.md)); modules run as `python -m <package>.<module>`.
+
+> **Location (restructure of 2026-11-01).** This file was `deploy/README.md`. Paths in it are relative to that old folder: the Python files, `learned_ik/` and `robot_service/` → `src/rebot_deploy/`; `loaders/` and `swappers/` → `scripts/deploy/` (`loaders/legacy/` → `archive/deploy_loaders_old/`); `TODO_gripper_hold.md` → `docs/deploy/`. Full old → new table: [`docs/provenance/README.md`](../provenance/README.md).
 
 ## Components
 
 | file | role |
 |---|---|
-| `infer_core_v4.py` | Inference core `V4Inferencer`. It handles observation -> state (RELCART20 / slim20 / umi), X-VLA flow sampling (MPS bf16), the REL-only zero mask, chunk decode `T_k = T_now @ A_k`, the IK backends (`pink`, numerical, learned, pinkdq/policydq, cuRobo client), the gripper mapping, RTC, the one-arm (`V4_ARM_ONLY=right`) contract and the fixed anchor. |
-| `mac_v4_smoke_ui.py` | Flask web UI and controller (entry point; since 2026-11-01 the code is split by area into `smoke_ui/`). It provides step / stream / **PLAN** execution, `/mode` live controls, the checkpoint dropdown, the cube-size stop, the trial logger and HRA safety gates. |
+| `xvla_inference.py` | Inference core `XvlaInferencer` (was `V4Inferencer` in `infer_core_v4.py`). It handles observation -> state (RELCART20 / slim20 / umi), X-VLA flow sampling (MPS bf16), the REL-only zero mask, chunk decode `T_k = T_now @ A_k`, the IK backends (`pink`, numerical, learned, pinkdq/policydq, cuRobo client), the gripper mapping, RTC, the one-arm (`V4_ARM_ONLY=right`) contract and the fixed anchor. |
+| `run_smoke_ui.py` | Flask web UI and controller (entry point; since 2026-11-01 the code is split by area into `smoke_ui/`). It provides step / stream / **PLAN** execution, `/mode` live controls, the checkpoint dropdown, the cube-size stop, the trial logger and HRA safety gates. |
 | `pink_ik.py` | Pinocchio/Pink QP IK. Frame tasks: pos 1.0 / ori 0.5. Posture toward the seed is 1e-3. TCP = gripper_link + 70 mm x. URDF from `REBOT_URDF`, default `~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf`; the same file is in `src/training/robot/`. |
 | `eef_kin.py` | FK and continuity IK (same URDF/TCP model as the labels). The same file is in `src/rebot_prep/pseudo_joint/`. |
 | `hra_direction_probe.py` | Read-only offline probe (`/observe` only). It computes the cosine between the predicted right-TCP motion and the direction to a touched cube target. |
 | `TODO_gripper_hold.md` | Open bug: generic `V4_GRIPPER=hold` sends the raw jaw reading as a command. |
-| `loaders/` | `load_*_ckpt_to_ui.sh <step> [port]`: fetch a checkpoint (node or SSD), verify sha256 + identity (run, dataset, domain), restart the UI with the run's V4_* contract, then restore the per-port control settings. Active loaders: `load_hra_rightonly_ckpt_to_ui.sh` (HRA, port 8056), `load_relonly_run_ckpt_to_ui.sh` (4090 REL-only bimanual), `load_relonly_5090_run_ckpt_to_ui.sh`. `legacy/` holds the earlier per-run loaders. |
+| `loaders/` | `load_*_ckpt_to_ui.sh <step> [port]`: fetch a checkpoint (node or SSD), verify sha256 + identity (run, dataset, domain), restart the UI with the run's V4_* contract, then restore the per-port control settings. Active loaders: `load_hra_rightonly_ckpt_to_ui.sh` (HRA, port 8056), `load_relonly_run_ckpt_to_ui.sh` (4090 REL-only bimanual), `load_relonly_5090_run_ckpt_to_ui.sh`. `archive/deploy_loaders_old/` holds the earlier per-run loaders; the HRA loader is in `archive/hra_single_arm/loaders/`. |
 | `swappers/` | `auto_ui_d20_e5_v5.sh` (bimanual ports 8052/8053; loads each new checkpoint and skips pinned ports) and `auto_ui_hra_8056.sh` (HRA). These are the latest versions only. |
 | `robot_service/robot_service_mit.py` | Our HTTP robot service on **:8021**: two arms in MIT impedance mode with an integral feed-forward, a 100 Hz control thread, `/observe`, `/execute_step` and `/plan/{open,rows,progress}`. **It depends on the colleague's reBot plugin, which is NOT included:** `bh_indy7_LeRobot` (`bh_indy7_lerobot`, `bh_indy7_lerobot_gui`, `lerobot_plugin_rebot`). Run it in that env: `~/bh_indy7_LeRobot/.venv/bin/python robot_service_mit.py`. Stop the old `robot_service.py` (:8020) first. `MIT_MOCK=1` runs without hardware. `usb_arm_ports.py` maps left/right by USB location ID. |
 | `learned_ik/` | Optional learned-IK backend (`lik0_common.py` + training/eval scripts and contract docs). Weights not included. |
@@ -36,7 +38,7 @@ V4_FIXED_ANCHOR_JSON=~/c8/hra_a100/G_anchor.json UMI_TCP_PITCH_DEG=0 UMI_TCP_OFF
 bash loaders/load_relonly_run_ckpt_to_ui.sh <step> 8053
 ```
 
-The by-hand form is `V4_* ... ~/xvla-mac/bin/python mac_v4_smoke_ui.py`, served at `http://localhost:<V4_UI_PORT>`. The environment contract has to match how the checkpoint was trained:
+The by-hand form is `V4_* ... ~/xvla-mac/bin/python -m rebot_deploy.run_smoke_ui`, served at `http://localhost:<V4_UI_PORT>`. The environment contract has to match how the checkpoint was trained:
 
 | var | meaning (REL-only CART20 value) |
 |---|---|
@@ -102,14 +104,14 @@ It was not used during the HRA runs, which is why no HRA success rate exists. Us
 
 ## KNOWN ISSUE: bimanual PLAN mode never opens the grippers
 
-In PLAN mode the forward job compiles each chunk row with **no gripper widths**. `mac_v4_smoke_ui.py` line 1053, inside `_plan_forward_job`:
+In PLAN mode the forward job compiles each chunk row with **no gripper widths**. `run_smoke_ui.py` line 1053, inside `_plan_forward_job`:
 
 ```python
 P = P_all[j].copy(); Q = Q_all[j].copy(); W = np.asarray(L_["widths"][j]).copy()   # line 1052: W is computed ...
 a, ikerr, ok, clipped = INF.solve_waypoint(seed, P, Q, None)                          # line 1053: ... but widths_k=None is passed
 ```
 
-`W` is only stored in the row dict (line 1068) and never reaches the command. In `infer_core_v4.py` `solve_waypoint` (def at line 1010),
+`W` is only stored in the row dict (line 1068) and never reaches the command. In `xvla_inference.py` `solve_waypoint` (def at line 1010),
 the gripper command is built at lines 1190-1193:
 
 ```python
@@ -120,7 +122,7 @@ cmd[gi] = (self._grip_relative(...) if (GRIPPER_MODE == "relative" and widths_k 
 
 With `widths_k=None`, every gripper mode falls through to `float(q_now[gi])`. Here `q_now` is the seed. Its gripper entries are the **measured raw jaw**
 (lines 1036, 1047 and 1072), on the 0 (closed) .. -270 (open) scale. That value becomes the row's `action`, which `/plan/rows` sends to the robot unchanged (line 1164).
-The robot expects a 0..45 *command*, and the bridge clips negatives to 0 = closed. This is the same failure that `TODO_gripper_hold.md` and the `jaw_hold_cmd` docstring (`infer_core_v4.py` lines 333-336) describe.
+The robot expects a 0..45 *command*, and the bridge clips negatives to 0 = closed. This is the same failure that `TODO_gripper_hold.md` and the `jaw_hold_cmd` docstring (`xvla_inference.py` lines 333-336) describe.
 
 Result: in bimanual PLAN mode (`V4_PLAN=1` without `V4_ARM_ONLY`), the predicted gripper channel is ignored. A closed jaw stays closed, and an open jaw is
 commanded closed, so the grippers most likely never open during a PLAN run. The streaming path does pass widths: line 1249, `solve_waypoint(q14, P, Q, W if ... gripper_mode in (...) else None)`.
@@ -128,6 +130,6 @@ The one-arm HRA path is unaffected, because it holds the jaws through `jaw_hold_
 **Status: not fixed. It was found by code reading and has not been reproduced on the robot.** The fix is to pass `W` (with the same gripper-mode condition as line 1249) at line 1053.
 Also apply `jaw_hold_cmd` to the `widths_k is None` fallback, together with the regression test listed in `TODO_gripper_hold.md`.
 
-Line numbers refer to the files in this folder, copied 2026-10-07 (`infer_core_v4.py` 10-07 13:50, `mac_v4_smoke_ui.py` 10-07 14:45).
+Line numbers refer to the files as copied 2026-10-07 (`infer_core_v4.py` 10-07 13:50, `mac_v4_smoke_ui.py` 10-07 14:45; now `xvla_inference.py` and `run_smoke_ui.py` + `smoke_ui/`).
 Since the 2026-11-01 split (code unchanged) `_plan_forward_job` is in `src/rebot_deploy/smoke_ui/plan_exec.py`, the streaming call in `smoke_ui/stream_exec.py`
-and `jaw_hold_cmd` in `src/rebot_deploy/v4_contract.py`; the line numbers are those of the single files before the split (commit `11ffa66`).
+and `jaw_hold_cmd` in `src/rebot_deploy/robot_dataset_contract.py`; the line numbers are those of the single files before the split (commit `11ffa66`).

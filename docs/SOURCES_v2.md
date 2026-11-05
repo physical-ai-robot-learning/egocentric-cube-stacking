@@ -1,5 +1,7 @@
 # Sources for the v2 update
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](refactor_2026-11.md) (old → new map) and [`archive/README.md`](../archive/README.md).
+
 Every file below was **copied** (never moved or edited at the source) into this repository on 2026-09-29.
 Text files were sanitized the same way as the first release: absolute paths became `${HOME}`, `${REMOTE_HOME}`, `${DATA_ROOT}`,
 `${SHARED_ROOT}` and `${ARCHIVE_ROOT}`; host names and tailnet/LAN addresses became `<gpu-node>`, `<gpu-node-ip>` and `<ray-head>`;

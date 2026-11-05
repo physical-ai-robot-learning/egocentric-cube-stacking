@@ -1,5 +1,7 @@
 # collector/ MANIFEST
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](../refactor_2026-11.md) (old → new map) and [`archive/README.md`](../../archive/README.md).
+
 Assembled 2026-10-07 from `~/ego_collector`. Git state: branch `orbbec-rgbd`, HEAD
 `12db478b33c7a5c78868dcf13955542eaa0fc168`. The copy is the **working tree**, which includes about 180 uncommitted
 changes, among them the current `configs/handumi/*.yaml`. The source was only read, never modified.

@@ -1,5 +1,7 @@
 # training/ MANIFEST
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](../refactor_2026-11.md) (old → new map) and [`archive/README.md`](../../archive/README.md).
+
 Assembled 2026-10-07. Sources were not modified. Remote files were read with `ssh ... cat` (read-only) into a scratch dir and then copied here.
 
 ## Choice rule

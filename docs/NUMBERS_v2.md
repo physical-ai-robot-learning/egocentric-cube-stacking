@@ -1,5 +1,7 @@
 # Key numbers of the v2 update, with their sources
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](refactor_2026-11.md) (old → new map) and [`archive/README.md`](../archive/README.md).
+
 Every number here is copied from a file in this repository. The **source** column gives the repo path plus the JSON key
 path (dot-separated) or the line number. Percentages marked *computed* are `count / total` from the keys given; nothing
 else is derived. Rates in the JSON files are fractions (0.561 = 56.1 %).

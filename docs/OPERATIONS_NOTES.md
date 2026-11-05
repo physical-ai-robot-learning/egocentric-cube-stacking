@@ -1,12 +1,14 @@
 # Operations notes (things that are easy to get wrong)
 
+> **2026-11-05 refactor.** Paths and module names below follow the refactored layout ([`docs/refactor_2026-11.md`](refactor_2026-11.md)); modules run as `python -m <package>.<module>`.
+
 Collected from day-to-day work between September and October 2026. Each item cost at least one wrong run or a wrong
 conclusion. Dates are when the fact was established.
 
 ## Robot (reBot B601) conventions
 
 - **Gripper semantics.** Raw jaw 0 = CLOSED, −270 = OPEN. Commands are 0..45 with raw = −6·cmd; cmd ≥ 27 opens. A comment in
-  `scripts/training/c8old/humanik_delta.py` saying "1 = closed" is wrong: the binarized label 1 means OPEN.
+  `archive/gen1_c8old/training/humanik_delta.py` saying "1 = closed" is wrong: the binarized label 1 means OPEN.
 - **Gripper offset drift.** The follower gripper's open value shifts per power cycle (seen 0 / −100 / +90 / 358 wrap); closed
   clips at −270. Inference clips to [−270, 0]; check the jaw reading before `/run`.
 - **TCP frame.** The dataset TCP and the `eef_kin` FK TCP differ by R_y(90°). Forgetting the frame fix caused an upward
@@ -17,7 +19,7 @@ conclusion. Dates are when the fact was established.
 - **Global camera rotation.** `V4_GLOBAL_ROT180=0`. Decide it against the measured training relation, not appearance.
 - **After a robot-service restart**, `goal_interp` resets to ON; restore the UI's value.
 
-## Deployment UI (`src/rebot_deploy/`, `scripts/rebot/loaders/`)
+## Deployment UI (`src/rebot_deploy/`, `scripts/deploy/`)
 
 - **PLAN settings are part of the policy.** Good values: `plan_ema 0.25, xfade 0, smooth 0, min_exec 1`
   (`/mode?planema=0.25&planxf=0&plansm=0&planmin=1`). UI restarts used to reset them to the code defaults (0.35 / 4 / 3 / 6)
@@ -33,7 +35,7 @@ conclusion. Dates are when the fact was established.
   `.umioffset`, `<port>.pin`).
 - Log every trial with the UI's TRIAL panel (`/trial`); without it there is no success rate (none was logged up to 10-07).
 
-## Training (`src/training/`, `scripts/training/`)
+## Training (`src/training/`, `scripts/train/`)
 
 - **GPU nodes: RTX 4090 or RTX 5090 only, never the 5080s** (user rule, 2026-10-06). All GPU work goes through
   `ray job submit`, pinned with a node resource.
@@ -49,7 +51,7 @@ conclusion. Dates are when the fact was established.
 - **LeRobot v3 writes:** a killed write leaves a footer-less parquet; use per-shard writers + aggregate.
 - **`dataset_tools.delete_episodes` fails** on the 2-D (16, 32) action; select episodes with `--dataset.episodes`.
 
-## Pose and scale (`src/mast3r_pose/`, `src/rebot_prep/`, `scripts/rebot/hra/`)
+## Pose and scale (`src/mast3r_pose/`, `src/rebot_prep/`, `archive/hra_single_arm/pipeline/`)
 
 - MASt3R-SLAM runs on the 5090 via Ray (the 4090 sm_120 build produced 194 tracked / 196 RELOC on one take; rebuilt for sm_89
   it matches the 5090). Never use a session-global scale: per-episode scale varies 0.19–0.55.

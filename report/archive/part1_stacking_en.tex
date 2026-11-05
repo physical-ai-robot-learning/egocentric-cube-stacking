@@ -47,7 +47,7 @@ were not recorded (Fig.~\ref{fig:dataset}). A later robot-like session (HRL80) a
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{figures/fig2_dataset.pdf}
+\includegraphics[width=\textwidth]{../figures/fig2_dataset.pdf}
 \caption{Dataset design. (a) Head-camera frames at 1, 8 and 22\,s of a held-out episode (order BPR). (b) Episodes per stacking
 order, as collected and after generation-1 processing. (c) Episode-level funnel.}
 \label{fig:dataset}
@@ -97,7 +97,7 @@ displacement), and the true instruction's mean rank is 3.55 of 6 (chance 3.5): t
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.92\textwidth]{figures/fig4_eval.pdf}
+\includegraphics[width=0.92\textwidth]{../figures/fig4_eval.pdf}
 \caption{Generation-1 offline evaluation. (a) Geo score over training, all versus moving samples. (b) Joint MAE at $k{=}30$ on
 moving samples, policy versus zero-motion predictor. (c) Prompt swap: spread across six instructions versus three noise seeds.}
 \label{fig:eval}
@@ -181,7 +181,7 @@ B/A is 0.49 over the first 5k steps, 0.875 over 5k--20k and 0.95 over 20k--40k, 
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.72\textwidth]{figures/fig5_ego_init_loss.pdf}
+\includegraphics[width=0.72\textwidth]{../figures/fig5_ego_init_loss.pdf}
 \caption{R312c fine-tuning from the base model versus from the 50k ego checkpoint, same data, schedule and seed. (a) Training
 loss. (b) Ratio; values below 1 favour the ego initialization.}
 \label{fig:egoinit}
@@ -216,7 +216,7 @@ ratio 100k--150k & & 1.021 & 0.914 \\
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.72\textwidth]{figures/fig8_r30_ablation.pdf}
+\includegraphics[width=0.72\textwidth]{../figures/fig8_r30_ablation.pdf}
 \caption{R30 fine-tuning from the base model and from ego pretraining at 100k and 300k steps. (a) Training loss. (b) Ratio to
 scratch up to 150k. Training loss only.}
 \label{fig:r30}

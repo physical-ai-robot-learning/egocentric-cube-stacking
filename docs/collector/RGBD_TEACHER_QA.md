@@ -186,7 +186,7 @@ No further collection, no H250 reprocessing, no Route B training, no change to t
 
 # HandUMI body tracking — translation chain, 2026-09-18
 
-`scripts/handumi_body_track.py` → `scripts/body_to_ego16.py` → `scripts/ego_ik_retarget.py`, plus
+`archive/collector_tools/handumi_body_track.py` → `scripts/body_to_ego16.py` → `scripts/ego_ik_retarget.py`, plus
 `scripts/body_jump_audit.py`. No AprilTag, no hand model.
 
 ## Verdict
@@ -494,14 +494,14 @@ Everything below the take is built, dry-run and self-tested as of 2026-09-18 nig
 
 ```bash
 cd ~/ego_collector
-.venv/bin/python scripts/calib_take_qa.py --audit                     # profile, no hardware: expect PROFILE READY
+.venv/bin/python archive/collector_tools/calib_take_qa.py --audit                     # profile, no hardware: expect PROFILE READY
 
 sudo .venv/bin/python -m handumi_collector.tools.check_rgbd_ready --live
 sudo .venv/bin/python -m handumi_collector.collect --hardware handumi_rgbd --dataset CALIB_bodytcp
 #   2 episodes, one per hand, 20-30 s, motion protocol above. POLARITY TEST once at collector start.
 
 S=datasets/human_handumi_raw/CALIB_bodytcp/<stamp>
-.venv/bin/python scripts/calib_take_qa.py --session $S                # 6 streams present, rates, drops, offsets
+.venv/bin/python archive/collector_tools/calib_take_qa.py --session $S                # 6 streams present, rates, drops, offsets
 .venv/bin/python scripts/body_tcp_fit.py --selftest                   # conventions + fitter, before any real value
 #   then the fit itself, then:
 .venv/bin/python scripts/body_to_ego16.py --session $S --apply-camera-tcp
@@ -615,8 +615,8 @@ the batching ties. The two units' 197.9/201.6 Hz difference is a crystal propert
 |---|---|
 | `scripts/body_track_export.py` | joins the frozen body tracker and the IMU branch into `derived/body_track/track_export.npz` |
 | `scripts/imu_orientation.py` | device-clock integration, centred clock map, SLERP resample; `--selftest` |
-| `scripts/wrist_image_quality.py` | separates over-exposure from defocus on a centre crop |
-| `scripts/wrist_brightness_sweep.py` | picks the brightness pedestal against a held scene |
+| `archive/collector_tools/wrist_image_quality.py` | separates over-exposure from defocus on a centre crop |
+| `archive/collector_tools/wrist_brightness_sweep.py` | picks the brightness pedestal against a held scene |
 
 ---
 

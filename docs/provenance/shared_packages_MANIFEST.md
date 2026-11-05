@@ -1,5 +1,7 @@
 # Shared packages: file manifest (2026-11-02)
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](../refactor_2026-11.md) (old → new map) and [`archive/README.md`](../../archive/README.md).
+
 `handumi_collector`, `ego_collector`, `ego_teleop` and `umi` are kept as identical copies in two repositories,
 [egocentric-cube-stacking](https://github.com/physical-ai-robot-learning/egocentric-cube-stacking) and
 [egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation), both under `src/`.

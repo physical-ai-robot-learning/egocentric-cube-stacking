@@ -1,5 +1,7 @@
 # deploy/ MANIFEST
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](../refactor_2026-11.md) (old → new map) and [`archive/README.md`](../../archive/README.md).
+
 Copied 2026-10-07 with `cp -p` (mtimes preserved). Sources were not modified. There is no overlapping deploy code in `~/egocentric-human-demos-rebot`, so every file comes from the working dirs.
 
 | dest | source | notes |

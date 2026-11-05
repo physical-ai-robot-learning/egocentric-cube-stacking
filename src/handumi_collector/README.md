@@ -24,13 +24,21 @@ python -m handumi_collector.tools.inspect_episode ...
 - `collector/` — session, episode manager, auto-loop, integrity checks
 - `devices/` — camera, IMU and jaw-servo drivers
 - `ui/` — PySide6 UI
-- `pose/` — offline pose tooling (RGB-D, IMU, sync, QA)
+- `pose/` — offline pose tooling the tools import (IMU windows, timing / sync, calibration I/O, legacy VO backends, QA, virtual view)
 - `robotlike/` — `robot_like_v1` protocol monitor and the C922-view tile
 - `tools/` — calibration, monitors and QA command-line tools
 - `config.py` — `REPO_ROOT` (repository root) and config loading; `calibration.py` — versioned calibration lookup
 
 ## Provenance
 
+**2026-11-05:** trimmed to the import closure of `collect`, `collector.main`, the calibration / monitor / QA tools listed in
+[`docs/collector/README.md`](../../docs/collector/README.md) and `pose.episode_io` / `pose.timing` (used by
+`mast3r_pose.export_episode`), plus the test fixtures `tools.synth_episode`, `tools.gen_test_stream`, `pose.backends.mock`,
+`pose.relative`. The other modules (RGB-D / depth / cube-anchor / cross-view pose, V-pilot analysis, view-match QA, …) are in
+[`archive/shared_unused/handumi_collector/`](../../archive/shared_unused/handumi_collector/). The kept files are unchanged
+(shared code, not restyled).
+
 Copied from `~/ego_collector` on 2026-10-07 (HEAD `12db478` + working tree). Full guide: [`docs/collector/README.md`](../../docs/collector/README.md); file-level source table: [`docs/provenance/collection_MANIFEST.md`](../../docs/provenance/collection_MANIFEST.md). Tests: `tests/collector/`.
 
-The Python files of this package are shared with the garment project ([egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation), `src/handumi_collector/`): identical copies, see [`docs/provenance/README.md`](../../docs/provenance/README.md).
+The kept Python files are byte-identical to the shared handumi-common v0.3.0 copy also used by the garment project
+([egocentric-garment-manipulation](https://github.com/physical-ai-robot-learning/egocentric-garment-manipulation)); see [`docs/provenance/README.md`](../../docs/provenance/README.md).

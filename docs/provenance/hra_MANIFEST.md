@@ -1,5 +1,7 @@
 # hra/ MANIFEST
 
+> **2026-11-05 refactor.** This is a historical record: paths in it are those of its date. Current locations: [`docs/refactor_2026-11.md`](../refactor_2026-11.md) (old → new map) and [`archive/README.md`](../../archive/README.md).
+
 Copied 2026-10-07 with `cp -p`, so mtimes are preserved. The sources were not modified. No overlap with `~/egocentric-human-demos-rebot`: the public
 copy has no HRA pipeline code, only `analysis/v3/hra_val_loss.py`, which is in `evaluation/analysis/v3/`. Every file below therefore comes from the working dirs.
 
