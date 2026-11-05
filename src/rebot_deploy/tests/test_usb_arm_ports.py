@@ -34,13 +34,13 @@ def _fakeRun(text, calls):
 def test_arm_ports_maps_location_ids_to_callout_devices(monkeypatch):
     tCalls = []
     monkeypatch.setattr(subprocess, "run", _fakeRun(IOREG_TEXT, tCalls))
-    assert usb_arm_ports.arm_ports() == {336592896: "/dev/cu.usbmodem14101", 337641472: "/dev/cu.usbmodem14201"}
+    assert usb_arm_ports.armPorts() == {336592896: "/dev/cu.usbmodem14101", 337641472: "/dev/cu.usbmodem14201"}
     assert tCalls == [["ioreg", "-r", "-c", "IOSerialBSDClient", "-t", "-l", "-w0"]]
 
 
 def test_arm_ports_empty_output(monkeypatch):
     monkeypatch.setattr(subprocess, "run", _fakeRun("", []))
-    assert usb_arm_ports.arm_ports() == {}
+    assert usb_arm_ports.armPorts() == {}
 
 
 def _runAsScript():

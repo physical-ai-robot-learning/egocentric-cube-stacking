@@ -19,7 +19,7 @@ import pytest
 import torch
 from scipy.spatial.transform import Rotation
 
-from rebot_deploy import infer_core_v4 as core
+from rebot_deploy import xvla_inference as core
 from rebot_deploy.tests.fake_kinematics import FakeKin
 
 pytestmark = pytest.mark.skipif(any(tK.startswith("V4_") for tK in os.environ) or "IK_BACKEND" in os.environ,
@@ -49,7 +49,7 @@ def _inferencer(monkeypatch, tmp_path, **settings):
     tDefaults.update(settings)
     for tName, tValue in tDefaults.items():
         monkeypatch.setattr(core, tName, tValue)
-    tInf = object.__new__(core.V4Inferencer)
+    tInf = object.__new__(core.XvlaInferencer)
     tInf.kin = FakeKin()
     tInf.n_action = 4
     tInf.chunk = 8
@@ -82,19 +82,19 @@ def test_constants(golden):
         "UMI_TCP_OFF_T", "UMI_CONV", "GLOBAL_ROT180", "GLOBAL_MIRROR", "STATE_MODE", "ARM_ONLY", "ARM_ONLY_LEFT_G", "ARM_ONLY_GRIP",
         "ARM_ONLY_MAX_PRED_MM", "ARM_ONLY_MAX_PRED_DEG", "UMI_HISTORY_DT", "OBS_BUF_S", "RELONLY")})
     assert core.WRIST_ZOOM == {"s": 1.0, "c": (318.3126, 224.9012), "wh": (640, 480)}
-    assert core.V4Inferencer.obs_horizon == 2
+    assert core.XvlaInferencer.obs_horizon == 2
 
 
 def test_rtc_weights(golden):
     tCases = ((0, 0, 8), (2, 5, 8), (3, 2, 8), (9, 12, 8), (0, 8, 8), (-2, 3, 6), (1, 1, 4))
-    golden.check("core.rtc_weights", [core._rtc_weights(tD, tH, tT) for tD, tH, tT in tCases])
+    golden.check("core.rtc_weights", [core._rtcWeights(tD, tH, tT) for tD, tH, tT in tCases])
 
 
 def test_set_limits(monkeypatch):
     monkeypatch.setattr(core, "LIMITS", {"mm": 10.0, "deg": 2.0})
-    assert core.set_limits() == {"mm": 10.0, "deg": 2.0}
-    assert core.set_limits(7, None) == {"mm": 7.0, "deg": 2.0}
-    assert core.set_limits(None, "1.5") == {"mm": 7.0, "deg": 1.5}
+    assert core.setLimits() == {"mm": 10.0, "deg": 2.0}
+    assert core.setLimits(7, None) == {"mm": 7.0, "deg": 2.0}
+    assert core.setLimits(None, "1.5") == {"mm": 7.0, "deg": 1.5}
     assert core.LIMITS == {"mm": 7.0, "deg": 1.5}
 
 
@@ -103,18 +103,18 @@ def test_grip_to_cmd_per_mode(monkeypatch, golden):
     tOut = {}
     for tMode in ("hold", "predict", "binary", "continuous", "relative"):
         monkeypatch.setattr(core, "GRIPPER_MODE", tMode)
-        tOut[tMode] = [core.grip_to_cmd(tV) for tV in tValues]
+        tOut[tMode] = [core.gripToCmd(tV) for tV in tValues]
     golden.check("core.grip_to_cmd", tOut)
 
 
 def test_images(golden):
     tImg = cv2.imdecode(np.frombuffer(base64.b64decode(_jpegB64(1)), np.uint8), cv2.IMREAD_COLOR)
-    assert core.wrist_zoom(tImg, 1.0) is tImg
-    tZoom = core.wrist_zoom(tImg, 1.3)
-    tSmall = core.wrist_zoom(tImg[:240, :320].copy(), 0.8)
+    assert core.wristZoom(tImg, 1.0) is tImg
+    tZoom = core.wristZoom(tImg, 1.3)
+    tSmall = core.wristZoom(tImg[:240, :320].copy(), 0.8)
     tOut = {"zoom": [int(tZoom.astype(np.int64).sum()), tZoom[200:203, 300:303]], "small": [list(tSmall.shape), int(tSmall.sum())]}
     for tName, tArgs in (("plain", ()), ("rot", (True,)), ("mirror", (False, True)), ("both", (True, True)), ("zoom", (False, False, 1.4))):
-        tTensor = core.V4Inferencer._img(_jpegB64(2), *tArgs)
+        tTensor = core.XvlaInferencer._img(_jpegB64(2), *tArgs)
         assert tTensor.shape == (3, 224, 224) and tTensor.dtype == torch.float32
         tOut[tName] = [float(tTensor.double().sum()), tTensor[:, 100, 50:53]]
     golden.check("core.images", tOut)
@@ -123,14 +123,14 @@ def test_images(golden):
 def test_arm_only_images(monkeypatch, golden):
     tImgs = {"left": "L", "right": "R", "middle": "M"}
     monkeypatch.setattr(core, "ARM_ONLY", "")
-    assert core.arm_only_images(tImgs) is tImgs
+    assert core.armOnlyImages(tImgs) is tImgs
     monkeypatch.setattr(core, "ARM_ONLY", "right")
     monkeypatch.setattr(core, "_BLACK_B64", None)
-    tOut = core.arm_only_images(tImgs)
+    tOut = core.armOnlyImages(tImgs)
     assert tImgs == {"left": "L", "right": "R", "middle": "M"} and tOut["right"] == "R" and tOut["middle"] == "M"
     tBlack = cv2.imdecode(np.frombuffer(base64.b64decode(tOut["left"]), np.uint8), cv2.IMREAD_COLOR)
     assert tBlack.shape == (224, 224, 3) and int(tBlack.max()) == 0
-    assert core._BLACK_B64 == tOut["left"] == core._black_b64()
+    assert core._BLACK_B64 == tOut["left"] == core._blackB64()
 
 
 def test_tcp_frames(monkeypatch, tmp_path, golden):
@@ -142,7 +142,7 @@ def test_tcp_frames(monkeypatch, tmp_path, golden):
         if tConv:
             monkeypatch.setattr(core, "UMI_TCP_OFF_T", np.array([-0.0948, 0.0024, 0.0384]))
             monkeypatch.setattr(core, "R_UMI_OFF", Rotation.from_rotvec([0.0, -np.radians(33.6), 0.0]).as_matrix())
-        tOut.append(list(tInf._tcp_mat(tQ)))
+        tOut.append(list(tInf._tcpMat(tQ)))
         tOut.append(list(tInf.tcp_now(tQ)))
     golden.check("core.tcp_frames", tOut)
 
@@ -168,7 +168,7 @@ def test_buffered_states(monkeypatch, tmp_path, golden):
         tStates = [list(tInf.build_state_umi76())]
         tSizes += [tInf.push_obs(tQ, 100.0 + 0.0667 * tI) for tI, tQ in enumerate(tJoints[3:], start=3)]
         tStates.append(list(tInf.build_state_umi76()))
-        tOut[tMode] = [tSizes, tStates, [tInf._interp_at(100.05)[0], tInf._interp_at(100.05)[1]]]
+        tOut[tMode] = [tSizes, tStates, [tInf._interpAt(100.05)[0], tInf._interpAt(100.05)[1]]]
         if tMode == "relcart20":
             tInf.reset_anchor()
             tOut["relcart20_reset"] = list(tInf.build_state_umi76())
@@ -191,7 +191,7 @@ def _decode(monkeypatch, tmp_path, rng, steps=8, dims=20, **settings):
     tHistory = [{"joints14": _joints14(rng)}, {"joints14": _joints14(rng)}]
     tState, tMNow, tPosesNow = tInf.build_state(tHistory)
     tAct = _chunk(rng, steps, dims)
-    tCmd = tInf._post_act(tAct, tState, tMNow, tPosesNow, tHistory)
+    tCmd = tInf._postAct(tAct, tState, tMNow, tPosesNow, tHistory)
     tLast = {tK: tV for tK, tV in tInf.last.items()}
     tInfo = [tInf.te_info, tInf.db_info, tInf.ak_info, tInf.exec_k_now]
     return tInf, [tCmd, tLast, tInfo, tInf._rtc_prev["pos"], tInf.calls]
@@ -225,7 +225,7 @@ def test_chunk_decode_guards(monkeypatch, tmp_path):
     tHistory = [{"joints14": _joints14(tRng)}, {"joints14": _joints14(tRng)}]
     tState, tMNow, tPosesNow = tInf.build_state(tHistory)
     with pytest.raises(RuntimeError, match="IK could not reach"):
-        tInf._post_act(_chunk(tRng, 8), tState, tMNow, tPosesNow, tHistory)
+        tInf._postAct(_chunk(tRng, 8), tState, tMNow, tPosesNow, tHistory)
 
 
 def test_temporal_ensemble(monkeypatch, tmp_path, golden):
@@ -236,7 +236,7 @@ def test_temporal_ensemble(monkeypatch, tmp_path, golden):
     for _ in range(4):
         tHistory = [{"joints14": _joints14(tRng)}, {"joints14": _joints14(tRng)}]
         tState, tMNow, tPosesNow = tInf.build_state(tHistory)
-        tCmd = tInf._post_act(_chunk(tRng, 8), tState, tMNow, tPosesNow, tHistory)
+        tCmd = tInf._postAct(_chunk(tRng, 8), tState, tMNow, tPosesNow, tHistory)
         tOut.append([tCmd, tInf.te_info, tInf.ak_info, tInf.last["tgt_pos"], tInf.last["tgt_quat"], tInf.last["widths"], tInf._te_step])
     golden.check("core.temporal_ensemble", tOut)
 
@@ -249,7 +249,7 @@ def test_rtc_prefix(monkeypatch, tmp_path, golden):
     tMNow = np.stack([np.eye(4), np.eye(4)])
     tMNow[0][:3, 3] = [0.3, 0.2, 0.1]
     tMNow[1][:3, 3] = [0.3, -0.2, 0.1]
-    assert tInf._rtc_build(tMNow) is None                                  # no previous chunk
+    assert tInf._rtcBuild(tMNow) is None                                  # no previous chunk
     tPos = tMNow[None, :, :3, 3] + np.linspace(0, 0.05, 8)[:, None, None] * np.array([1.0, 0.5, -0.3])
     tQuat = np.stack([Rotation.from_rotvec(tRng.normal(size=(8, 3)) * 0.1).as_quat() for _ in range(2)], 1)
     tWidths = np.linspace(0.0, 1.0, 16).reshape(8, 2)
@@ -257,23 +257,23 @@ def test_rtc_prefix(monkeypatch, tmp_path, golden):
     tOut = {}
     for tName, tHint in (("default", None), ("hint", 4)):
         tInf._rtc_delay_hint = tHint
-        tRes = tInf._rtc_build(tMNow + np.array([0, 0, 0, 0.0])[None, None])
+        tRes = tInf._rtcBuild(tMNow + np.array([0, 0, 0, 0.0])[None, None])
         tInfo = dict(tRes["info"])
         assert tInfo.pop("age_s") < 1.0
         tOut[tName] = [tRes["Y"], tRes["W"], tInfo]
     monkeypatch.setattr(core, "RTC_HORIZON", 0)
     tInf._rtc_delay_hint = None
-    tOut["whole_leftover"] = tInf._rtc_build(tMNow)["W"][:, 0]
+    tOut["whole_leftover"] = tInf._rtcBuild(tMNow)["W"][:, 0]
     tInf._rtc_plan_prefix = [(tPos[tI], tQuat[tI], tWidths[tI]) for tI in range(2, 6)]
     tInf._rtc_delay_hint = 1
-    tPlan = tInf._rtc_build(tMNow)
+    tPlan = tInf._rtcBuild(tMNow)
     tOut["plan"] = [tPlan["Y"], tPlan["W"], tPlan["info"]]
     tInf._rtc_plan_prefix = None
     tInf._rtc_prev["t"] = time.time() - 100.0
-    assert tInf._rtc_build(tMNow) is None                                  # too old
+    assert tInf._rtcBuild(tMNow) is None                                  # too old
     monkeypatch.setattr(core, "ACTION_MODE", "delta")
     tInf._rtc_prev["t"] = time.time()
-    assert tInf._rtc_build(tMNow) is None                                  # delta action mode: no RTC
+    assert tInf._rtcBuild(tMNow) is None                                  # delta action mode: no RTC
     golden.check("core.rtc_prefix", tOut)
 
 
@@ -284,10 +284,10 @@ def test_grip_relative(monkeypatch, tmp_path, golden):
         tInf = _inferencer(monkeypatch, tmp_path, GRIP_REL_MODE=tMode, GRIP_ACC_N=3)
         tCmds = []
         for tI, tG in enumerate(tSeq):
-            tCmds.append([tInf._grip_relative(0, tG, -200.0), tInf._grip_relative(1, 1.0 - tG, -10.0), tInf._grip_rel_log])
+            tCmds.append([tInf._gripRelative(0, tG, -200.0), tInf._gripRelative(1, 1.0 - tG, -10.0), tInf._grip_rel_log])
             tCmds[-1][2] = json.loads(json.dumps(tCmds[-1][2]))
         tInf.reset_anchor()
-        tCmds.append([tInf._grip_relative(0, 0.3, 358.0), tInf._g_prev, tInf._g_cmd, tInf._g_hist])
+        tCmds.append([tInf._gripRelative(0, 0.3, 358.0), tInf._g_prev, tInf._g_cmd, tInf._g_hist])
         tOut[tMode] = tCmds
     golden.check("core.grip_relative", tOut)
 
@@ -331,7 +331,7 @@ def test_remote_forward_payload(monkeypatch, golden):
     monkeypatch.setattr(core, "REMOTE_CKPT", "/srv/ckpt")
     monkeypatch.setattr(core, "GLOBAL_ROT180", True)
     monkeypatch.setattr(core, "REMOTE_LAST", {})
-    tAct = core.remote_forward({"global": "G", "left_wrist": "L"}, np.arange(20) * 0.1, "stack", torch.ones(1, 2, 3),
+    tAct = core.remoteForward({"global": "G", "left_wrist": "L"}, np.arange(20) * 0.1, "stack", torch.ones(1, 2, 3),
                                rtc={"Y": np.zeros((2, 3)), "W": np.ones((2, 3))})
     assert tAct.dtype == np.float64
     tUrl, tPayload, tTimeout = tSess.mCalls[0]
@@ -339,12 +339,12 @@ def test_remote_forward_payload(monkeypatch, golden):
     golden.check("core.remote_forward", [tAct, tUrl, tPayload, tTimeout])
     monkeypatch.setattr(core, "_REMOTE_SESS", _FakeSession({"error": "boom"}))
     with pytest.raises(RuntimeError, match="remote inference failed"):
-        core.remote_forward({}, np.zeros(20), "t")
+        core.remoteForward({}, np.zeros(20), "t")
 
 
 def test_curobo_solve_request(monkeypatch, golden):
     tSess = _FakeSession({"q": [[0.1] * 12], "pos_err_mm": [[1.0, 2.0]], "success": [[True, False]], "ms": 5, "rot_err_deg": [0.3]})
     monkeypatch.setattr(core, "_CUROBO_SESS", tSess)
-    tRes = core.curobo_solve(np.arange(12) * 0.1, np.zeros((1, 2, 3)), np.ones((1, 2, 4)))
+    tRes = core.curoboSolve(np.arange(12) * 0.1, np.zeros((1, 2, 3)), np.ones((1, 2, 4)))
     assert tRes[0].dtype == np.float64 and tRes[2].dtype == bool
     golden.check("core.curobo_solve", [list(tRes), tSess.mCalls])

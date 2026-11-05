@@ -79,15 +79,15 @@ class FakeKin:
     """the subset of eef_kin.Kin the inference core uses"""
 
     def __init__(self):
-        self.solver = SimpleNamespace(config=SimpleNamespace(max_joint_delta=0.35))
-        self._names = list(SOLVER_JOINTS)
-        self._arm = {"left": [0, 1, 2, 3, 4, 5], "right": [7, 8, 9, 10, 11, 12]}
+        self.mSolver = SimpleNamespace(config=SimpleNamespace(max_joint_delta=0.35))
+        self.mJointNames = list(SOLVER_JOINTS)
+        self.mArmJointIdx = {"left": [0, 1, 2, 3, 4, 5], "right": [7, 8, 9, 10, 11, 12]}
 
-    def fk_pose7(self, q12):
+    def fkPose7(self, q12):
         q12 = np.asarray(q12, np.float64)
         return pose7Of(q12[:6], "left"), pose7Of(q12[6:], "right")
 
-    def solve_chunk(self, q12Now, pos, quat):
+    def solveChunk(self, q12Now, pos, quat):
         tSteps = len(pos)
         tQ = np.zeros((tSteps, 12))
         tErr = np.zeros((tSteps, 2))

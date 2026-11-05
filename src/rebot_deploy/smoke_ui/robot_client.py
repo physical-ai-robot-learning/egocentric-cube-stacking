@@ -88,7 +88,7 @@ def _leader_now():
     # Anything that ramps from or holds the current pose has to start from the unwrapped value, or it
     # commands a 358-count journey to reach what is already the current position.
     for g in GRIP_IDX:
-        a[g] = _IC.unwrap_grip(a[g])
+        a[g] = _IC.unwrapGrip(a[g])
     return a
 
 

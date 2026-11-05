@@ -41,7 +41,7 @@ def _rot(rng, scale):
 
 
 def test_model_layout(ik):
-    assert ik.model.nq == 12 and sorted(ik.idx) == list(range(12)) and ik.names == ARM_JOINTS
+    assert ik.mModel.nq == 12 and sorted(ik.mIdx) == list(range(12)) and ik.mNames == ARM_JOINTS
 
 
 def test_fk(ik, golden):
@@ -54,13 +54,13 @@ def test_orientation_projections(ik, golden):
     tOut = []
     for _ in range(4):
         tCur, tTgt = _rot(tRng, 1.0), _rot(tRng, 1.0)
-        tOut.append([ik._yaw_only_target(tCur, tTgt), ik._pitch_only_target(tCur, tTgt), pink_ik.PinkIK._yaw_hold_target(tCur, tTgt),
+        tOut.append([ik._yawOnlyTarget(tCur, tTgt), ik._pitchOnlyTarget(tCur, tTgt), pink_ik.PinkIK._yawHoldTarget(tCur, tTgt),
                      pink_ik.PinkIK._elev(tTgt)])
     tVertical = np.array([[0.0, 0.0, -1.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]])     # approach axis straight up: heading from target
-    tOut.append(ik._pitch_only_target(tVertical, _rot(tRng, 0.5)))
-    tOut.append(ik._pitch_only_target(tVertical, tVertical))                         # nothing to rotate: R_cur back
+    tOut.append(ik._pitchOnlyTarget(tVertical, _rot(tRng, 0.5)))
+    tOut.append(ik._pitchOnlyTarget(tVertical, tVertical))                         # nothing to rotate: R_cur back
     tFlip = np.diag([1.0, -1.0, -1.0])                                                # 180 deg about x: no twist -> target kept
-    tOut.append(pink_ik.PinkIK._yaw_hold_target(np.eye(3), tFlip))
+    tOut.append(pink_ik.PinkIK._yawHoldTarget(np.eye(3), tFlip))
     golden.check("pink.projections", tOut)
 
 
@@ -73,13 +73,13 @@ def test_diff_step(ik, golden):
         for tSide in (0, 1):
             tTargets[tSide][:3, 3] += tRng.normal(size=3) * 0.03
             tTargets[tSide][:3, :3] = _rot(tRng, 0.1) @ tTargets[tSide][:3, :3]
-        tOut.append(list(ik.diff_step(tQ, tTargets, lock=tLock)))
-        tOut.append(list(ik.diff_step(tQ, tTargets, ori_weight=1.0, damping=0.1, lock=tLock)))
+        tOut.append(list(ik.diffStep(tQ, tTargets, lock=tLock)))
+        tOut.append(list(ik.diffStep(tQ, tTargets, oriWeight=1.0, damping=0.1, lock=tLock)))
     tAtLimit = np.zeros(12)                                       # rest pose, J2/J3 at their 0 limit: limit-aware re-solve path
     tTargets = [tT.copy() for tT in ik.fk(tAtLimit)]
     tTargets[0][:3, 3] += [0.0, 0.0, 0.05]
     tTargets[1][:3, 3] += [0.02, 0.0, -0.05]
-    tOut.append(list(ik.diff_step(tAtLimit, tTargets)))
+    tOut.append(list(ik.diffStep(tAtLimit, tTargets)))
     golden.check("pink.diff_step", tOut)
 
 

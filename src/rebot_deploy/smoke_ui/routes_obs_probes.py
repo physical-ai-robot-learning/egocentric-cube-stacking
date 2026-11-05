@@ -27,7 +27,7 @@ def wrist_snap():
     if o is None or "right" not in o["images"]:
         return jsonify({"error": "observe failed / no right image"})
     bgr = cv2.imdecode(np.frombuffer(base64.b64decode(o["images"]["right"]), np.uint8), cv2.IMREAD_COLOR)
-    z = cv2.resize(_IC.wrist_zoom(bgr, _IC.WRIST_ZOOM["s"]), (224, 224), interpolation=cv2.INTER_AREA)
+    z = cv2.resize(_IC.wristZoom(bgr, _IC.WRIST_ZOOM["s"]), (224, 224), interpolation=cv2.INTER_AREA)
     d = str(DATA_ROOT / "hra_a100/wrist_snaps"); os.makedirs(d, exist_ok=True); t = time.strftime("%H%M%S")
     cv2.imwrite(f"{d}/{t}_raw.png", bgr); cv2.imwrite(f"{d}/{t}_in224_s{_IC.WRIST_ZOOM['s']:.2f}.png", z)
     m, _ = rt.INF.tcp_now(o["joints14"])
