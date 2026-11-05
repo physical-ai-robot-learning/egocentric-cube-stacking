@@ -60,13 +60,13 @@ def test_derive_v2_selftest_and_refusal(tmp_path, golden):
 def test_derive_v2_helpers(tmp_path, golden):
     tDv = importlib.import_module("training.umi76.derive_v2")
     tX = np.arange(30, dtype=np.float64).reshape(10, 3) ** 1.5
-    golden.check("derive_v2/stats", tDv.stats(tX))
+    golden.check("derive_v2/stats", tDv.columnStats(tX))
     tSource = writeSource(tmp_path / "src")
-    tBy = tDv.load_src(str(tSource), ["action"])
+    tBy = tDv.loadSource(str(tSource), ["action"])
     golden.check("derive_v2/load_src", tBy)
     tParent = writeParent(tmp_path / "parent", str(tSource))
     golden.check("derive_v2/row_sources", {str(tK): [str(tV[0]).replace(str(tmp_path), "<tmp>"), *tV[1:]]
-                                           for tK, tV in tDv.row_sources(tParent).items()})
+                                           for tK, tV in tDv.rowSources(tParent).items()})
 
 
 def test_derive_relcart20(tmp_path, synthUrdf, golden):
@@ -80,3 +80,27 @@ def test_derive_relcart20(tmp_path, synthUrdf, golden):
     golden.check("relcart20/tree", tTree)
     tState = tTree["data/chunk-000/file-000.parquet:observation.state"]
     assert np.abs(tState[0, :18] - [0, 0, 0, 1, 0, 0, 0, 1, 0] * 2).max() < 1e-6       # anchor row = identity
+
+
+def test_derive_v2_variant_b_appends_tcp18(tmp_path, golden, monkeypatch):
+    """variant B in-process: the UMI zarr is a stand-in, the pose helpers are the repository copy (src/umi)"""
+    import types
+    tSource = writeSource(tmp_path / "src_lerobot")
+    tParent = writeParent(tmp_path / "parent", str(tSource))
+    tRng = np.random.default_rng(5)
+    tZarr = {"meta": {"episode_ends": np.array([60, 120])},
+             "data": {f"robot{tR}_{tK}": tRng.normal(scale=0.3, size=(120, 3))
+                      for tR in (0, 1) for tK in ("eef_pos", "eef_rot_axis_angle")}}
+    monkeypatch.setitem(sys.modules, "zarr", types.SimpleNamespace(open=lambda path, mode: tZarr))
+    monkeypatch.setenv("UMI_ROOT", str(tmp_path / "no_umi_checkout"))
+    tPath = list(sys.path)
+    for tName in [tN for tN in sys.modules if tN.startswith("training.umi76")]:
+        del sys.modules[tName]
+    tDv = importlib.import_module("training.umi76.derive_v2")
+    tOut = tmp_path / "out_B"
+    monkeypatch.setattr(sys, "argv", ["derive_v2.py", "--parent", str(tParent), "--out", str(tOut), "--variant", "B"])
+    try:
+        tDv.main()
+    finally:
+        sys.path[:] = tPath
+    golden.check("derive_v2/B/tree", readTree(tOut, tmp_path))
