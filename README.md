@@ -125,6 +125,16 @@ Component guides with full command lines: [`docs/collector/`](docs/collector/REA
 sub-study). Data interfaces (raw episode, CART20, RELCART20, rotation and gripper conventions, frames) and the machine-specific
 roots: [`docs/code_structure.md`](docs/code_structure.md); pitfalls: [`docs/OPERATIONS_NOTES.md`](docs/OPERATIONS_NOTES.md).
 
+### What stage 1 produces: arm trajectories from wrist-camera SLAM
+
+![MASt3R-SLAM wrist trajectories of one stacking take](media/mast3r_trajectories/preview/hrl80_000035_wrist.gif)
+
+*One HRL80 stacking take (order PRB). Left: head camera and both wrist fisheye cameras. Right: MASt3R-SLAM wrist
+trajectories of both arms, gravity-aligned (z up), each arm's origin at its start pose, metric scale from the IMU; below,
+both grippers (1 = open). Full-resolution videos of three takes (PRB, RBP, PBR):
+[`media/mast3r_trajectories/`](media/mast3r_trajectories/) (report Fig. 7). There is no robot-replay video for this
+project; the closed-loop stacking runs were observed but not recorded.*
+
 ## Install and test
 
 ```bash
