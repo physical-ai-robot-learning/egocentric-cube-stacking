@@ -9,7 +9,7 @@
 # deleted to keep Mac disk bounded. Swaps are logged to ~/umi_bridge/ui_swap_log.tsv. Run under nohup.
 N=bh-aiteam@100.64.0.2; TB=/home/bh-aiteam/holobrain-data/trainB; SSDR=/Volumes/PortableSSD/rebot_ckpts_archive
 cd ~/umi_bridge
-REPO=${EGO_CUBE_REPO:-$HOME/egocentric-human-demos-rebot}; LD=$REPO/scripts/rebot/loaders   # [2026-11-01] loaders from the repository
+REPO=${EGO_CUBE_REPO:-$(cd "$(dirname "$0")/../.." && pwd)}; LD=$REPO/scripts/deploy   # [2026-11-01] loaders from the repository
 mkdir -p ~/holobrain-mac-model   # [2026-11-01] checkpoint cache parent (the old checkout is gone)
 unset V4_STREAM V4_STREAM_SYNC V4_STREAM_ROWS V4_STREAM_SPEED V4_ADAPTIVE_K V4_TE V4_DEADBAND_XY_MM V4_DEADBAND_Z_MM V4_N_ACTION
 # [2026-10-02 user] bf16 inference + one cycle = k1..k4 as a continuous path (pass-through, full reach test on k4 only)

@@ -7,12 +7,12 @@
 # (copied from:) REL-only domain-6 run (R312C-RELCART20-RELONLY-D6-S600K, 4090) -- copy of load_relonly_v4_ckpt_to_ui.sh;
 # (originally:) REL-only ablation (R312C-RELCART20-RELONLY-V4, 5090) into the robot UI. Same deploy contract as the v4 pink UI
 # (:8036: relcart20 state, umi action, chunk 16, exec_k 4, continuous gripper, dwell 1.0, joint5 lock) PLUS V4_RELONLY=1
-# (channels 20:32 hard-zeroed at the transformer input/output, as in training). Pure Pink only (pinkdq refused by infer_core_v4).
+# (channels 20:32 hard-zeroed at the transformer input/output, as in training). Pure Pink only (pinkdq refused by rebot_deploy.xvla_inference, was infer_core_v4).
 # usage: load_relonly_v4_ckpt_to_ui.sh <step> [port=8037]
 set -u
-# [2026-11-01] the UI runs the repository code (src/rebot_deploy/mac_v4_smoke_ui.py + smoke_ui/); ~/holobrain-mac-model (the old
+# [2026-11-01] the UI runs the repository code (src/rebot_deploy/run_smoke_ui.py + smoke_ui/, was mac_v4_smoke_ui.py); ~/holobrain-mac-model (the old
 # inference checkout) no longer exists -- only its ckpt_UI_* checkpoint cache path is kept (parent created on demand).
-REPO=${EGO_CUBE_REPO:-$HOME/egocentric-human-demos-rebot}
+REPO=${EGO_CUBE_REPO:-$(cd "$(dirname "$0")/../.." && pwd)}
 STEP=$(printf "%06d" "${1:?step}"); PORT=${2:-8037}; EXEC_K=${EXEC_K:-4}; DWELL=${DWELL:-1.0}; RUN=${RUN:?set RUN}; DS_EXPECT=${DS_EXPECT:?set DS_EXPECT}
 K=$((10#$STEP / 1000)); LOCAL=$HOME/holobrain-mac-model/ckpt_UI_${RUN}_${K}k_pinklockwy
 mkdir -p "$(dirname "$LOCAL")"   # [2026-11-01] checkpoint cache dir unchanged; its parent may be missing
@@ -54,13 +54,13 @@ kill $(lsof -nP -iTCP:$PORT -sTCP:LISTEN -t) 2>/dev/null; sleep 3
 [ -n "${V4_REMOTE_INFER:-}" ] && [ "${V4_REMOTE_ENABLE:-0}" = 1 ] && export V4_REMOTE_CKPT=$SRC && echo "[loader] remote inference ckpt $SRC"
 export PYTHONPATH="$REPO/src${PYTHONPATH:+:$PYTHONPATH}"   # [2026-11-01] ego_paths + umi (both in src/), this UI process only
 export REBOT_URDF=${REBOT_URDF:-$REPO/src/training/robot/reBot_B601_DM_dualarm.urdf}   # was ~/holobrain-mac-model/reBot_B601_DM_dualarm.urdf (same file)
-cd $REPO/src/rebot_deploy || exit 1
-export CKSEL_LOADER=$REPO/scripts/rebot/loaders/load_relonly_5090_run_ckpt_to_ui.sh CKSEL_NODE=$N:$R/$RUN/checkpoints CKSEL_SSD_PREFIX=5090_
+cd $REPO || exit 1   # [2026-11-05] the UI runs as a module: python -m rebot_deploy.run_smoke_ui
+export CKSEL_LOADER=$REPO/scripts/deploy/load_relonly_5090_run_ckpt_to_ui.sh CKSEL_NODE=$N:$R/$RUN/checkpoints CKSEL_SSD_PREFIX=5090_
 V4_RELONLY=1 V4_CKPT=$LOCAL V4_ACTION_MODE=umi V4_STATE_MODE=relcart20 V4_GRIPPER=continuous V4_GRIP_THRESH=0.6 \
   V4_CLAMP_MM=0 V4_CLAMP_DEG=0 V4_CHUNK=16 V4_EXEC_K=$EXEC_K V4_DWELL_TIMEOUT_S=$DWELL V4_DTYPE=${V4_DTYPE:-fp32} V4_N_ACTION=${V4_N_ACTION:-1} \
   V4_GLOBAL_ROT180=0 V4_GLOBAL_MIRROR=0 V4_UI_PORT=$PORT V4_IK_MAX_JOINT_DELTA=none IK_BACKEND=${IK_BACKEND:-pink} V4_PINK_LOCK=${V4_PINK_LOCK-joint5} \
   V4_DQ_MAX=${DQ_MAX:-0.6} V4_FK_MAX_MM=${FK_MAX_MM:-60} UI_TAG=pinklockwy \
-  nohup $HOME/xvla-mac/bin/python mac_v4_smoke_ui.py > $HOME/v4_smoke_ui_$PORT.log 2>&1 < /dev/null &
+  nohup $HOME/xvla-mac/bin/python -m rebot_deploy.run_smoke_ui > $HOME/v4_smoke_ui_$PORT.log 2>&1 < /dev/null &
 for i in $(seq 1 30); do sleep 5; [ "$(curl -s -m 5 -o /dev/null -w '%{http_code}' http://localhost:$PORT/)" = 200 ] && break; done
 curl -s -m 5 http://localhost:$PORT/status | $HOME/xvla-mac/bin/python -c "import json,sys;print(json.load(sys.stdin)['model'])"
 grep -m3 -iE "relonly|zero" $HOME/v4_smoke_ui_$PORT.log
