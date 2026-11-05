@@ -125,17 +125,17 @@ def test_body_delta_and_magnitudes(conv, golden):
     tMats = np.tile(np.eye(4), (5, 1, 1))
     tMats[:, :3, :3] = Rot.from_rotvec(tRng.normal(scale=0.3, size=(5, 3))).as_matrix()
     tMats[:, :3, 3] = tRng.normal(scale=0.05, size=(5, 3))
-    tD = conv.body_delta(tMats[1:], tMats[0])
+    tD = conv.bodyDelta(tMats[1:], tMats[0])
     golden.check("conv/body_delta", tD)
-    golden.check("conv/delta_magnitudes", conv.delta_magnitudes(tD))
+    golden.check("conv/delta_magnitudes", conv.deltaMagnitudes(tD))
 
 
 def test_episode_frames_state76_and_action_chunk(conv, golden):
     tZ = makeZarr()
-    tRec, tSt = conv.episode_frames(tZ, 0, N_RAW, 2)
+    tRec, tSt = conv.episodeFrames(tZ, 0, N_RAW, 2)
     golden.check("conv/episode_frames/rec", tRec)
     golden.check("conv/episode_frames/stats", tSt)
-    assert conv.episode_frames(tZ, 0, 25, 2) == (None, "too short for the umi76 window")
+    assert conv.episodeFrames(tZ, 0, 25, 2) == (None, "too short for the umi76 window")
     tTau, tPos, tRot, tW = conv._traj(tZ, 1, N_RAW, 2 * N_RAW)
     golden.check("conv/sample", conv._sample(tTau, tPos, tRot, tW, [-0.1, 0.0, 0.0334, 0.5, 9.0]))
 
@@ -144,7 +144,7 @@ def test_features_and_source_spec(conv, golden, tmp_path):
     golden.check("conv/features", {tK: {tKk: (list(tVv) if isinstance(tVv, tuple) else tVv) for tKk, tVv in tV.items()}
                                    for tK, tV in conv.features().items()})
     (tmp_path / "z.zarr").mkdir()
-    tSpec = conv._parse_source(f"zarr={tmp_path / 'z.zarr'}, lerobot={conv.sourceRoot},global_transform=rot180,")
+    tSpec = conv._parseSource(f"zarr={tmp_path / 'z.zarr'}, lerobot={conv.sourceRoot},global_transform=rot180,")
     assert tSpec == {"zarr": str(tmp_path / "z.zarr"), "lerobot": str(conv.sourceRoot), "global_transform": "rot180",
                      "episodes_json": None, "select": None}
     for tBad, tMsg in ((f"zarr={tmp_path}/z.zarr,lerobot=/x,bogus=1", f"--source: unknown key(s) ['bogus'] in "),
@@ -152,22 +152,22 @@ def test_features_and_source_spec(conv, golden, tmp_path):
                        (f"zarr=/does/not/exist,lerobot={conv.sourceRoot}", "--source: zarr=/does/not/exist does not exist"),
                        (f"zarr={tmp_path}/z.zarr,lerobot={conv.sourceRoot},select=/no.json", "--source: select=/no.json does not exist")):
         with pytest.raises(BaseException) as tErr:
-            conv._parse_source(tBad)
+            conv._parseSource(tBad)
         assert str(tErr.value).startswith(tMsg)
 
 
 def test_decode_global_rot180_and_errors(conv, golden):
-    tMeta = conv._source_episode_meta(conv.sourceRoot)
+    tMeta = conv._sourceEpisodeMeta(conv.sourceRoot)
     assert tMeta["episode_index"].tolist() == [0, 1]
     tRow = tMeta.iloc[1]
-    tPlain = conv.decode_global(tRow, 12, out_res=(16, 8), root=conv.sourceRoot)
-    tRot = conv.decode_global(tRow, 12, out_res=(16, 8), root=conv.sourceRoot, transform="rot180")
+    tPlain = conv.decodeGlobal(tRow, 12, out_res=(16, 8), root=conv.sourceRoot)
+    tRot = conv.decodeGlobal(tRow, 12, out_res=(16, 8), root=conv.sourceRoot, transform="rot180")
     assert tPlain.shape == (12, 8, 16, 3) and np.array_equal(tRot, tPlain[:, ::-1, ::-1])
     golden.check("conv/decode_global", tPlain)
     with pytest.raises(ValueError, match="unknown global transform 'mirror'"):
-        conv.decode_global(tRow, 2, root=conv.sourceRoot, transform="mirror")
+        conv.decodeGlobal(tRow, 2, root=conv.sourceRoot, transform="mirror")
     with pytest.raises(RuntimeError, match=r"global short segment file-000.mp4: 40/41"):
-        conv.decode_global(tRow, 41, root=conv.sourceRoot)
+        conv.decodeGlobal(tRow, 41, root=conv.sourceRoot)
 
 
 def test_cli_defaults(conv, parsedArgs, golden):
