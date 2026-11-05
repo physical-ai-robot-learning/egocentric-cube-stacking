@@ -108,7 +108,7 @@ have twin copies on the original machines that are imported first.
 | `pytest tests/collector` | 224 passed, 12 failed, 1 skipped, 3 errors | 157 passed, 12 failed, 3 skipped, 3 errors (same 12 + 3; tests of archived modules moved to `archive/shared_unused/tests/`) |
 | `python -m compileall -q .` | clean | clean |
 | report | 15 pp | `report_en.pdf` 15 pp, `report_ko.pdf` 15 pp (tectonic); every `\code{}` path exists |
-| fresh clone, `pip install -e ".[collector,dev]"` + CI steps | — | see the coordinator report of this branch |
+| fresh clone of the branch, new Python 3.12 venv, `pip install -e ".[collector,dev]"` + torch / flask / pin, every CI step | — | compileall clean; 736 / 0; 207 passed; UI 2 passed; import smoke 1 passed; working tree clean afterwards |
 
 ## 6. Not checkable here
 
