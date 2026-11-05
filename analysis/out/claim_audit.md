@@ -86,8 +86,8 @@
 | train | warm-up steps | 1000 | 1000.0 | `results/model_config/{config,train_config}.json` | PASS |
 | train | final lr | 2.5e-06 | 0.0 | `results/model_config/{config,train_config}.json` | PASS |
 | train | save every | 10000 | 10000.0 | `results/model_config/{config,train_config}.json` | PASS |
-| train | aux C weight | 2.0 | 2.0 | `scripts/training/c8old/c8old_chain.sh` | PASS |
-| train | FK D weight | 20 | 20.0 | `scripts/training/c8old/c8old_chain.sh` | PASS |
+| train | aux C weight | 2.0 | 2.0 | `archive/gen1_c8old/training/c8old_chain.sh` | PASS |
+| train | FK D weight | 20 | 20.0 | `archive/gen1_c8old/training/c8old_chain.sh` | PASS |
 | eval | samples | 399 | 399.0 | `results/eval/300000.json` | PASS |
 | eval | arm-samples | 798 | 798.0 | `results/eval/300000.json` | PASS |
 | eval | moving arm-samples | 187 | 187.0 | `results/eval/300000.json` | PASS |
@@ -463,7 +463,6 @@
 | text_short | short version contains: 0.224 (0.020) | True | True | `report/part*_en.tex` | PASS |
 | text_short | short version contains: 0.190 (0.022) | True | True | `report/part*_en.tex` | PASS |
 | text_short | short version contains: 69 of the day's 127 | True | True | `report/part*_en.tex` | PASS |
-| text_short | short version contains: available on request | True | True | `report/part*_en.tex` | PASS |
 | text_short | retired value absent (short): 16.5\% | True | True | `report/part*_en.tex` | PASS |
 | text_short | retired value absent (short): 20.8/23.8 | True | True | `report/part*_en.tex` | PASS |
 | text_short | retired value absent (short): versus 0.09 | True | True | `report/part*_en.tex` | PASS |
@@ -476,7 +475,8 @@
 | text | retired value absent: five early | True | True | `report/archive/part*_en_full.tex` | PASS |
 | text | retired value absent: 6.1 and 5.6 | True | True | `report/archive/part*_en_full.tex` | PASS |
 | text | retired value absent: 128\textdegree | True | True | `report/archive/part*_en_full.tex` | PASS |
-| text | repository marked available on request (private since 2026-10-07) | True | True | `report/archive/part*_en_full.tex` | PASS |
+| text_short | no 'available on request' in the short reports (repository public) | True | True | `report/part*_en.tex` | PASS |
+| text | archived full reports keep their dated wording (available on request, private 2026-10-07) | True | True | `report/archive/part*_en_full.tex` | PASS |
 | text | value present: 211.7k | True | True | `report/archive/part*_en_full.tex` | PASS |
 | text | value present: $-33\%$ | True | True | `report/archive/part*_en_full.tex` | PASS |
 | text | value present: $+13\%$ | True | True | `report/archive/part*_en_full.tex` | PASS |
@@ -579,6 +579,7 @@ hand | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
 | attribution | part2_approach_en_full.tex: designed and published by BrikHMP18, not | True | True | `report/archive/part2_approach_en_full.tex` | PASS |
 | attribution | part2_approach_en.tex: designed by BrikHMP18, not by us | True | True | `report/part2_approach_en.tex` | PASS |
 | attribution | methods_en.tex: designed and published by BrikHMP18, not | True | True | `report/methods_en.tex` | PASS |
+| v5_unified | repository is public: no 'available on request', URL present | True | True | `report/report_en.tex` | PASS |
 | v5_unified | unified contains: 349 | True | True | `report/report_en.tex` | PASS |
 | v5_unified | unified contains: 561 (43.0\%) | True | True | `report/report_en.tex` | PASS |
 | v5_unified | unified contains: 233 train / 26 | True | True | `report/report_en.tex` | PASS |
@@ -636,7 +637,6 @@ hand | True | True | `report/archive/part1_stacking_en_full.tex` | PASS |
 | v5_unified | unified contains: 0.224 (0.020) | True | True | `report/report_en.tex` | PASS |
 | v5_unified | unified contains: 0.190 (0.022) | True | True | `report/report_en.tex` | PASS |
 | v5_unified | unified contains: 69 of the 127 ended on the cube-size sto | True | True | `report/report_en.tex` | PASS |
-| v5_unified | unified contains: available on request | True | True | `report/report_en.tex` | PASS |
 | v5_unified | unified contains: 211.7k | True | True | `report/report_en.tex` | PASS |
 | v5_unified | unified contains: $-33\%$ | True | True | `report/report_en.tex` | PASS |
 | v5_unified | unified contains: $+13\%$ | True | True | `report/report_en.tex` | PASS |

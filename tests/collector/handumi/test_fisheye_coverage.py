@@ -143,7 +143,8 @@ def test_cross_view_keypoints_never_come_from_the_extrapolated_region():
     """Section 11: the frozen valid_radius must bind on the cross-view path too, before PnP sees anything."""
     import cv2
     import numpy as np
-    from handumi_collector.pose.cross_view import match_features
+    # 2026-11-05: pose.cross_view (V-pilot cross-view anchor) moved to archive/shared_unused/; skipped when absent
+    match_features = pytest.importorskip("handumi_collector.pose.cross_view").match_features
 
     rng = np.random.default_rng(3)
     img = rng.integers(0, 255, (480, 640, 3), dtype=np.uint8)   # texture everywhere

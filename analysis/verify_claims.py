@@ -145,9 +145,9 @@ check("train", "grad clip", 10, tc["optimizer"]["grad_clip_norm"], src)
 check("train", "warm-up steps", 1000, tc["scheduler"]["num_warmup_steps"], src)
 check("train", "final lr", 2.5e-6, tc["scheduler"]["decay_lr"], src, tol=0)
 check("train", "save every", 10000, tc["save_freq"], src)
-ch = open(R / "scripts/training/c8old/c8old_chain.sh").read()
-check("train", "aux C weight", 2.0, float(re.search(r"EE_AUX_LAMBDA=([0-9.]+)", ch).group(1)), "scripts/training/c8old/c8old_chain.sh")
-check("train", "FK D weight", 20, float(re.search(r"EE_FK_LAMBDA=([0-9.]+)", ch).group(1)), "scripts/training/c8old/c8old_chain.sh")
+ch = open(R / "archive/gen1_c8old/training/c8old_chain.sh").read()
+check("train", "aux C weight", 2.0, float(re.search(r"EE_AUX_LAMBDA=([0-9.]+)", ch).group(1)), "archive/gen1_c8old/training/c8old_chain.sh")
+check("train", "FK D weight", 20, float(re.search(r"EE_FK_LAMBDA=([0-9.]+)", ch).group(1)), "archive/gen1_c8old/training/c8old_chain.sh")
 
 # ---------------------------------------------------------------- offline evaluation
 e160, e300 = J("results/eval/160000.json"), J("results/eval/300000.json"); sel = J("results/selection.json")
