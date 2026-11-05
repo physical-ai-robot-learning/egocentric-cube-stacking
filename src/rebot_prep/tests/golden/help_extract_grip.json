@@ -1,0 +1,9 @@
+[
+ "[-h] [--manifest MANIFEST] [--out OUT] [--limit LIMIT]",
+ "",
+ "options:",
+ "  -h, --help           show this help message and exit",
+ "  --manifest MANIFEST",
+ "  --out OUT",
+ "  --limit LIMIT"
+]

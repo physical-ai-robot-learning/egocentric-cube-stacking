@@ -1,0 +1,42 @@
+{
+ "m": {
+  "drift_m": 0.05323902114310903,
+  "finite": true,
+  "lost_adjacent_frac": 0.13333333333333333,
+  "path_mm": 277.21177005168107,
+  "rev_pairs": 10,
+  "rev_rate": 1.0,
+  "rot_rev_pairs": 0,
+  "rot_rev_rate": 0.0,
+  "rot_step_max_deg": 0.4269527515988338,
+  "rot_step_p95_deg": 0.4263126352276476,
+  "rows": 30,
+  "step_max_mm": 26.05857964972599,
+  "step_p50_mm": 2.6909235261689903,
+  "step_p95_mm": 25.70681597351114,
+  "zigzag_bursts": 1
+ },
+ "near": [
+  22.10486635,
+  25.816300864,
+  22.372265083,
+  25.542588637,
+  22.669151529
+ ],
+ "plain": {
+  "drift_m": 0.04968603314792277,
+  "finite": true,
+  "path_mm": 59.60822833628861,
+  "rev_pairs": 0,
+  "rev_rate": 0.0,
+  "rot_rev_pairs": 0,
+  "rot_rev_rate": 0.0,
+  "rot_step_max_deg": 0.4269527515988338,
+  "rot_step_p95_deg": 0.4263126352276476,
+  "rows": 30,
+  "step_max_mm": 2.7470770796017745,
+  "step_p50_mm": 1.9306500858798226,
+  "step_p95_mm": 2.7301352860163335,
+  "zigzag_bursts": 0
+ }
+}

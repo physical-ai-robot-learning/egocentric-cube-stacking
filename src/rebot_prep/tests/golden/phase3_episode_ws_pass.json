@@ -1,0 +1,90 @@
+[
+ {
+  "arm_first_fail": [
+   null,
+   null
+  ],
+  "arm_pass": {
+   "B_metric": [
+    true,
+    true
+   ],
+   "C_workspace": [
+    true,
+    true
+   ],
+   "D_IK": [
+    true,
+    true
+   ],
+   "E_pseudo_q": [
+    true,
+    true
+   ]
+  },
+  "first_fail": null,
+  "ik_success_rows": [
+   65,
+   65
+  ],
+  "one_arm_usable": true,
+  "s32_finite": true,
+  "start": 11,
+  "status": [
+   {
+    "OK": 65
+   },
+   {
+    "OK": 65
+   }
+  ],
+  "ws_in": [
+   1.0,
+   1.0
+  ]
+ },
+ {
+  "arm_first_fail": [
+   null,
+   null
+  ],
+  "arm_pass": {
+   "B_metric": [
+    true,
+    true
+   ],
+   "C_workspace": [
+    true,
+    true
+   ],
+   "D_IK": [
+    true,
+    true
+   ],
+   "E_pseudo_q": [
+    true,
+    true
+   ]
+  },
+  "first_fail": null,
+  "ik_success_rows": [
+   65,
+   65
+  ],
+  "one_arm_usable": true,
+  "s32_finite": true,
+  "start": 76,
+  "status": [
+   {
+    "OK": 65
+   },
+   {
+    "OK": 65
+   }
+  ],
+  "ws_in": [
+   1.0,
+   1.0
+  ]
+ }
+]

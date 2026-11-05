@@ -1,0 +1,11 @@
+[
+ "[-h] [--produce PRODUCE] [--tag TAG] [--grip GRIP]",
+ "",
+ "C2 input gate / OPEN-5 acceptance benchmark (FROZEN 2026-09-23)",
+ "",
+ "options:",
+ "  -h, --help         show this help message and exit",
+ "  --produce PRODUCE  dir of <episode>_<side>.npz with frame_idx, cam_pos, cam_quat (xyzw), seg_id, lost",
+ "  --tag TAG          output subdir under reports/c2 (raw | repaired_<name>)",
+ "  --grip GRIP"
+]

@@ -1,0 +1,8 @@
+{
+ "downscale": 2,
+ "episode": "ep",
+ "imu_preroll_ms": 50.0,
+ "out": "out",
+ "side": "left",
+ "start_at_go": false
+}

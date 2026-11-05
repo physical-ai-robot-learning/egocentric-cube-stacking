@@ -1,0 +1,8 @@
+[
+ "[-h] [--grip GRIP] [--out OUT]",
+ "",
+ "options:",
+ "  -h, --help   show this help message and exit",
+ "  --grip GRIP",
+ "  --out OUT"
+]

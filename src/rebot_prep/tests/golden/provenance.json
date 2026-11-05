@@ -1,0 +1,151 @@
+{
+ "ARM_J": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  8,
+  9,
+  10,
+  11,
+  12,
+  13
+ ],
+ "C": [
+  [
+   0.0,
+   0.0,
+   1.0,
+   0.0
+  ],
+  [
+   0.0,
+   1.0,
+   0.0,
+   0.0
+  ],
+  [
+   -1.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ ],
+ "F": [
+  [
+   1.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  [
+   0.0,
+   -1.0,
+   -0.0,
+   0.0
+  ],
+  [
+   0.0,
+   0.0,
+   -1.0,
+   0.0
+  ],
+  [
+   0.0,
+   0.0,
+   0.0,
+   1.0
+  ]
+ ],
+ "Q_R0": [
+  -0.078539816,
+  -0.034906585,
+  -0.144862328,
+  0.530580093,
+  -0.120427718,
+  -0.090757121,
+  0.073303829,
+  -0.258308729,
+  -0.019198622,
+  0.104719755,
+  0.055850536,
+  -0.055850536
+ ],
+ "prov": {
+  "C": "Ry(+90deg), R_fk = R_ds @ C (c1_frame_regression T1)",
+  "F": "Rx(180deg): R150 FK + wrist-video evidence (OPEN1_EVIDENCE.md); physical inspection PENDING; do not flip without it",
+  "X": [
+   [
+    0.9505806179060914,
+    -0.30293271340263705,
+    -0.06803131640494,
+    0.005
+   ],
+   [
+    0.2831649605650737,
+    0.9357548032779188,
+    -0.21019170595074282,
+    -0.04
+   ],
+   [
+    0.12733457491763026,
+    0.1805400766943977,
+    0.9752903089530457,
+    0.15
+   ],
+   [
+    0.0,
+    0.0,
+    0.0,
+    1.0
+   ]
+  ],
+  "X_file": "handumi_camera_tcp_v2.yaml",
+  "absolute_workspace_pose": "synthetic",
+  "anchor_meaning": "r150_active_median is a representative reBot manipulation configuration for generating pseudo q, NOT a reconstruction of the human workspace",
+  "anchors_deg": {
+   "r150_active_median": [
+    -35.5,
+    -82.7,
+    -55.0,
+    38.8,
+    -6.9,
+    -12.3,
+    37.1,
+    -86.6,
+    -55.3,
+    44.1,
+    1.9,
+    -11.9
+   ],
+   "train_start": [
+    -4.5,
+    -2.0,
+    -8.3,
+    30.4,
+    -6.9,
+    -5.2,
+    4.2,
+    -14.8,
+    -1.1,
+    6.0,
+    3.2,
+    -3.2
+   ]
+  },
+  "cross_arm_absolute_geometry": "unavailable",
+  "limit_tol_deg": 0.1,
+  "pseudo_q_meaning": "plausible continuous joint trajectory if this local human TCP motion started from a typical R150 manipulation configuration",
+  "pseudo_q_scope": "local_robot_start_anchored",
+  "role": "observation-side pseudo proprioception, NOT robot action ground truth",
+  "tcp_pose_used": false
+ }
+}

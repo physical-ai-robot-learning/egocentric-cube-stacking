@@ -1,0 +1,11 @@
+[
+ "[-h] --group GROUP [--parity-offline PARITY_OFFLINE] --out OUT [--eval-ref {r150full,heldout120}]",
+ "",
+ "options:",
+ "  -h, --help            show this help message and exit",
+ "  --group GROUP",
+ "  --parity-offline PARITY_OFFLINE",
+ "  --out OUT",
+ "  --eval-ref {r150full,heldout120}",
+ "                        read at import time (reference arrays)"
+]

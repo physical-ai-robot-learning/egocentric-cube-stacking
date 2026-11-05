@@ -1,0 +1,11 @@
+[
+ "segments 24 {'both': 7, 'neither': 5, 'v2-only': 10, 'v1-only': 2}",
+ "v2-only (rescued) by v1 failure: {'IK': 4, 'workspace': 6}",
+ "both     v2 top-1 NN-to-R150 p50 0.394 p90 0.503 | same segs v1 NN p50 0.366 p90 0.410",
+ "v2-only  v2 top-1 NN-to-R150 p50 0.389 p90 0.450 | same segs v1 NN p50 0.340 p90 0.363",
+ "v2 top-1 segments beyond v1 p90 (0.424): 4  from {'both': 2, 'v2-only': 2}",
+ "v2-Kr lambda 0.0: chosen NN p50 0.393 p90 0.495  (among <= 3 stored variants)",
+ "v2-Kr lambda 0.5: chosen NN p50 0.393 p90 0.495  (among <= 3 stored variants)",
+ "v2-Kr lambda 1.0: chosen NN p50 0.393 p90 0.495  (among <= 3 stored variants)",
+ "v2-Kr lambda 2.0: chosen NN p50 0.393 p90 0.495  (among <= 3 stored variants)"
+]
