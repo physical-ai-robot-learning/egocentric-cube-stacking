@@ -88,10 +88,10 @@ def _arm_ports():
     if MOCK:
         return {"left": "mock-left", "right": "mock-right"}
     try:
-        from .usb_arm_ports import arm_ports
+        from .usb_arm_ports import armPorts
     except ImportError:  # run as a flat script (its folder is sys.path[0])
-        from usb_arm_ports import arm_ports
-    m = arm_ports(); L = os.environ.get("LEFT_LOC"); R = os.environ.get("RIGHT_LOC")
+        from usb_arm_ports import armPorts
+    m = armPorts(); L = os.environ.get("LEFT_LOC"); R = os.environ.get("RIGHT_LOC")
     if not (L and R):
         raise RuntimeError("set LEFT_LOC and RIGHT_LOC (USB locationIDs, see usb_arm_ports.py) -- ports are never guessed here")
     l, r = m.get(int(L)), m.get(int(R))

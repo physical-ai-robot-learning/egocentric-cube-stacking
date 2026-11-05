@@ -1,22 +1,51 @@
-#!/usr/bin/env python3
 """[2026-08-30] Map Damiao arm controllers (USB CDC; both boards report serial 00000000050C, so /dev names follow plug order)
-to their physical USB port (locationID) and tty path, using the IOSerialBSDClient ancestry tree.
-usage: python usb_arm_ports.py   |   from usb_arm_ports import arm_ports -> {locationID(int): "/dev/cu.usbmodemXXXX"}"""
-import re, subprocess
-def arm_ports():
-    out = subprocess.run(["ioreg", "-r", "-c", "IOSerialBSDClient", "-t", "-l", "-w0"], capture_output=True, text=True).stdout
-    res, loc, armed = {}, None, False
-    for line in out.splitlines():
-        if "+-o CDC Device@" in line:
-            loc, armed = None, True; continue
-        if armed and loc is None:
-            m = re.search(r'"locationID" = (\d+)', line)
-            if m: loc = int(m.group(1)); continue
-        if armed and loc is not None:
-            m = re.search(r'"IOCalloutDevice" = "([^"]+)"', line)
-            if m: res[loc] = m.group(1); loc, armed = None, False
-    return res
+to their physical USB port (locationID) and tty path, using the IOSerialBSDClient ancestry tree (macOS `ioreg`; deploy stage).
+
+In:  the live USB registry.  Out: {locationID (int): "/dev/cu.usbmodemXXXX"}; the robot service picks the arms by LEFT_LOC /
+RIGHT_LOC from it.
+usage: python -m rebot_deploy.robot_service.usb_arm_ports   |   from rebot_deploy.robot_service.usb_arm_ports import armPorts
+"""
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+
+IOREG_CMD = ["ioreg", "-r", "-c", "IOSerialBSDClient", "-t", "-l", "-w0"]
+DEVICE_MARK = "+-o CDC Device@"
+LOCATION_RE = re.compile(r'"locationID" = (\d+)')
+CALLOUT_RE = re.compile(r'"IOCalloutDevice" = "([^"]+)"')
+
+
+def armPorts() -> dict[int, str]:
+    """{locationID: callout tty} of every CDC device in the registry (was arm_ports)"""
+    tText = subprocess.run(IOREG_CMD, capture_output=True, text=True).stdout
+    tPorts, tLoc, tInDevice = {}, None, False
+    for tLine in tText.splitlines():
+        if DEVICE_MARK in tLine:
+            tLoc, tInDevice = None, True
+            continue
+        if tInDevice and tLoc is None:
+            tMatch = LOCATION_RE.search(tLine)
+            if tMatch:
+                tLoc = int(tMatch.group(1))
+                continue
+        if tInDevice and tLoc is not None:
+            tMatch = CALLOUT_RE.search(tLine)
+            if tMatch:
+                tPorts[tLoc] = tMatch.group(1)
+                tLoc, tInDevice = None, False
+    return tPorts
+
+
+def main(argv: list[str] | None = None) -> int:
+    tPorts = armPorts()
+    for tLoc, tPath in sorted(tPorts.items()):
+        print(f"loc={tLoc} (0x{tLoc:08x})  {tPath}")
+    if not tPorts:
+        print("no arm controllers found")
+    return 0
+
+
 if __name__ == "__main__":
-    m = arm_ports()
-    for l, p in sorted(m.items()): print(f"loc={l} (0x{l:08x})  {p}")
-    if not m: print("no arm controllers found")
+    sys.exit(main())

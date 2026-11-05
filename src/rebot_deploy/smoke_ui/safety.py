@@ -24,7 +24,7 @@ def _hra_latch():
     o = _observe()
     m0, _ = rt.INF.tcp_now(o["joints14"])
     cfg.CUBE_STOP["hits"] = 0
-    rt.STATE["hra"] = dict(left=[float(a[i]) for i in range(6)], jaw=[_IC.jaw_hold_cmd(o["joints14"][g]) for g in GRIP_IDX],
+    rt.STATE["hra"] = dict(left=[float(a[i]) for i in range(6)], jaw=[_IC.jawHoldCmd(o["joints14"][g]) for g in GRIP_IDX],
                         t0=time.time(), still=0, last_call=getattr(rt.INF, "calls", 0), gate_refusals=0, max_left_dev=0.0,
                         p0=m0[1][:3, 3].copy(), p_prev=m0[1][:3, 3].copy(), travel_mm=0.0, max_cycle_mm=0.0)
     return None

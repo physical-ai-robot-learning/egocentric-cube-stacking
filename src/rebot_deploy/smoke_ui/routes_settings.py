@@ -96,7 +96,7 @@ def mode():
         cfg.PASS_THROUGH = a["pass"] == "1"
     if "dwell" in a:                                    # reach-test timeout per (last) waypoint, seconds
         cfg.DWELL_TIMEOUT_S = max(0.05, min(float(a["dwell"]), 5.0))
-    if "rtc" in a:                                      # [2026-10-03 user] Real-Time Chunking (infer_core_v4.RTC_ON), any mode
+    if "rtc" in a:                                      # [2026-10-03 user] Real-Time Chunking (xvla_inference.RTC_ON), any mode
         _IC.RTC_ON = a["rtc"] == "1"; rt.INF._rtc_prev = None
     if "prefetch" in a:                                 # [2026-10-03 user] step mode: next observe+infer during the last waypoint
         cfg.PREFETCH = a["prefetch"] == "1"; rt._PF["thread"] = None; rt._PF["res"] = None
@@ -133,7 +133,7 @@ def mode():
     return jsonify(out)
 
 
-# [2026-10-03 user] "pink numerical learned curobo 중 하나 선택": live IK backend switch (infer_core_v4.IK_BACKEND, read per solve).
+# [2026-10-03 user] "pink numerical learned curobo 중 하나 선택": live IK backend switch (xvla_inference.IK_BACKEND, read per solve).
 @app.route("/ik/<name>", methods=["POST"])
 def ik_backend(name):
     if name not in ("pink", "numerical", "learned", "curobo"):

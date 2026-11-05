@@ -45,7 +45,7 @@ def _plan_leader(q14):
     for i in FLIP_IDX:
         a[i] = -a[i]
     for g in GRIP_IDX:
-        a[g] = float(_IC.jaw_hold_cmd(q14[g])) if hasattr(_IC, "jaw_hold_cmd") else float(np.clip(_IC.unwrap_grip(q14[g]) / -6.0, 0, 45))
+        a[g] = float(_IC.jawHoldCmd(q14[g])) if hasattr(_IC, "jawHoldCmd") else float(np.clip(_IC.unwrapGrip(q14[g]) / -6.0, 0, 45))
     return a
 
 

@@ -1,4 +1,4 @@
-"""Probe of the reBot smoke UI (src/rebot_deploy/mac_v4_smoke_ui.py + smoke_ui/): its routes, live settings and pure helpers,
+"""Probe of the reBot smoke UI (src/rebot_deploy/run_smoke_ui.py + smoke_ui/): its routes, live settings and pure helpers,
 with every robot / network call stubbed (requests raises ConnectionError) and an empty HOME, so the result is the same on any
 machine. Used by tests/ui/test_ui_routes.py; it runs in its own interpreter because the UI starts threads and reads env at import.
 
@@ -10,19 +10,19 @@ os.environ["HOME"] = tmp
 for k in list(os.environ):
     if k.startswith(("V4_", "CKSEL_")) or k in ("RUN", "DS_EXPECT"): del os.environ[k]
 os.environ["V4_TRIAL_LOG"] = os.path.join(tmp, "trials.jsonl")
-sys.path[:0] = [os.path.join(repo, "src/rebot_deploy"), os.path.join(repo, "src")]
+sys.path[:0] = [os.path.join(repo, "src")]
 
 import requests
 def _no_net(self, method, url, *a, **k): raise requests.ConnectionError(f"stubbed: {method} {url}")
 requests.sessions.Session.request = _no_net
 import numpy as np, torch
 
-import mac_v4_smoke_ui as M
-IC = sys.modules["infer_core_v4"]
+import rebot_deploy.run_smoke_ui as M
+IC = sys.modules["rebot_deploy.xvla_inference"]
 R = {}
 
 def set_rt(name, val):
-    st = sys.modules.get("smoke_ui.state")
+    st = sys.modules.get("rebot_deploy.smoke_ui.state")
     setattr(st if st is not None else M, name, val)
 
 class FakeINF:
@@ -76,7 +76,7 @@ P = rng.normal(size=(16, 2, 3)) * 0.05; from scipy.spatial.transform import Rota
 Q = np.stack([Rt.from_rotvec(rng.normal(size=(16, 3)) * 0.2).as_quat(), Rt.from_rotvec(rng.normal(size=(16, 3)) * 0.2).as_quat()], 1)
 cur = np.stack([T(rng), T(rng)])
 for deg in (0, 1, 3, 5):
-    setattr(sys.modules.get("smoke_ui.settings") or M, "PLAN_SMOOTH_DEG", deg)
+    setattr(sys.modules.get("rebot_deploy.smoke_ui.settings") or M, "PLAN_SMOOTH_DEG", deg)
     Ps, Qs = M._smooth_chunk(P, Q, cur); R[f"_smooth_chunk deg{deg}"] = [np.round(Ps, 10).tolist(), np.round(Qs, 10).tolist()]
 R["_jag"] = [M._jag(P[:, 0]), M._jag(P[:2, 0])]
 q14 = rng.normal(size=14).tolist(); q14[6] = 350.0; q14[13] = -120.0
@@ -97,20 +97,20 @@ for name in ("ckpt_UI_FT-R312C-FROM-EGOV2B-D20_150k_pinklockwy", "ckpt_HRA_RED-R
 os.environ.pop("V4_CKPT")
 R["IC_EXEC_K"] = M.IC_EXEC_K(); R["_arm_only"] = M._arm_only()
 # infer core pure functions
-R["ic.unwrap_grip"] = [IC.unwrap_grip(x) for x in (-300, -10, 0, 179, 181, 358)]
-R["ic.raw_to_width"] = [IC.raw_to_width(x) for x in (-300, -270, -100, 0, 50, 358)]
-R["ic.width_to_raw"] = [IC.width_to_raw(x) for x in (-0.01, 0, 0.03, 0.2)]
-R["ic.width_to_cmd"] = [IC.width_to_cmd(x) for x in (0, 0.03, 0.2)]
-R["ic.jaw_hold_cmd"] = [IC.jaw_hold_cmd(x) for x in (-300, -100, 0, 358)]
+R["ic.unwrap_grip"] = [IC.unwrapGrip(x) for x in (-300, -10, 0, 179, 181, 358)]
+R["ic.raw_to_width"] = [IC.rawToWidth(x) for x in (-300, -270, -100, 0, 50, 358)]
+R["ic.width_to_raw"] = [IC.widthToRaw(x) for x in (-0.01, 0, 0.03, 0.2)]
+R["ic.width_to_cmd"] = [IC.widthToCmd(x) for x in (0, 0.03, 0.2)]
+R["ic.jaw_hold_cmd"] = [IC.jawHoldCmd(x) for x in (-300, -100, 0, 358)]
 for gm in ("predict", "binary", "continuous", "relative"):
-    IC.GRIPPER_MODE = gm; R["ic.grip_to_cmd " + gm] = [IC.grip_to_cmd(x) for x in (-0.1, 0.0, 0.03, 0.5, 0.7, 1.2)]
+    IC.GRIPPER_MODE = gm; R["ic.grip_to_cmd " + gm] = [IC.gripToCmd(x) for x in (-0.1, 0.0, 0.03, 0.5, 0.7, 1.2)]
 A = np.stack([T(rng), T(rng)]); C = np.stack([T(rng), T(rng)])
-R["ic.relcart20_state"] = np.round(IC.relcart20_state(A, C, [0.01, 0.2]).astype(float), 7).tolist()
-R["ic.cart20_state"] = np.round(IC.cart20_state(C, [0.0, 0.05]).astype(float), 7).tolist()
+R["ic.relcart20_state"] = np.round(IC.relCart20State(A, C, [0.01, 0.2]).astype(float), 7).tolist()
+R["ic.cart20_state"] = np.round(IC.cart20State(C, [0.0, 0.05]).astype(float), 7).tolist()
 for mm, dg in ((0, 0), (5, 1), (1000, 90)):
-    o, cl, n, ang = IC.clamp_delta(T(rng), mm, dg); R[f"ic.clamp_delta {mm} {dg}"] = [np.round(o, 12).tolist(), cl, round(n, 9), round(ang, 9)]
-R["ic._rtc_weights"] = [IC._rtc_weights(d, h, t).tolist() for d, h, t in ((0, 0, 8), (2, 5, 8), (3, 2, 8), (9, 12, 8))]
-R["ic.set_limits"] = [IC.set_limits(7, None), IC.set_limits(None, 1.5)]
+    o, cl, n, ang = IC.clampDelta(T(rng), mm, dg); R[f"ic.clamp_delta {mm} {dg}"] = [np.round(o, 12).tolist(), cl, round(n, 9), round(ang, 9)]
+R["ic._rtc_weights"] = [IC._rtcWeights(d, h, t).tolist() for d, h, t in ((0, 0, 8), (2, 5, 8), (3, 2, 8), (9, 12, 8))]
+R["ic.set_limits"] = [IC.setLimits(7, None), IC.setLimits(None, 1.5)]
 R["ic.consts"] = {k: (getattr(IC, k).tolist() if hasattr(getattr(IC, k), "tolist") else getattr(IC, k)) for k in (
     "CART20_W_OPEN", "GRIP_M_PER_RAW", "GRIP_RAW_MIN", "GRIP_RAW_MAX", "GRIP_OBS_PER_CMD", "GRIP_CMD_MAX", "GRIP_BIN_OPEN",
     "GRIP_BIN_CLOSED", "GRIP_BIN_THRESH", "GRIP_CMD_FULL", "GRIP_REL_EPS", "GRIP_REL_SCALE", "GRIP_REL_MODE", "GRIP_ACC_N",
