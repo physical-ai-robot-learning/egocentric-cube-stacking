@@ -45,7 +45,7 @@ def test_torch_fk_matches_numpy_and_is_batched(synthUrdf, golden):
     assert np.allclose(tT[0, 0, 0, :3, 3].numpy(), tNp["left"], atol=1e-12)
     assert np.allclose(tT[0, 0, 1, :3, 3].numpy(), tNp["right"], atol=1e-12)
     tF32 = tModel.to("cpu", torch.float32)
-    assert tF32 is not tModel and tF32.dt == torch.float32
+    assert tF32 is not tModel and tF32.mDtype == torch.float32
     assert tModel.to("cpu") is tModel
     golden.check("fkt/tcp_f32", tF32.tcp(tQ.float()))
     golden.check("fkt/rot", tFkt.ReBotFKTorch._rot(torch.tensor([0.0, 0.6, 0.8]), torch.tensor([0.1, -1.2])))
