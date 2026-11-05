@@ -1,8 +1,8 @@
-"""[2026-09-28] REL16-v2 datasets derived from an existing umi76 REL16 dataset by rewriting parquet columns only.
+"""REL16-v2 datasets derived from an existing umi76 REL16 dataset by rewriting parquet columns only (dataset stage, node).
 
-Why not reconvert: the twin requirement is that arm REL16 labels, state76, video, prompts and episode order are
-BIT-IDENTICAL to the parent. Rewriting two action channels (and, for B, appending 18 state dims) guarantees that
-by construction and skips the multi-hour video encode. Videos are hard-linked, never re-encoded.
+[2026-09-28] Why not reconvert: the twin requirement is that arm REL16 labels, state76, video, prompts and episode order are
+BIT-IDENTICAL to the parent. Rewriting two action channels (and, for B, appending 18 state dims) guarantees that by
+construction and skips the multi-hour video encode. Videos are hard-linked, never re-encoded.
 
     A  --variant A   action[:, :, 9] / [:, :, 19] := binary LEADER gripper intent, state76 unchanged
     C  --variant C   [2026-09-29] action[:, :, 9|19] := CONTINUOUS leader command g = clip(cmd / 45, 0, 1), 0 = fully CLOSE,
@@ -22,227 +22,338 @@ sign in R150/R30/center675 (checked 2026-09-28: frame-0 leader 0 / follower 0, c
 Row -> source mapping (converter umi76_to_lerobot.py): sources in provenance order, episodes in select order
 (or 0..n-1), src_ep via episodes_json; stored row f of an episode = source frame 2f + 2 (first kept t >= 50.05 ms).
 
-usage: derive_v2.py --parent <dir> --out <dir> --variant A|B [--source-root <lerobot dir>] [--rbp <json>]
+Inputs -> outputs: parent LeRobot dir (+ its source robot datasets, + the UMI zarr for B) -> new LeRobot dir (data rewritten,
+videos hard-linked, meta / stats / provenance updated).
+usage: derive_v2.py --parent <dir> --out <dir> --variant A|B|C [--rbp <json>] [--remap-root old=new ...]
        derive_v2.py --parent <dir> --selftest       recompute the parent's stats and compare (no writes)
+The node chains run it as a flat script (`$PY derive_v2.py ...`); the node-side siblings (derive_v3d / derive_v3L /
+derive_cart20, now in archive/training_variants/umi76) import its helpers under their old names (aliases at the end).
 """
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import os
+import pathlib
+import shutil
+import sys
+
+import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
-import argparse, glob, json, os, pathlib, shutil, sys
-import numpy as np, pyarrow as pa, pyarrow.parquet as pq
 
 UMI_DT_FRAMES = 30.0 * 3.0 / 59.94          # 1.5015 source frames
 OPEN_THRESH = 27.0                          # leader cmd >= 27 = opening (humanik rule, video-verified on R150)
 CMD_FULL_OPEN = 45.0                        # variant C: measured full jaw travel cmd 0..45
-GRIP_IDX = {0: 6, 1: 13}
-REMAP = {}
+GRIP_IDX = {0: 6, 1: 13}                    # arm -> leader gripper dim of the 14-D source action
+REMAP = {}                                  # source root remap (old -> new), filled from --remap-root
 STAT_KEYS = ("min", "max", "mean", "std", "count", "q01", "q10", "q50", "q90", "q99")
+STAT_QUANTILES = [0.01, 0.10, 0.50, 0.90, 0.99]
+HORIZON = 16                                # action chunk length
+REL_DIMS = 20                               # REL16 action width per row (2 arms x [pos3 rot6d g])
+ACTION_PER_ARM = 10
+GRIP_IN_ARM = 9                             # gripper dim inside an arm's 10
+GRIP_DIMS = [9, 19]
+STATE76 = 76
+STATE94 = 94
+SOURCE_ROW_OFFSET = 2                       # stored row f = source frame 2f + 2
+SOURCE_ROW_STRIDE = 2
+FRAME_EPS = 1e-6                            # last target may sit exactly on the last source frame
+BAND_LO, BAND_HI = 10, 40                   # "ambiguous" leader command band reported at the end
+SELFTEST_KEYS = ("min", "max", "mean", "std", "q50")
+DEFAULT_RBP = NODE_HOME / "umi_bridge/r675_rbp.json"
 
 
-def _col(t, c):
-    a = t.column(c).combine_chunks()
-    return a.storage if isinstance(a, pa.ExtensionArray) else a
+class DeriveError(RuntimeError):
+    """The derivation cannot run (e.g. the output directory already exists)."""
 
 
-def load_src(root, cols):
-    out = {c: [] for c in cols}; ep = []; fr = []
-    for f in sorted(glob.glob(f"{root}/data/**/*.parquet", recursive=True)):
-        t = pq.read_table(f, columns=list(cols) + ["episode_index", "frame_index"])
-        for c in cols:
-            out[c].append(np.asarray(_col(t, c).to_pylist(), np.float64))
-        ep.append(np.asarray(_col(t, "episode_index").to_numpy())); fr.append(np.asarray(_col(t, "frame_index").to_numpy()))
-    ep = np.concatenate(ep); fr = np.concatenate(fr)
-    arr = {c: np.concatenate(v) for c, v in out.items()}
-    by = {}
-    for e in np.unique(ep):
-        m = np.flatnonzero(ep == e); m = m[np.argsort(fr[m])]
-        assert (fr[m] == np.arange(len(m))).all(), f"{root} ep {e}: frame_index not contiguous"
-        by[int(e)] = {c: arr[c][m] for c in cols}
-    return by
+def storageColumn(t, c):
+    """column c of table t as one array; HF extension arrays are reduced to their storage (was _col)"""
+    tArr = t.column(c).combine_chunks()
+    return tArr.storage if isinstance(tArr, pa.ExtensionArray) else tArr
 
 
-def stats(x):
-    """LeRobot-style stats over axis 0 of a (N, D) array (action: frames*16 rows)."""
-    q = np.quantile(x, [0.01, 0.10, 0.50, 0.90, 0.99], axis=0)
+def loadSource(root, cols):
+    """{episode: {col: (n, D) float64}} of a LeRobot dataset, rows ordered by frame_index (was load_src)"""
+    tOut = {tC: [] for tC in cols}
+    tEp = []
+    tFr = []
+    for tFile in sorted(glob.glob(f"{root}/data/**/*.parquet", recursive=True)):
+        tTable = pq.read_table(tFile, columns=list(cols) + ["episode_index", "frame_index"])
+        for tC in cols:
+            tOut[tC].append(np.asarray(storageColumn(tTable, tC).to_pylist(), np.float64))
+        tEp.append(np.asarray(storageColumn(tTable, "episode_index").to_numpy()))
+        tFr.append(np.asarray(storageColumn(tTable, "frame_index").to_numpy()))
+    tEp = np.concatenate(tEp)
+    tFr = np.concatenate(tFr)
+    tArr = {tC: np.concatenate(tV) for tC, tV in tOut.items()}
+    tBy = {}
+    for tE in np.unique(tEp):
+        tRows = np.flatnonzero(tEp == tE)
+        tRows = tRows[np.argsort(tFr[tRows])]
+        assert (tFr[tRows] == np.arange(len(tRows))).all(), f"{root} ep {tE}: frame_index not contiguous"
+        tBy[int(tE)] = {tC: tArr[tC][tRows] for tC in cols}
+    return tBy
+
+
+def columnStats(x):
+    """LeRobot-style stats over axis 0 of a (N, D) array (action: frames*16 rows) (was stats)."""
+    tQ = np.quantile(x, STAT_QUANTILES, axis=0)
     return dict(min=x.min(0), max=x.max(0), mean=x.mean(0), std=x.std(0), count=np.array([len(x)]),
-                q01=q[0], q10=q[1], q50=q[2], q90=q[3], q99=q[4])
+                q01=tQ[0], q10=tQ[1], q50=tQ[2], q90=tQ[3], q99=tQ[4])
 
 
-def read_parent(parent):
-    files = sorted(glob.glob(f"{parent}/data/chunk-*/*.parquet"))
-    tabs = [pq.read_table(f) for f in files]
-    return files, tabs
+def readParent(parent):
+    """-> (sorted data parquet paths, their tables) (was read_parent)"""
+    tFiles = sorted(glob.glob(f"{parent}/data/chunk-*/*.parquet"))
+    tTables = [pq.read_table(tF) for tF in tFiles]
+    return tFiles, tTables
 
 
-def row_sources(parent, rbp_override=None):
-    """(episode_index -> (source lerobot root, source episode)) from the parent's provenance."""
-    prov = json.load(open(f"{parent}/v4_provenance.json"))
-    mapping, e = {}, 0
-    for s in prov["sources"]:
-        root = s["lerobot"]
-        sel = s.get("select_zarr_episodes")
-        if sel is None:
-            n = json.load(open(f"{REMAP.get(root, root)}/meta/info.json"))["total_episodes"]
-            zeps = list(range(n)); epmap = None
+def rowSources(parent, rbpOverride=None):
+    """episode_index -> (source lerobot root, source episode, zarr, zarr episode) from the parent's provenance
+    (was row_sources)"""
+    tProv = json.load(open(f"{parent}/v4_provenance.json"))
+    tMapping, tE = {}, 0
+    for tSource in tProv["sources"]:
+        tRoot = tSource["lerobot"]
+        tSel = tSource.get("select_zarr_episodes")
+        if tSel is None:
+            tN = json.load(open(f"{REMAP.get(tRoot, tRoot)}/meta/info.json"))["total_episodes"]
+            tZeps = list(range(tN))
+            tEpMap = None
         else:
-            zeps = [int(x) for x in sel]
-            epmap = json.load(open(rbp_override or s.get("episodes_json") or
-                                   str(NODE_HOME / "umi_bridge/r675_rbp.json")))["episodes"]
-        for z in zeps:
-            mapping[e] = (root, z if epmap is None else int(epmap[z]), s["zarr"], z); e += 1
-    return mapping
+            tZeps = [int(tX) for tX in tSel]
+            tEpMap = json.load(open(rbpOverride or tSource.get("episodes_json") or str(DEFAULT_RBP)))["episodes"]
+        for tZ in tZeps:
+            tMapping[tE] = (tRoot, tZ if tEpMap is None else int(tEpMap[tZ]), tSource["zarr"], tZ)
+            tE += 1
+    return tMapping
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--parent", required=True); ap.add_argument("--out")
-    ap.add_argument("--variant", choices=["A", "B", "C"]); ap.add_argument("--selftest", action="store_true")
-    ap.add_argument("--remap-root", action="append", default=[], help="old=new, to run off-node with local copies")
-    ap.add_argument("--rbp", default=None)
-    a = ap.parse_args()
-    parent = pathlib.Path(a.parent)
-    files, tabs = read_parent(parent)
-    stored = json.load(open(parent / "meta/stats.json"))
+def buildParser() -> argparse.ArgumentParser:
+    tAp = argparse.ArgumentParser()
+    tAp.add_argument("--parent", required=True)
+    tAp.add_argument("--out")
+    tAp.add_argument("--variant", choices=["A", "B", "C"])
+    tAp.add_argument("--selftest", action="store_true")
+    tAp.add_argument("--remap-root", action="append", default=[], help="old=new, to run off-node with local copies")
+    tAp.add_argument("--rbp", default=None)
+    return tAp
 
-    if a.selftest:
-        A = np.concatenate([np.asarray(_col(t, "action").to_pylist(), np.float64) for t in tabs])
-        S = np.concatenate([np.asarray(_col(t, "observation.state").to_pylist(), np.float64) for t in tabs])
-        for name, x in (("action", A.reshape(-1, A.shape[-1])), ("observation.state", S)):
-            mine = stats(x)
-            for k in ("min", "max", "mean", "std", "q50"):
-                d = np.abs(np.asarray(stored[name][k]) - mine[k]).max()
-                print(f"selftest {name:18s} {k:5s} max|stored-recomputed| {d:.3e}")
-            print(f"selftest {name} count stored {stored[name]['count']} recomputed {mine['count']}")
-        return
 
-    remap = dict(x.split("=", 1) for x in a.remap_root); REMAP.update(remap)
-    src_of = row_sources(parent, a.rbp)
-    roots = sorted({v[0] for v in src_of.values()})
-    need = ["action"]
-    src = {r: load_src(remap.get(r, r), need) for r in roots}
-    if a.variant == "B":
-        prepend_sys_path(os.environ.get("UMI_ROOT", str(NODE_HOME / "universal_manipulation_interface")))
-        from umi.common.pose_util import mat_to_pose10d
-        from scipy.spatial.transform import Rotation as Rot
-        import zarr
-        # TCP18 comes from the SAME zarr eef poses state76 was computed from (converter _traj/_sample; the query
-        # rows sit on the stored grid, so the pose at t is the raw zarr sample, no interpolation). center675_s96
-        # carries no observation.ee.tcp_state, and one source for every pool keeps B consistent by construction.
-        ZP = {}
-        for zp in sorted({v[2] for v in src_of.values()}):
-            zz = zarr.open(remap.get(zp, zp), "r")
-            ends = np.asarray(zz["meta"]["episode_ends"][:], int)
-            ZP[zp] = dict(starts=np.concatenate([[0], ends[:-1]]),
-                          pos=[np.asarray(zz["data"][f"robot{r}_eef_pos"][:], np.float64) for r in (0, 1)],
-                          rv=[np.asarray(zz["data"][f"robot{r}_eef_rot_axis_angle"][:], np.float64) for r in (0, 1)])
+def _selftest(tables, stored):
+    """recompute the parent's action / state stats and print the max difference to the stored ones"""
+    tA = np.concatenate([np.asarray(storageColumn(tT, "action").to_pylist(), np.float64) for tT in tables])
+    tS = np.concatenate([np.asarray(storageColumn(tT, "observation.state").to_pylist(), np.float64) for tT in tables])
+    for tName, tX in (("action", tA.reshape(-1, tA.shape[-1])), ("observation.state", tS)):
+        tMine = columnStats(tX)
+        for tK in SELFTEST_KEYS:
+            tD = np.abs(np.asarray(stored[tName][tK]) - tMine[tK]).max()
+            print(f"selftest {tName:18s} {tK:5s} max|stored-recomputed| {tD:.3e}")
+        print(f"selftest {tName} count stored {stored[tName]['count']} recomputed {tMine['count']}")
 
-    out = pathlib.Path(a.out)
-    if out.exists():
-        raise SystemExit(f"{out} exists, refusing to overwrite")
-    out.mkdir(parents=True)
-    # videos: hard links (same inode, zero bytes, bit-identical by construction); meta copied then rewritten
-    for p in parent.rglob("*"):
-        rel = p.relative_to(parent); q = out / rel
-        if p.is_dir():
-            q.mkdir(parents=True, exist_ok=True)
-        elif rel.parts[0] == "videos":
-            os.link(p, q)
-        elif rel.parts[0] != "data":
-            shutil.copy2(p, q)
+
+def _loadTcpZarrs(srcOf, remap):
+    """variant B: per zarr, episode starts and both arms' eef pos / rotvec (the poses state76 was computed from)"""
+    prepend_sys_path(os.environ.get("UMI_ROOT", str(NODE_HOME / "universal_manipulation_interface")))
+    from umi.common.pose_util import mat_to_pose10d
+    from scipy.spatial.transform import Rotation as Rot
+    import zarr
+    # TCP18 comes from the SAME zarr eef poses state76 was computed from (converter _traj/_sample; the query
+    # rows sit on the stored grid, so the pose at t is the raw zarr sample, no interpolation). center675_s96
+    # carries no observation.ee.tcp_state, and one source for every pool keeps B consistent by construction.
+    tZp = {}
+    for tPath in sorted({tV[2] for tV in srcOf.values()}):
+        tZ = zarr.open(remap.get(tPath, tPath), "r")
+        tEnds = np.asarray(tZ["meta"]["episode_ends"][:], int)
+        tZp[tPath] = dict(starts=np.concatenate([[0], tEnds[:-1]]),
+                          pos=[np.asarray(tZ["data"][f"robot{tR}_eef_pos"][:], np.float64) for tR in (0, 1)],
+                          rv=[np.asarray(tZ["data"][f"robot{tR}_eef_rot_axis_angle"][:], np.float64) for tR in (0, 1)])
+    return tZp, mat_to_pose10d, Rot
+
+
+def _linkTree(parent, out):
+    """videos: hard links (same inode, zero bytes, bit-identical by construction); meta copied then rewritten"""
+    for tP in parent.rglob("*"):
+        tRel = tP.relative_to(parent)
+        tQ = out / tRel
+        if tP.is_dir():
+            tQ.mkdir(parents=True, exist_ok=True)
+        elif tRel.parts[0] == "videos":
+            os.link(tP, tQ)
+        elif tRel.parts[0] != "data":
+            shutil.copy2(tP, tQ)
     (out / "data").mkdir(exist_ok=True)
 
-    allA, allS, rep = [], [], dict(open_frac=[], transitions=[], band=[])
-    per_ep = {}
-    for f, t in zip(files, tabs):
-        ep = np.asarray(_col(t, "episode_index").to_numpy()); fr = np.asarray(_col(t, "frame_index").to_numpy())
-        A = np.asarray(_col(t, "action").to_pylist(), np.float32)          # (n,16,20)
-        S = np.asarray(_col(t, "observation.state").to_pylist(), np.float32)
-        newS = []
-        for i in range(len(ep)):
-            root, se, zp, zep = src_of[int(ep[i])]
-            s = src[root][se]; lead = s["action"]; n = len(lead)
-            i0 = 2 * int(fr[i]) + 2
-            tk = i0 + UMI_DT_FRAMES * (np.arange(16) + 1)
-            assert tk[-1] <= n - 1 + 1e-6, f"ep {ep[i]} f {fr[i]}: target beyond source episode ({tk[-1]:.2f} > {n-1})"
-            for r, gi in GRIP_IDX.items():
-                v = np.interp(tk, np.arange(n), lead[:, gi])
-                A[i, :, r * 10 + 9] = (np.clip(v / CMD_FULL_OPEN, 0.0, 1.0) if a.variant == "C" else (v >= OPEN_THRESH)).astype(np.float32)
-                rep["band"].append(float(((v > 10) & (v < 40)).mean()))
-            if a.variant == "B":
-                zi = int(ZP[zp]["starts"][zep]) + i0
-                ext = []
-                for r in (0, 1):
-                    m = np.eye(4)
-                    m[:3, :3] = Rot.from_rotvec(ZP[zp]["rv"][r][zi]).as_matrix(); m[:3, 3] = ZP[zp]["pos"][r][zi]
-                    ext.append(mat_to_pose10d(m[None])[0])
-                newS.append(np.concatenate([S[i], *ext]).astype(np.float32))
-        if a.variant == "B":
-            S = np.stack(newS)
-        allA.append(A); allS.append(S)
-        for e in np.unique(ep):
-            m = ep == e
-            per_ep[int(e)] = (A[m], S[m])
-        # write back with the parent's schema; only the replaced columns change type/length
-        cols, fields = [], []
-        for name in t.column_names:
-            fld = t.schema.field(name)
-            if name == "action":
-                arr = pa.array(A.tolist(), type=_col(t, "action").type)
-            elif name == "observation.state" and a.variant == "B":
-                fld = pa.field(name, pa.list_(pa.float32(), 94)); arr = pa.array(S.tolist(), type=fld.type)
-            else:
-                cols.append(t.column(name)); fields.append(fld); continue
-            cols.append(arr); fields.append(fld)
-        md = dict(t.schema.metadata or {})
-        if a.variant == "B" and b"huggingface" in md:
-            h = json.loads(md[b"huggingface"]); h["info"]["features"]["observation.state"]["length"] = 94
-            md[b"huggingface"] = json.dumps(h).encode()
-        pq.write_table(pa.Table.from_arrays(cols, schema=pa.schema(fields, metadata=md)),
-                       out / pathlib.Path(f).relative_to(parent))
 
-    A = np.concatenate(allA); S = np.concatenate(allS)
+def _splice(old, x, dims=None, append=None):
+    """stats dict: the parent's values kept for every unchanged dim, `dims` recomputed from x, dims from `append` on added"""
+    tMine = columnStats(x.astype(np.float64))
+    tOut = {}
+    for tK in STAT_KEYS:
+        if tK == "count":
+            tOut[tK] = list(old[tK])
+            continue
+        tV = np.asarray(old[tK], np.float64).copy()
+        if dims is not None:
+            tV[dims] = tMine[tK][dims]
+        if append is not None:
+            tV = np.concatenate([tV, tMine[tK][append:]])
+        tOut[tK] = tV.tolist()
+    return tOut
+
+
+def _rewriteTable(path, table, actions, states, variant, parent, out):
+    """write back with the parent's schema; only the replaced columns change type/length"""
+    tCols, tFields = [], []
+    for tName in table.column_names:
+        tField = table.schema.field(tName)
+        if tName == "action":
+            tArr = pa.array(actions.tolist(), type=storageColumn(table, "action").type)
+        elif tName == "observation.state" and variant == "B":
+            tField = pa.field(tName, pa.list_(pa.float32(), STATE94))
+            tArr = pa.array(states.tolist(), type=tField.type)
+        else:
+            tCols.append(table.column(tName))
+            tFields.append(tField)
+            continue
+        tCols.append(tArr)
+        tFields.append(tField)
+    tMeta = dict(table.schema.metadata or {})
+    if variant == "B" and b"huggingface" in tMeta:
+        tHf = json.loads(tMeta[b"huggingface"])
+        tHf["info"]["features"]["observation.state"]["length"] = STATE94
+        tMeta[b"huggingface"] = json.dumps(tHf).encode()
+    pq.write_table(pa.Table.from_arrays(tCols, schema=pa.schema(tFields, metadata=tMeta)),
+                   out / pathlib.Path(path).relative_to(parent))
+
+
+def _rewriteData(args, srcOf, src, tcp, files, tables, parent, out):
+    """rewrite every data file; -> (all actions, all states, per-episode (A, S), ambiguous-band fractions)"""
+    tAllA, tAllS, tBand, tPerEp = [], [], [], {}
+    for tPath, tTable in zip(files, tables):
+        tEp = np.asarray(storageColumn(tTable, "episode_index").to_numpy())
+        tFr = np.asarray(storageColumn(tTable, "frame_index").to_numpy())
+        tA = np.asarray(storageColumn(tTable, "action").to_pylist(), np.float32)          # (n,16,20)
+        tS = np.asarray(storageColumn(tTable, "observation.state").to_pylist(), np.float32)
+        tNewS = []
+        for tI in range(len(tEp)):
+            tRoot, tSe, tZpath, tZep = srcOf[int(tEp[tI])]
+            tLead = src[tRoot][tSe]["action"]
+            tN = len(tLead)
+            tI0 = SOURCE_ROW_STRIDE * int(tFr[tI]) + SOURCE_ROW_OFFSET
+            tTk = tI0 + UMI_DT_FRAMES * (np.arange(HORIZON) + 1)
+            assert tTk[-1] <= tN - 1 + FRAME_EPS, \
+                f"ep {tEp[tI]} f {tFr[tI]}: target beyond source episode ({tTk[-1]:.2f} > {tN-1})"
+            for tR, tGi in GRIP_IDX.items():
+                tV = np.interp(tTk, np.arange(tN), tLead[:, tGi])
+                tLabel = np.clip(tV / CMD_FULL_OPEN, 0.0, 1.0) if args.variant == "C" else (tV >= OPEN_THRESH)
+                tA[tI, :, tR * ACTION_PER_ARM + GRIP_IN_ARM] = tLabel.astype(np.float32)
+                tBand.append(float(((tV > BAND_LO) & (tV < BAND_HI)).mean()))
+            if args.variant == "B":
+                tZp, tMatToPose10d, tRot = tcp
+                tZi = int(tZp[tZpath]["starts"][tZep]) + tI0
+                tExt = []
+                for tR in (0, 1):
+                    tM = np.eye(4)
+                    tM[:3, :3] = tRot.from_rotvec(tZp[tZpath]["rv"][tR][tZi]).as_matrix()
+                    tM[:3, 3] = tZp[tZpath]["pos"][tR][tZi]
+                    tExt.append(tMatToPose10d(tM[None])[0])
+                tNewS.append(np.concatenate([tS[tI], *tExt]).astype(np.float32))
+        if args.variant == "B":
+            tS = np.stack(tNewS)
+        tAllA.append(tA)
+        tAllS.append(tS)
+        for tE in np.unique(tEp):
+            tRows = tEp == tE
+            tPerEp[int(tE)] = (tA[tRows], tS[tRows])
+        _rewriteTable(tPath, tTable, tA, tS, args.variant, parent, out)
+    return tAllA, tAllS, tPerEp, tBand
+
+
+def _writeMeta(args, parent, out, actions, states, perEp):
     # stats: the parent's stored values are kept BIT-FOR-BIT for every unchanged dim (arm action dims, state76);
     # only gripper dims 9/19 (and B's 18 appended state dims) are computed here, and `count` stays the parent's.
-    def splice(old, x, dims=None, append=None):
-        mine = stats(x.astype(np.float64)); outd = {}
-        for k in STAT_KEYS:
-            if k == "count":
-                outd[k] = list(old[k]); continue
-            v = np.asarray(old[k], np.float64).copy()
-            if dims is not None:
-                v[dims] = mine[k][dims]
-            if append is not None:
-                v = np.concatenate([v, mine[k][append:]])
-            outd[k] = v.tolist()
-        return outd
-    st = json.load(open(parent / "meta/stats.json"))
-    st["action"] = splice(st["action"], A.reshape(-1, 20), dims=[9, 19])
-    if a.variant == "B":
-        st["observation.state"] = splice(st["observation.state"], S, append=76)
-    json.dump(st, open(out / "meta/stats.json", "w"), indent=4)
-    info = json.load(open(parent / "meta/info.json"))
-    if a.variant == "B":
-        info["features"]["observation.state"]["shape"] = [94]
-    json.dump(info, open(out / "meta/info.json", "w"), indent=4)
-    for f in sorted(glob.glob(str(out / "meta/episodes/chunk-*/*.parquet"))):
-        t = pq.read_table(f); d = {c: t.column(c) for c in t.column_names}
-        eps = np.asarray(_col(t, "episode_index").to_numpy())
-        for key in ("action",) + (("observation.state",) if a.variant == "B" else ()):
-            olds = [{k: _col(t, f"stats/{key}/{k}")[j].as_py() for k in STAT_KEYS} for j in range(len(eps))]
-            per = [splice(olds[j], per_ep[int(e)][0].reshape(-1, 20), dims=[9, 19]) if key == "action"
-                   else splice(olds[j], per_ep[int(e)][1], append=76) for j, e in enumerate(eps)]
-            for k in STAT_KEYS:
-                d[f"stats/{key}/{k}"] = pa.array([p[k] for p in per], type=t.schema.field(f"stats/{key}/{k}").type)
-        pq.write_table(pa.table(d).replace_schema_metadata(t.schema.metadata), f)
-    prov = json.load(open(parent / "v4_provenance.json"))
-    prov.update(parent=str(parent), derived_by="derive_v2.py", variant=a.variant,
-                gripper_label=("continuous leader command g = clip(cmd/45, 0, 1), 0 = CLOSE, 1 = OPEN, at t+(k+1)*50.05ms"
-                               if a.variant == "C" else "binary leader intent, 1 = OPEN, 0 = CLOSE, leader cmd >= 27 at t+(k+1)*50.05ms"),
-                state_dim=94 if a.variant == "B" else 76,
-                state_extra=("[L pos3 rot6d, R pos3 rot6d] base-frame TCP at t (DIAGNOSTIC)" if a.variant == "B" else None))
-    json.dump(prov, open(out / "v4_provenance.json", "w"), indent=2)
-    of = A[:, :, [9, 19]]
-    print(f"done {out}: rows {len(A)}  open frac L {of[..., 0].mean():.3f} R {of[..., 1].mean():.3f}  "
-          f"leader in ambiguous 10-40 band {np.mean(rep['band']):.4f}")
+    tSt = json.load(open(parent / "meta/stats.json"))
+    tSt["action"] = _splice(tSt["action"], actions.reshape(-1, REL_DIMS), dims=GRIP_DIMS)
+    if args.variant == "B":
+        tSt["observation.state"] = _splice(tSt["observation.state"], states, append=STATE76)
+    json.dump(tSt, open(out / "meta/stats.json", "w"), indent=4)
+    tInfo = json.load(open(parent / "meta/info.json"))
+    if args.variant == "B":
+        tInfo["features"]["observation.state"]["shape"] = [STATE94]
+    json.dump(tInfo, open(out / "meta/info.json", "w"), indent=4)
+    for tPath in sorted(glob.glob(str(out / "meta/episodes/chunk-*/*.parquet"))):
+        tTable = pq.read_table(tPath)
+        tCols = {tC: tTable.column(tC) for tC in tTable.column_names}
+        tEps = np.asarray(storageColumn(tTable, "episode_index").to_numpy())
+        for tKey in ("action",) + (("observation.state",) if args.variant == "B" else ()):
+            tOlds = [{tK: storageColumn(tTable, f"stats/{tKey}/{tK}")[tJ].as_py() for tK in STAT_KEYS} for tJ in range(len(tEps))]
+            tPer = [_splice(tOlds[tJ], perEp[int(tE)][0].reshape(-1, REL_DIMS), dims=GRIP_DIMS) if tKey == "action"
+                    else _splice(tOlds[tJ], perEp[int(tE)][1], append=STATE76) for tJ, tE in enumerate(tEps)]
+            for tK in STAT_KEYS:
+                tCols[f"stats/{tKey}/{tK}"] = pa.array([tP[tK] for tP in tPer], type=tTable.schema.field(f"stats/{tKey}/{tK}").type)
+        pq.write_table(pa.table(tCols).replace_schema_metadata(tTable.schema.metadata), tPath)
+    tProv = json.load(open(parent / "v4_provenance.json"))
+    if args.variant == "C":
+        tLabel = "continuous leader command g = clip(cmd/45, 0, 1), 0 = CLOSE, 1 = OPEN, at t+(k+1)*50.05ms"
+    else:
+        tLabel = "binary leader intent, 1 = OPEN, 0 = CLOSE, leader cmd >= 27 at t+(k+1)*50.05ms"
+    tProv.update(parent=str(parent), derived_by="derive_v2.py", variant=args.variant, gripper_label=tLabel,
+                 state_dim=STATE94 if args.variant == "B" else STATE76,
+                 state_extra=("[L pos3 rot6d, R pos3 rot6d] base-frame TCP at t (DIAGNOSTIC)" if args.variant == "B" else None))
+    json.dump(tProv, open(out / "v4_provenance.json", "w"), indent=2)
 
+
+def derive(args) -> None:
+    """the whole derivation for parsed CLI args (selftest or write)"""
+    tParent = pathlib.Path(args.parent)
+    tFiles, tTables = readParent(tParent)
+    tStored = json.load(open(tParent / "meta/stats.json"))
+    if args.selftest:
+        _selftest(tTables, tStored)
+        return
+    tRemap = dict(tX.split("=", 1) for tX in args.remap_root)
+    REMAP.update(tRemap)
+    tSrcOf = rowSources(tParent, args.rbp)
+    tRoots = sorted({tV[0] for tV in tSrcOf.values()})
+    tSrc = {tR: loadSource(tRemap.get(tR, tR), ["action"]) for tR in tRoots}
+    tTcp = _loadTcpZarrs(tSrcOf, tRemap) if args.variant == "B" else None
+    tOut = pathlib.Path(args.out)
+    if tOut.exists():
+        raise DeriveError(f"{tOut} exists, refusing to overwrite")
+    tOut.mkdir(parents=True)
+    _linkTree(tParent, tOut)
+    tAllA, tAllS, tPerEp, tBand = _rewriteData(args, tSrcOf, tSrc, tTcp, tFiles, tTables, tParent, tOut)
+    tA = np.concatenate(tAllA)
+    tS = np.concatenate(tAllS)
+    _writeMeta(args, tParent, tOut, tA, tS, tPerEp)
+    tOpen = tA[:, :, GRIP_DIMS]
+    print(f"done {tOut}: rows {len(tA)}  open frac L {tOpen[..., 0].mean():.3f} R {tOpen[..., 1].mean():.3f}  "
+          f"leader in ambiguous 10-40 band {np.mean(tBand):.4f}")
+
+
+def main(argv: list[str] | None = None) -> int:
+    tArgs = buildParser().parse_args(argv)
+    try:
+        derive(tArgs)
+    except DeriveError as tErr:
+        print(tErr, file=sys.stderr)
+        return 1
+    return 0
+
+
+# old names, imported by the node-side siblings (derive_relcart20 here; derive_v3d / derive_v3L / derive_cart20 in archive/)
+_col = storageColumn
+load_src = loadSource
+stats = columnStats
+read_parent = readParent
+row_sources = rowSources
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

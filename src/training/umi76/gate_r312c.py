@@ -1,116 +1,219 @@
 #!/usr/bin/env python3
-"""[2026-09-28] Post-build gate for r312c_umi76_rel16_v1 = HEAD180 + FRONT132 (pan=center only, grade A, 22/order, rot180).
-Derived from gate_r380.py; G6 is now: every FRONT episode shared with R380 is bit-identical. Read-only.
+"""Post-build gate for r312c_umi76_rel16_v1 = HEAD180 + FRONT132 (pan=center only, grade A, 22/order, rot180) (dataset stage,
+node, read-only).
+
+[2026-09-28] Derived from gate_r380.py; G6 is now: every FRONT episode shared with R380 is bit-identical.
 G1 HEAD eps 0-179: every parquet column bit-identical to r180_umi76_rel16_v1 (the select= change must not touch them)
 G2 HEAD videos: decoded frames identical to r180 on sampled episodes/frames
-G3 FRONT eps 180-279: count 100, order == selection order, task == R675 pool instruction, frame counts plausible
+G3 FRONT eps 180-311: count 132, order == selection order, task == R675 pool instruction, frame counts plausible
 G4 FRONT global == rot180 of the source center675 global at the same (episode, frame), sampled; wrist == zarr
-G5 FRONT state/action finite, shapes 76 / 16x20, current self term identity; stats cover 280 episodes
+G5 FRONT state/action finite, shapes 76 / 16x20, current self term identity; stats cover the dataset
+Inputs: the node datasets under NODE_HOME/holobrain-data/lerobot and the selections under NODE_HOME/umi_bridge.
+Output: one PASS / FAIL line per check and "ALL R312c GATES PASS" (the chain greps for it).
+Usage: python gate_r312c.py     (node chain scripts/train/node4090/chain_r312c.sh; needs LeRobot)
 """
-from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
-import json, glob, sys, pathlib, numpy as np, pandas as pd
-prepend_sys_path(str(NODE_HOME / "lerobot-seeed/src"))
-from lerobot.datasets.lerobot_dataset import LeRobotDataset
-D = str(NODE_HOME / "holobrain-data/lerobot")
-NEW, OLD = f"{D}/r312c_umi76_rel16_v1", f"{D}/r180_umi76_rel16_v1"
-SEL = json.load(open(str(NODE_HOME / "umi_bridge/umi76/r312c_front132_v1.json")))
-fails = []
-def check(name, ok, info=""):
-    print(("PASS  " if ok else "FAIL  ") + name + (f"  {info}" if info else ""), flush=True)
-    if not ok: fails.append(name)
-import pyarrow.parquet as pq
+from __future__ import annotations
+
+import glob
+import json
+import re
+import sys
+
+import numpy as np
+import pandas as pd
 import pyarrow as pa
-def _rp(f, columns=None):
+import pyarrow.parquet as pq
+
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
+
+N_HEAD = 180
+N_FRONT = 132
+N_TOTAL = N_HEAD + N_FRONT
+N_SHARED_R380 = 78               # FRONT episodes R312c shares with R380
+GATE_SEED = 0
+G2_EPISODES, G2_FRAMES = 4, 3
+G4_EPISODES = 8
+G4_OFFSETS = range(-3, 4)        # frame offsets searched in r663 around the mid frame
+G4_MAX_MEAN_ABS = 0.02           # best match must be this close ...
+G4_ROTATED_FACTOR = 5            # ... and re-rotating it this many times worse
+MIN_FRONT_FRAMES = 150
+SELF_TERM_TOL = 1e-5
+STATE_DIM = 76
+ACTION_FLAT = 320                # 16 x 20
+IDENTITY_ROT6D = np.array([1.0, 0, 0, 0, 1, 0])   # rotation_6d of the identity (UMI packing)
+CAMERA_KEYS = ["observation.images.global", "observation.images.left_wrist", "observation.images.right_wrist"]
+NO_MATCH = (9.0, None, 9.0)      # (mean |d|, offset, rotated mean |d|) before any frame is compared
+
+
+class Gate:
+    """PASS / FAIL printer that remembers the failed check names"""
+
+    def __init__(self):
+        self.mFails = []
+
+    def check(self, name, ok, info=""):
+        print(("PASS  " if ok else "FAIL  ") + name + (f"  {info}" if info else ""), flush=True)
+        if not ok:
+            self.mFails.append(name)
+
+
+def _readParquet(f, columns=None):
     """HF datasets writes array columns as arrow EXTENSION types, which pandas turns into an extension dtype that
     pd.concat cannot compare; drop to the storage type (fixed-size list of float) first."""
-    t = pq.read_table(f, columns=columns)
-    cols = [(c.combine_chunks().storage if isinstance(c.type, pa.ExtensionType) else c) for c in t.columns]
-    return pa.table(cols, names=t.column_names).to_pandas(ignore_metadata=True)
-def load(root): return pd.concat([_rp(f) for f in sorted(glob.glob(f"{root}/data/*/*.parquet"))]).sort_values("index").reset_index(drop=True)
-n, o = load(NEW), load(OLD)
-ni = json.load(open(f"{NEW}/meta/info.json"))
-check("episodes == 312", ni["total_episodes"] == 312, str(ni["total_episodes"]))
-nh = n[n.episode_index < 180].reset_index(drop=True)
-check("G1 HEAD row count == r180", len(nh) == len(o), f"{len(nh)} vs {len(o)}")
-cols = [c for c in o.columns]
-def _num(col):
+    tTable = pq.read_table(f, columns=columns)
+    tCols = [(tC.combine_chunks().storage if isinstance(tC.type, pa.ExtensionType) else tC) for tC in tTable.columns]
+    return pa.table(tCols, names=tTable.column_names).to_pandas(ignore_metadata=True)
+
+
+def loadFrames(root):
+    tFiles = sorted(glob.glob(f"{root}/data/*/*.parquet"))
+    return pd.concat([_readParquet(tF) for tF in tFiles]).sort_values("index").reset_index(drop=True)
+
+
+def _numeric(col):
     """object column of (possibly nested) arrays -> one numeric ndarray; strings stay as a list"""
-    def cell(x):
-        x = np.asarray(x)
-        return np.stack([cell(y) for y in x]) if x.dtype == object else x
-    try: return np.stack([cell(x) for x in col])
-    except Exception: return np.asarray([str(x) for x in col])
-bad = []
-for c in cols:
-    a, b = nh[c].to_numpy(), o[c].to_numpy()
-    if a.dtype == object: same = a.shape == b.shape and np.array_equal(_num(a), _num(b))
-    else: same = np.array_equal(a, b)
-    if not same: bad.append(c)
-check("G1 HEAD every parquet column bit-identical to r180", not bad, f"{len(cols)} cols" if not bad else f"differ: {bad}")
-nt = pq.read_table(f"{NEW}/meta/tasks.parquet").to_pandas(); ot = pq.read_table(f"{OLD}/meta/tasks.parquet").to_pandas()   # task string = index (metadata)
-t_new = dict(zip(nt.task_index, nt.index)); t_old = dict(zip(ot.task_index, ot.index))
-hs = n[n.episode_index < 180].groupby("episode_index").task_index.first().map(t_new)
-os_ = o.groupby("episode_index").task_index.first().map(t_old)
-check("G1 HEAD task strings identical", all(isinstance(x, str) for x in hs.values) and (hs.values == os_.values).all(), f"e.g. {str(hs.values[0])[:40]}")
-dn, do = LeRobotDataset("rebot/r312c", root=NEW), LeRobotDataset("rebot/r180", root=OLD)
-rng = np.random.default_rng(0); ks = ["observation.images.global", "observation.images.left_wrist", "observation.images.right_wrist"]
-mx = 0.0
-for ep in rng.choice(180, 4, replace=False):
-    fr = o.index[o.episode_index == ep]; 
-    for i in rng.choice(fr, 3, replace=False):
-        a, b = dn[int(i)], do[int(i)]
-        for k in ks: mx = max(mx, float((a[k] - b[k]).abs().max()))
-check("G2 HEAD decoded video frames identical to r180 (12 frames x 3 cams)", mx == 0.0, f"max abs diff {mx:.2e}")
-nf = n[n.episode_index >= 180]
-eps = sorted(nf.episode_index.unique())
-check("G3 FRONT episode count == 132", len(eps) == 132 and eps == list(range(180, 312)))
-inv = pd.read_csv(str(NODE_HOME / "umi_bridge/qa_b663/inventory.csv")).set_index("episode")
-want = [inv.loc[e, "task"] for e in [180 + z for z in SEL["zarr_episodes"]]]
-got = list(nf.groupby("episode_index").task_index.first().map(t_new).values)
-check("G3 FRONT task per episode == selection (R663 inventory task)", got == want)
-import re as _re
-cnt = pd.Series(["".join(c[0].upper() for c in _re.findall(r"(\w+) cube", t)) for t in got]).value_counts().to_dict()   # task -> order code, the selection's key format
-check("G3 FRONT order counts == selection", cnt == SEL["order_counts"], str(sorted(cnt.values())))
-flen = nf.groupby("episode_index").size().values
-check("G3 FRONT frames per episode plausible (>=150)", flen.min() >= 150, f"min {flen.min()} max {flen.max()} total {flen.sum()}")
-st = _num(nf["observation.state"].to_numpy()); ac = _num(nf["action"].to_numpy()).reshape(len(nf), -1)
-check("G5 FRONT state/action finite", np.isfinite(st).all() and np.isfinite(ac).all())
-check("G5 FRONT state width 76, action 320 (16x20)", st.shape[1] == 76 and ac.shape[1] == 320, f"{st.shape} {ac.shape}")
-# current self term: pos [3:6] / [41:44] == 0 and rot [18:24]/[56:62] == 0 (axis-angle identity) per the packing
-I6 = np.array([1.0, 0, 0, 0, 1, 0])   # rotation_6d of the identity (UMI packing)
-cur = max(np.abs(st[:, 3:6]).max(), np.abs(st[:, 41:44]).max(), np.abs(st[:, 18:24] - I6).max(), np.abs(st[:, 56:62] - I6).max())
-check("G5 FRONT current self term is identity", cur < 1e-5, f"max {cur:.2e}")
-stats = json.load(open(f"{NEW}/meta/stats.json"))
-check("G5 stats.json present with state/action", "observation.state" in stats and "action" in stats)
-# G4 rot180: compare new FRONT global against the B663 dataset, whose FRONT globals were built from the same source
-# with the same rot180 and verified correctly rotated (qa_b663 v2). Same (source episode, stored frame) -> same image.
-r663 = LeRobotDataset("rebot/r663", root=f"{D}/r663_xvla_umi32_v1")
-m663 = pd.concat([_rp(f, columns=["episode_index", "frame_index", "index"]) for f in sorted(glob.glob(f"{D}/r663_xvla_umi32_v1/data/*/*.parquet"))])
-rows = []
-for j in rng.choice(132, 8, replace=False):
-    e_new, e663 = 180 + int(j), 180 + int(SEL["zarr_episodes"][int(j)])     # r663 FRONT 180.. == r675rbp zarr 0..
-    a0, a1 = dn.meta.episodes[e_new]["dataset_from_index"], dn.meta.episodes[e_new]["dataset_to_index"]
-    b0, b1 = r663.meta.episodes[e663]["dataset_from_index"], r663.meta.episodes[e663]["dataset_to_index"]
-    mid = (a1 - a0) // 2; x = dn[a0 + mid]["observation.images.global"]; best = (9.0, None, 9.0)
-    for off in range(-3, 4):
-        k = b0 + mid + off
-        if not (b0 <= k < b1): continue
-        y = r663[k]["observation.images.global"]
-        d = float((x - y).abs().mean()); d_flip = float((x - y.flip(-1).flip(-2)).abs().mean())
-        if d < best[0]: best = (d, off, d_flip)
-    rows.append(best)
-ok = all(r[0] < 0.02 and r[2] > 5 * r[0] for r in rows) and len(rows) == 8
-check("G4 FRONT global == B663 rot180 FRONT frame, and re-rotating it is far worse (8 eps)", ok,
-      "best(mean|d|, frame offset, d if rotated again) = " + str([(round(r[0], 4), r[1], round(r[2], 4)) for r in rows]))
-# G6 regression: every FRONT episode shared with R380 is bit-identical (state, action, length) -- same converter, same source
-S380 = json.load(open(str(NODE_HOME / "umi_bridge/umi76/r380_front200_v1.json")))["zarr_episodes"]
-r380 = load(f"{D}/r380_umi76_rel16_v1"); pos380 = {z: 180 + i for i, z in enumerate(S380)}
-shared = [(i, z) for i, z in enumerate(SEL["zarr_episodes"]) if z in pos380]
-bad6 = []
-for i, z in shared:
-    a_ = n[n.episode_index == 180 + i]; b_ = r380[r380.episode_index == pos380[z]]
-    if len(a_) != len(b_) or not np.array_equal(_num(a_["observation.state"].to_numpy()), _num(b_["observation.state"].to_numpy())) \
-       or not np.array_equal(_num(a_["action"].to_numpy()), _num(b_["action"].to_numpy())): bad6.append(z)
-check(f"G6 the {len(shared)} FRONT episodes shared with R380 are bit-identical (state, action, length)", not bad6 and len(shared) == 78,
-      f"differ: {bad6[:5]}" if bad6 else f"{len(shared)}/{len(shared)}")
-print("\nALL R312c GATES PASS" if not fails else f"\nFAILED: {fails}")
+    def cell(value):
+        tArr = np.asarray(value)
+        return np.stack([cell(tY) for tY in tArr]) if tArr.dtype == object else tArr
+    try:
+        return np.stack([cell(tX) for tX in col])
+    except Exception:
+        return np.asarray([str(tX) for tX in col])
+
+
+def _orderCode(task):
+    """task -> order code, the selection's key format"""
+    return "".join(tC[0].upper() for tC in re.findall(r"(\w+) cube", task))
+
+
+def _checkHead(gate, new, old, newRoot, oldRoot, newTasks):
+    tNi = json.load(open(f"{newRoot}/meta/info.json"))
+    gate.check("episodes == 312", tNi["total_episodes"] == N_TOTAL, str(tNi["total_episodes"]))
+    tNh = new[new.episode_index < N_HEAD].reset_index(drop=True)
+    gate.check("G1 HEAD row count == r180", len(tNh) == len(old), f"{len(tNh)} vs {len(old)}")
+    tCols = [tC for tC in old.columns]
+    tBad = []
+    for tC in tCols:
+        tA, tB = tNh[tC].to_numpy(), old[tC].to_numpy()
+        if tA.dtype == object:
+            tSame = tA.shape == tB.shape and np.array_equal(_numeric(tA), _numeric(tB))
+        else:
+            tSame = np.array_equal(tA, tB)
+        if not tSame:
+            tBad.append(tC)
+    gate.check("G1 HEAD every parquet column bit-identical to r180", not tBad,
+               f"{len(tCols)} cols" if not tBad else f"differ: {tBad}")
+    tOt = pq.read_table(f"{oldRoot}/meta/tasks.parquet").to_pandas()   # task string = index (metadata)
+    tOld = dict(zip(tOt.task_index, tOt.index))
+    tHs = new[new.episode_index < N_HEAD].groupby("episode_index").task_index.first().map(newTasks)
+    tOs = old.groupby("episode_index").task_index.first().map(tOld)
+    gate.check("G1 HEAD task strings identical", all(isinstance(tX, str) for tX in tHs.values) and (tHs.values == tOs.values).all(),
+               f"e.g. {str(tHs.values[0])[:40]}")
+
+
+def _checkHeadVideo(gate, old, dn, do, rng):
+    tMax = 0.0
+    for tEp in rng.choice(N_HEAD, G2_EPISODES, replace=False):
+        tFrames = old.index[old.episode_index == tEp]
+        for tI in rng.choice(tFrames, G2_FRAMES, replace=False):
+            tA, tB = dn[int(tI)], do[int(tI)]
+            for tK in CAMERA_KEYS:
+                tMax = max(tMax, float((tA[tK] - tB[tK]).abs().max()))
+    gate.check("G2 HEAD decoded video frames identical to r180 (12 frames x 3 cams)", tMax == 0.0, f"max abs diff {tMax:.2e}")
+
+
+def _checkFront(gate, new, newTasks, sel):
+    tNf = new[new.episode_index >= N_HEAD]
+    tEps = sorted(tNf.episode_index.unique())
+    gate.check("G3 FRONT episode count == 132", len(tEps) == N_FRONT and tEps == list(range(N_HEAD, N_TOTAL)))
+    tInv = pd.read_csv(str(NODE_HOME / "umi_bridge/qa_b663/inventory.csv")).set_index("episode")
+    tWant = [tInv.loc[tE, "task"] for tE in [N_HEAD + tZ for tZ in sel["zarr_episodes"]]]
+    tGot = list(tNf.groupby("episode_index").task_index.first().map(newTasks).values)
+    gate.check("G3 FRONT task per episode == selection (R663 inventory task)", tGot == tWant)
+    tCnt = pd.Series([_orderCode(tT) for tT in tGot]).value_counts().to_dict()
+    gate.check("G3 FRONT order counts == selection", tCnt == sel["order_counts"], str(sorted(tCnt.values())))
+    tLen = tNf.groupby("episode_index").size().values
+    gate.check("G3 FRONT frames per episode plausible (>=150)", tLen.min() >= MIN_FRONT_FRAMES,
+               f"min {tLen.min()} max {tLen.max()} total {tLen.sum()}")
+    tSt = _numeric(tNf["observation.state"].to_numpy())
+    tAc = _numeric(tNf["action"].to_numpy()).reshape(len(tNf), -1)
+    gate.check("G5 FRONT state/action finite", np.isfinite(tSt).all() and np.isfinite(tAc).all())
+    gate.check("G5 FRONT state width 76, action 320 (16x20)", tSt.shape[1] == STATE_DIM and tAc.shape[1] == ACTION_FLAT,
+               f"{tSt.shape} {tAc.shape}")
+    # current self term: pos [3:6] / [41:44] == 0 and rot [18:24]/[56:62] == 0 (axis-angle identity) per the packing
+    tCur = max(np.abs(tSt[:, 3:6]).max(), np.abs(tSt[:, 41:44]).max(), np.abs(tSt[:, 18:24] - IDENTITY_ROT6D).max(),
+               np.abs(tSt[:, 56:62] - IDENTITY_ROT6D).max())
+    gate.check("G5 FRONT current self term is identity", tCur < SELF_TERM_TOL, f"max {tCur:.2e}")
+
+
+def _checkFrontRot180(gate, dn, dataRoot, sel, rng, LeRobotDataset):
+    # G4 rot180: compare new FRONT global against the B663 dataset, whose FRONT globals were built from the same source
+    # with the same rot180 and verified correctly rotated (qa_b663 v2). Same (source episode, stored frame) -> same image.
+    tR663 = LeRobotDataset("rebot/r663", root=f"{dataRoot}/r663_xvla_umi32_v1")
+    tRows = []
+    for tJ in rng.choice(N_FRONT, G4_EPISODES, replace=False):
+        tENew, tE663 = N_HEAD + int(tJ), N_HEAD + int(sel["zarr_episodes"][int(tJ)])     # r663 FRONT 180.. == r675rbp zarr 0..
+        tA0, tA1 = dn.meta.episodes[tENew]["dataset_from_index"], dn.meta.episodes[tENew]["dataset_to_index"]
+        tB0, tB1 = tR663.meta.episodes[tE663]["dataset_from_index"], tR663.meta.episodes[tE663]["dataset_to_index"]
+        tMid = (tA1 - tA0) // 2
+        tX = dn[tA0 + tMid]["observation.images.global"]
+        tBest = NO_MATCH
+        for tOff in G4_OFFSETS:
+            tK = tB0 + tMid + tOff
+            if not (tB0 <= tK < tB1):
+                continue
+            tY = tR663[tK]["observation.images.global"]
+            tD = float((tX - tY).abs().mean())
+            tDFlip = float((tX - tY.flip(-1).flip(-2)).abs().mean())
+            if tD < tBest[0]:
+                tBest = (tD, tOff, tDFlip)
+        tRows.append(tBest)
+    tOk = all(tR[0] < G4_MAX_MEAN_ABS and tR[2] > G4_ROTATED_FACTOR * tR[0] for tR in tRows) and len(tRows) == G4_EPISODES
+    gate.check("G4 FRONT global == B663 rot180 FRONT frame, and re-rotating it is far worse (8 eps)", tOk,
+               "best(mean|d|, frame offset, d if rotated again) = " + str([(round(tR[0], 4), tR[1], round(tR[2], 4)) for tR in tRows]))
+
+
+def _checkSharedWithR380(gate, new, dataRoot, sel):
+    # G6 regression: every FRONT episode shared with R380 is bit-identical (state, action, length) -- same converter, same source
+    tS380 = json.load(open(str(NODE_HOME / "umi_bridge/umi76/r380_front200_v1.json")))["zarr_episodes"]
+    tR380 = loadFrames(f"{dataRoot}/r380_umi76_rel16_v1")
+    tPos380 = {tZ: N_HEAD + tI for tI, tZ in enumerate(tS380)}
+    tShared = [(tI, tZ) for tI, tZ in enumerate(sel["zarr_episodes"]) if tZ in tPos380]
+    tBad = []
+    for tI, tZ in tShared:
+        tA = new[new.episode_index == N_HEAD + tI]
+        tB = tR380[tR380.episode_index == tPos380[tZ]]
+        if len(tA) != len(tB) \
+                or not np.array_equal(_numeric(tA["observation.state"].to_numpy()), _numeric(tB["observation.state"].to_numpy())) \
+                or not np.array_equal(_numeric(tA["action"].to_numpy()), _numeric(tB["action"].to_numpy())):
+            tBad.append(tZ)
+    gate.check(f"G6 the {len(tShared)} FRONT episodes shared with R380 are bit-identical (state, action, length)",
+               not tBad and len(tShared) == N_SHARED_R380,
+               f"differ: {tBad[:5]}" if tBad else f"{len(tShared)}/{len(tShared)}")
+
+
+def main(argv: list[str] | None = None) -> int:
+    prepend_sys_path(str(NODE_HOME / "lerobot-seeed/src"))
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+    tData = str(NODE_HOME / "holobrain-data/lerobot")
+    tNewRoot, tOldRoot = f"{tData}/r312c_umi76_rel16_v1", f"{tData}/r180_umi76_rel16_v1"
+    tSel = json.load(open(str(NODE_HOME / "umi_bridge/umi76/r312c_front132_v1.json")))
+    tGate = Gate()
+    tN, tO = loadFrames(tNewRoot), loadFrames(tOldRoot)
+    tNt = pq.read_table(f"{tNewRoot}/meta/tasks.parquet").to_pandas()   # task string = index (metadata)
+    tNewTasks = dict(zip(tNt.task_index, tNt.index))
+    _checkHead(tGate, tN, tO, tNewRoot, tOldRoot, tNewTasks)
+    tDn, tDo = LeRobotDataset("rebot/r312c", root=tNewRoot), LeRobotDataset("rebot/r180", root=tOldRoot)
+    tRng = np.random.default_rng(GATE_SEED)
+    _checkHeadVideo(tGate, tO, tDn, tDo, tRng)
+    _checkFront(tGate, tN, tNewTasks, tSel)
+    tStats = json.load(open(f"{tNewRoot}/meta/stats.json"))
+    tGate.check("G5 stats.json present with state/action", "observation.state" in tStats and "action" in tStats)
+    _checkFrontRot180(tGate, tDn, tData, tSel, tRng, LeRobotDataset)
+    _checkSharedWithR380(tGate, tN, tData, tSel)
+    print("\nALL R312c GATES PASS" if not tGate.mFails else f"\nFAILED: {tGate.mFails}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

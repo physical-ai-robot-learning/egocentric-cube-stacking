@@ -1,62 +1,58 @@
-"""[2026-09-25] HEAD180 UMI76 converter: UMI zarr (absolute TCP) -> LeRobot dataset, upstream bimanual
-UMI observation semantics at upstream's physical timing. Contract: ~/umi_bridge/umi76/UMI76_CONTRACT.md.
+"""HEAD180 UMI76 converter: UMI zarr (absolute TCP) -> LeRobot dataset, upstream bimanual UMI observation semantics at
+upstream's physical timing (dataset stage, node). Contract: UMI76_CONTRACT.md (next to this file).
 
-Derived from umi_to_lerobot_v4_3cam.py; the video decoding and dataset writing are unchanged and only the
-state/action construction is new.
+[2026-09-25] Derived from umi_to_lerobot_v4_3cam.py; the video decoding and dataset writing are unchanged and only the
+state/action construction is new. R150 and, later, HandUMI both pass through THIS converter, so "same pipeline" means the
+same UMI -> relative -> LeRobot contract, not the same runtime Dataset object. X-VLA's training code is not modified at all.
 
-OLD (this file's ancestor): UMI zarr -> body-frame delta.
+Per query row t (on the stored 15 Hz grid), with dt = 3/59.94 s (upstream's 50.05 ms):
 
-This is the canonical transform for v4. R150 and, later, HandUMI both pass through THIS converter, so
-"same pipeline" means the same UMI -> delta -> LeRobot contract, not the same runtime Dataset object.
-X-VLA's training code is not modified at all.
+    action[t]            (16, 20)  per arm [pos3 + rot6d + gripper] of inv(T_t) @ T(t + (k+1) dt), k = 0..15
+    observation.state[t] (76,)     upstream low-dim packing: per arm pos / pos_wrt / rot / rot_wrt / grip at [t - dt, t],
+                                   self terms inv(T_t) @ T, cross terms inv(T_other_t) @ T
+    images                         global (source mp4, optional rot180), left_wrist (arm 0), right_wrist (arm 1), 224x224
 
-Per stored frame t (at the UMI step rate, 15 Hz):
-
-    action[t]            = [ pos3 + rot6d + gripper ]  per arm, from  inv(T_t) @ T_{t+1}      -> 20D
-    observation.state[t] = per arm [ prev_rel pos3+rot6d, gripper, wrt pos3+rot6d ]           -> 38D
-                           prev_rel = inv(T_t) @ T_{t-1}          (the current pose relative to
-                                                                   itself is identity, so it is not
-                                                                   stored -- it carries no information)
-                           wrt      = inv(T_other_t) @ T_this_t   (the cross-arm term v3 also uses)
-    images               = left_wrist (arm 0), right_wrist (arm 1), 224x224, straight from the zarr
-
-So all geometry is baked here and X-VLA sees plain tensors. A 16-step chunk pulled by delta_timestamps
-is exactly [a_t, a_{t+1}, ..., a_{t+15}], the consecutive body-frame increments.
-
-Episode edges are handled by dropping, never by inventing:
-  * the LAST frame of an episode has no t+1, so it is not written (every stored frame has a real action)
-  * the FIRST frame has no t-1, so prev_rel is identity and `state_prev_valid` is 0 for that frame
-No identity action is ever written as if it were a real label.
+So all geometry is baked here and X-VLA sees plain tensors. Rows whose history or 16 targets leave the episode are not
+written (nothing is padded); `state_prev_valid` is therefore always 1. No identity action is ever written as if it were a
+real label.
+Inputs -> outputs: one or more `--source zarr=..,lerobot=..` pairs -> a LeRobot v3 dataset at --out + v4_provenance.json.
+Usage: python umi76_to_lerobot.py --source zarr=<z>,lerobot=<root>[,global_transform=rot180,episodes_json=..,select=..]
+       --out <dir> --repo-id <id> [--action-mode umi --state-mode slim20 --gripper-target next]   (node launchers:
+       scripts/train/node4090/build_r312c_umi76.sh, build_chain_r384.sh)
+--state-mode / --gripper-target / --action-mode only change what v4_provenance.json records; the rows are always the UMI76
+state and the 16-step current-anchor chunk.
 """
-from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
-import argparse, json, os, pathlib, sys, time
-import numpy as np, zarr, av, cv2, pandas as pd, glob
-from scipy.spatial.transform import Rotation as Rot, Slerp
-from concurrent.futures import ThreadPoolExecutor
-_POOL = ThreadPoolExecutor(max_workers=2)
-prepend_sys_path(str(NODE_HOME / "umi_bridge"))
-import umi_action as UA
+from __future__ import annotations
 
-prepend_sys_path(str(NODE_HOME / "universal_manipulation_interface"))
-prepend_sys_path(str(pathlib.Path(__file__).resolve().parent))
-from diffusion_policy.codecs.imagecodecs_numcodecs import register_codecs
-register_codecs()
-from umi.common.pose_util import pose_to_mat, mat_to_pose10d
-from r150_v4_instructions import episode_table, R150_LEROBOT
+import argparse
+import glob
+import json
+import os
+import pathlib
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+import av
+import cv2
+import numpy as np
+import pandas as pd
+from scipy.spatial.transform import Rotation as Rot, Slerp
+
+from ego_paths import NODE_HOME, prepend_sys_path  # machine-specific roots (env-overridable)
 
 SOFT_DP_MM, SOFT_DTH_DEG = 40.0, 12.0
 HARD_DP_MM, HARD_DTH_DEG = 70.0, 40.0
 N_ROBOT = 2
-# state layout. full38 keeps the cross-arm term; slim20 drops it so the state is shape-compatible with
-# the pretrained xvla-base action encoder (max_state_dim=20 -- setting 38 grows action_encoder.fc from
-# [30, 73728] to [30, 92160] and strict load fails). slim20 = per arm [prev_rel pos3+rot6d, gripper].
+# state layout recorded in the provenance. full38 keeps the cross-arm term; slim20 drops it so the state is shape-compatible
+# with the pretrained xvla-base action encoder (max_state_dim=20 -- setting 38 grows action_encoder.fc from [30, 73728] to
+# [30, 92160] and strict load fails). slim20 = per arm [prev_rel pos3+rot6d, gripper].
 STATE_MODE = "full38"
 # "delta" = the v4 per-frame body increment; "umi" = the shared current-anchor chunk (umi_action.build_chunk)
 ACTION_MODE = "delta"
 # "current" keeps the original (and frozen) semantics: action gripper = grip[t], identical to the state's
 # gripper. "next" = grip[t+1], which puts the gripper on the same instant as the pose target inv(T_t)@T_{t+1}.
 GRIPPER_TARGET = "current"
-STATE_PER_ARM = 19
 
 # Upstream timing, in physical seconds. sampler.py:148 walks back `idx * obs_down_sample_steps` on a
 # ~59.94 Hz buffer with every latency term zero (dataset_frequeny: 0), so both the observation pair and the
@@ -64,35 +60,71 @@ STATE_PER_ARM = 19
 # interpolated rather than indexed -- 200 ms (3 stored frames) and 66.7 ms (1 stored frame) are both wrong.
 UMI_DT = 3.0 / 59.94          # 50.05 ms
 RAW_HZ = 30.0
-OBS_HORIZON = 2               # low_dim_obs_horizon
 A_HORIZON = 16                # action_horizon
 STATE76 = 76
-ACTION_PER_ARM = 10         # pos3 + rot6d + gripper
-
-
-def body_delta(future_mat, base_mat):
-    prev = np.concatenate([base_mat[None], future_mat[:-1]], axis=0)
-    return np.linalg.inv(prev) @ future_mat
-
-
-def delta_magnitudes(d):
-    dp = np.linalg.norm(d[..., :3, 3], axis=-1) * 1000.0
-    tr = np.clip((np.trace(d[..., :3, :3], axis1=-2, axis2=-1) - 1.0) / 2.0, -1.0, 1.0)
-    return dp, np.degrees(np.arccos(tr))
-
-
+ACTION_PER_ARM = 10           # pos3 + rot6d + gripper
+POSE9 = 9                     # pos3 + rot6d
+TIME_EPS_S = 1e-9             # window edges are inclusive up to float noise
+MIN_ROWS = 3                  # shorter episodes are skipped
+GATE_PERCENTILE = 99
+M_TO_MM = 1000.0
+IMAGE_HW = (224, 224)
 GLOBAL_KEY = "observation.images.global"
+SEEK_BACK_S = 0.5             # seek this far before from_timestamp, then decode forward
+FALLBACK_HALF_FRAME_S = 1 / 60
+WRITER_THREADS = "8"          # default of CONV_WRITER_THREADS
+PROGRESS_EVERY = 10           # episodes between progress lines
+SOURCE_KEYS = {"zarr", "lerobot", "global_transform", "episodes_json", "select"}
+# Upstream packing: keys sorted alphabetically (timm_obs_encoder.py:169), each reshaped (T, D) -> flat,
+# so timestep-major with the older frame first. Do not re-order for slim20 compatibility.
+STATE_OFFSETS = {"r0_pos": 0, "r0_pos_wrt": 6, "r0_rot": 12, "r0_rot_wrt": 24, "r0_grip": 36,
+                 "r1_pos": 38, "r1_pos_wrt": 44, "r1_rot": 50, "r1_rot_wrt": 62, "r1_grip": 74}
 
 
-def _source_episode_meta(root=None):
-    root = pathlib.Path(root) if root is not None else R150_LEROBOT
-    fs = sorted(glob.glob(str(root / "meta" / "episodes" / "**" / "*.parquet"), recursive=True))
-    d = pd.concat([pd.read_parquet(f) for f in fs], ignore_index=True).sort_values("episode_index")
-    return d.reset_index(drop=True)
+class SourceSpecError(ValueError):
+    """A --source spec, its files or its episode selection is invalid."""
 
 
-def decode_global(row, n, out_res=(224, 224), root=None, transform=None):
-    """Decode this episode's global frames straight from the source mp4.
+def _loadNodeModules():
+    """the node checkouts the converter needs: umi_bridge (umi_action, r150_v4_instructions) and the UMI repository
+    (JpegXl codecs for the zarr images, pose_util)"""
+    prepend_sys_path(str(NODE_HOME / "umi_bridge"))
+    import umi_action
+    prepend_sys_path(str(NODE_HOME / "universal_manipulation_interface"))
+    prepend_sys_path(str(pathlib.Path(__file__).resolve().parent))
+    from diffusion_policy.codecs.imagecodecs_numcodecs import register_codecs
+    register_codecs()
+    import r150_v4_instructions
+    return umi_action, r150_v4_instructions
+
+
+def _defaultLerobotRoot():
+    from r150_v4_instructions import R150_LEROBOT
+    return R150_LEROBOT
+
+
+def bodyDelta(future_mat, base_mat):
+    """consecutive body-frame increments inv(T_{k-1}) @ T_k, T_{-1} = base (was body_delta)"""
+    tPrev = np.concatenate([base_mat[None], future_mat[:-1]], axis=0)
+    return np.linalg.inv(tPrev) @ future_mat
+
+
+def deltaMagnitudes(d):
+    """-> (translation mm, rotation deg) of relative transforms d (was delta_magnitudes)"""
+    tDp = np.linalg.norm(d[..., :3, 3], axis=-1) * M_TO_MM
+    tTr = np.clip((np.trace(d[..., :3, :3], axis1=-2, axis2=-1) - 1.0) / 2.0, -1.0, 1.0)
+    return tDp, np.degrees(np.arccos(tTr))
+
+
+def _sourceEpisodeMeta(root=None):
+    tRoot = pathlib.Path(root) if root is not None else _defaultLerobotRoot()
+    tFiles = sorted(glob.glob(str(tRoot / "meta" / "episodes" / "**" / "*.parquet"), recursive=True))
+    tD = pd.concat([pd.read_parquet(tF) for tF in tFiles], ignore_index=True).sort_values("episode_index")
+    return tD.reset_index(drop=True)
+
+
+def decodeGlobal(row, n, out_res=IMAGE_HW, root=None, transform=None):
+    """Decode this episode's global frames straight from the source mp4 (was decode_global).
 
     Same policy as the UMI exporter used for the wrist views: no crop, INTER_AREA to 224x224, and a
     half-frame tolerance on from_timestamp (a tight comparison drops the intended first frame in 35 of
@@ -105,58 +137,44 @@ def decode_global(row, n, out_res=(224, 224), root=None, transform=None):
     applied to a wrist view, and it is never a mirror: a mirror would flip handedness against the state and
     action, which are left untouched.
     """
-    chunk = int(np.asarray(row[f"videos/{GLOBAL_KEY}/chunk_index"]).ravel()[0])
-    fidx = int(np.asarray(row[f"videos/{GLOBAL_KEY}/file_index"]).ravel()[0])
-    t0 = float(np.asarray(row[f"videos/{GLOBAL_KEY}/from_timestamp"]).ravel()[0])
-    root = pathlib.Path(root) if root is not None else R150_LEROBOT
-    path = root / "videos" / GLOBAL_KEY / f"chunk-{chunk:03d}" / f"file-{fidx:03d}.mp4"
-    frames = []
-    with av.open(str(path)) as c:
-        st = c.streams.video[0]; st.thread_type = "AUTO"
-        c.seek(int(max(t0 - 0.5, 0) / float(st.time_base)), stream=st)
-        tol = 0.5 * float(st.average_rate.denominator) / float(st.average_rate.numerator) if st.average_rate else 1/60
-        for f in c.decode(st):
-            if float(f.pts * st.time_base) < t0 - tol:
+    tChunk = int(np.asarray(row[f"videos/{GLOBAL_KEY}/chunk_index"]).ravel()[0])
+    tFileIdx = int(np.asarray(row[f"videos/{GLOBAL_KEY}/file_index"]).ravel()[0])
+    tT0 = float(np.asarray(row[f"videos/{GLOBAL_KEY}/from_timestamp"]).ravel()[0])
+    tRoot = pathlib.Path(root) if root is not None else _defaultLerobotRoot()
+    tPath = tRoot / "videos" / GLOBAL_KEY / f"chunk-{tChunk:03d}" / f"file-{tFileIdx:03d}.mp4"
+    tFrames = []
+    with av.open(str(tPath)) as tContainer:
+        tStream = tContainer.streams.video[0]
+        tStream.thread_type = "AUTO"
+        tContainer.seek(int(max(tT0 - SEEK_BACK_S, 0) / float(tStream.time_base)), stream=tStream)
+        if tStream.average_rate:
+            tTol = 0.5 * float(tStream.average_rate.denominator) / float(tStream.average_rate.numerator)
+        else:
+            tTol = FALLBACK_HALF_FRAME_S
+        for tFrame in tContainer.decode(tStream):
+            if float(tFrame.pts * tStream.time_base) < tT0 - tTol:
                 continue
-            im = cv2.resize(f.to_ndarray(format="rgb24"), out_res, interpolation=cv2.INTER_AREA)
+            tIm = cv2.resize(tFrame.to_ndarray(format="rgb24"), out_res, interpolation=cv2.INTER_AREA)
             if transform == "rot180":
-                im = cv2.rotate(im, cv2.ROTATE_180)
+                tIm = cv2.rotate(tIm, cv2.ROTATE_180)
             elif transform not in (None, "none"):
                 raise ValueError(f"unknown global transform {transform!r}")
-            frames.append(im)
-            if len(frames) >= n:
+            tFrames.append(tIm)
+            if len(tFrames) >= n:
                 break
-    if len(frames) < n:
-        raise RuntimeError(f"global short segment {path.name}: {len(frames)}/{n}")
-    return np.stack(frames[:n]).astype(np.uint8)
+    if len(tFrames) < n:
+        raise RuntimeError(f"global short segment {tPath.name}: {len(tFrames)}/{n}")
+    return np.stack(tFrames[:n]).astype(np.uint8)
 
 
-def _state_per_arm():
-    return {"full38": 19, "slim20": 10, "s32": 16}[STATE_MODE]
-
-
-# joints for state34, read once from the source dataset the zarr came from
-_JOINTS = None
-
-
-def _joints_all():
-    global _JOINTS
-    if _JOINTS is None:
-        import pyarrow.parquet as _pq
-        srcd = str(NODE_HOME / "holobrain-data/lerobot/rebot_3stack_R150_headview")
-        _d = _pq.read_table(sorted(pathlib.Path(srcd, "data").rglob("*.parquet"))[0]).to_pandas()
-        _JOINTS = np.stack([np.asarray(v, np.float64) for v in _d["observation.state"].values])
-    return _JOINTS
-
-
-def features(image_hw=(224, 224)):
-    h, w = image_hw
+def features(image_hw=IMAGE_HW):
+    tH, tW = image_hw
     return {
-        "observation.images.global": {"dtype": "video", "shape": (h, w, 3),
+        "observation.images.global": {"dtype": "video", "shape": (tH, tW, 3),
                                       "names": ["height", "width", "channels"]},
-        "observation.images.left_wrist": {"dtype": "video", "shape": (h, w, 3),
+        "observation.images.left_wrist": {"dtype": "video", "shape": (tH, tW, 3),
                                           "names": ["height", "width", "channels"]},
-        "observation.images.right_wrist": {"dtype": "video", "shape": (h, w, 3),
+        "observation.images.right_wrist": {"dtype": "video", "shape": (tH, tW, 3),
                                            "names": ["height", "width", "channels"]},
         "observation.state": {"dtype": "float32", "shape": (STATE76,), "names": None},
         # Always a chunk here. The ancestor branched on ACTION_MODE and would silently emit a flat 20-vector
@@ -168,251 +186,202 @@ def features(image_hw=(224, 224)):
 
 def _traj(z, r, s, e):
     """Absolute poses, widths and timestamps for one arm over one episode, at the raw 30 Hz cadence."""
-    idx = np.arange(s, e)
-    pos = np.asarray(z["data"][f"robot{r}_eef_pos"].oindex[idx], np.float64)
-    rv = np.asarray(z["data"][f"robot{r}_eef_rot_axis_angle"].oindex[idx], np.float64)
-    w = np.asarray(z["data"][f"robot{r}_gripper_width"].oindex[idx], np.float64)[:, 0]
-    tau = np.arange(len(idx)) / RAW_HZ
-    return tau, pos, Rot.from_rotvec(rv), w
+    tIdx = np.arange(s, e)
+    tPos = np.asarray(z["data"][f"robot{r}_eef_pos"].oindex[tIdx], np.float64)
+    tRv = np.asarray(z["data"][f"robot{r}_eef_rot_axis_angle"].oindex[tIdx], np.float64)
+    tW = np.asarray(z["data"][f"robot{r}_gripper_width"].oindex[tIdx], np.float64)[:, 0]
+    tTau = np.arange(len(tIdx)) / RAW_HZ
+    return tTau, tPos, Rot.from_rotvec(tRv), tW
 
 
 def _sample(tau, pos, rot, w, t):
     """Pose and width at arbitrary physical times: position and width linear, rotation slerp."""
     t = np.clip(np.asarray(t, np.float64), tau[0], tau[-1])
-    p = np.stack([np.interp(t, tau, pos[:, k]) for k in range(3)], axis=-1)
-    q = Slerp(tau, rot)(t)
-    ww = np.interp(t, tau, w)
-    m = np.zeros((len(t), 4, 4))
-    m[:, :3, :3] = q.as_matrix()
-    m[:, :3, 3] = p
-    m[:, 3, 3] = 1.0
-    return m, ww
+    tP = np.stack([np.interp(t, tau, pos[:, tK]) for tK in range(3)], axis=-1)
+    tQ = Slerp(tau, rot)(t)
+    tWw = np.interp(t, tau, w)
+    tM = np.zeros((len(t), 4, 4))
+    tM[:, :3, :3] = tQ.as_matrix()
+    tM[:, :3, 3] = tP
+    tM[:, 3, 3] = 1.0
+    return tM, tWw
 
 
-def episode_frames(z, s, e, stride):
-    """One record per query row: UMI76 state and a 16-step current-anchor action chunk.
+def _packState(n, invCur, hist, cur, gripHist, gripCur, matToPose10d):
+    """UMI76 state rows (n, 76) in upstream packing (self / cross terms at [t - dt, t])"""
+    tState = np.zeros((n, STATE76), np.float32)
+    for tR in range(N_ROBOT):
+        tO = 1 - tR
+        tSelfH = matToPose10d(invCur[tR] @ hist[tR])          # (n,9)
+        tSelfC = matToPose10d(invCur[tR] @ cur[tR])           # identity by construction
+        tCrossH = matToPose10d(invCur[tO] @ hist[tR])
+        tCrossC = matToPose10d(invCur[tO] @ cur[tR])
+        tK = f"r{tR}_"
+        tPos, tPosW = STATE_OFFSETS[tK + "pos"], STATE_OFFSETS[tK + "pos_wrt"]
+        tRot, tRotW = STATE_OFFSETS[tK + "rot"], STATE_OFFSETS[tK + "rot_wrt"]
+        tGrip = STATE_OFFSETS[tK + "grip"]
+        tState[:, tPos:tPos + 3] = tSelfH[:, :3]
+        tState[:, tPos + 3:tPos + 6] = tSelfC[:, :3]
+        tState[:, tPosW:tPosW + 3] = tCrossH[:, :3]
+        tState[:, tPosW + 3:tPosW + 6] = tCrossC[:, :3]
+        tState[:, tRot:tRot + 6] = tSelfH[:, 3:POSE9]
+        tState[:, tRot + 6:tRot + 12] = tSelfC[:, 3:POSE9]
+        tState[:, tRotW:tRotW + 6] = tCrossH[:, 3:POSE9]
+        tState[:, tRotW + 6:tRotW + 12] = tCrossC[:, 3:POSE9]
+        tState[:, tGrip] = gripHist[tR]
+        tState[:, tGrip + 1] = gripCur[tR]
+    return tState
+
+
+def episodeFrames(z, s, e, stride):
+    """One record per query row: UMI76 state and a 16-step current-anchor action chunk (was episode_frames).
 
     Query rows sit on the stored 15 Hz grid so each one lines up with a video frame, but every pose the
     state and the action refer to is interpolated at upstream's physical offsets, not at stored indices.
     A row is kept only if its history and all 16 targets fall inside the episode -- nothing is padded,
     because X-VLA does not read action_is_pad and would train on invented targets as if they were real.
     """
-    tr = {r: _traj(z, r, s, e) for r in range(N_ROBOT)}
-    tau = tr[0][0]
-    q_local = np.arange(0, len(tau), stride)
-    t_q = q_local / RAW_HZ
-    ok = (t_q - UMI_DT >= tau[0] - 1e-9) & (t_q + A_HORIZON * UMI_DT <= tau[-1] + 1e-9)
-    q_local, t_q = q_local[ok], t_q[ok]
-    if len(t_q) < 3:
+    from umi.common.pose_util import mat_to_pose10d
+    tTr = {tR: _traj(z, tR, s, e) for tR in range(N_ROBOT)}
+    tTau = tTr[0][0]
+    tLocal = np.arange(0, len(tTau), stride)
+    tTq = tLocal / RAW_HZ
+    tOk = (tTq - UMI_DT >= tTau[0] - TIME_EPS_S) & (tTq + A_HORIZON * UMI_DT <= tTau[-1] + TIME_EPS_S)
+    tLocal, tTq = tLocal[tOk], tTq[tOk]
+    if len(tTq) < MIN_ROWS:
         return None, "too short for the umi76 window"
-    n = len(t_q)
+    tN = len(tTq)
 
-    cur, hist, wc, wh, act_m, act_w = {}, {}, {}, {}, {}, {}
-    for r in range(N_ROBOT):
-        ta, pos, rot, w = tr[r]
-        cur[r], wc[r] = _sample(ta, pos, rot, w, t_q)
-        hist[r], wh[r] = _sample(ta, pos, rot, w, t_q - UMI_DT)
-        tk = (t_q[:, None] + (np.arange(A_HORIZON) + 1)[None, :] * UMI_DT).reshape(-1)
-        m, ww = _sample(ta, pos, rot, w, tk)
-        act_m[r] = m.reshape(n, A_HORIZON, 4, 4)
-        act_w[r] = ww.reshape(n, A_HORIZON)
+    tCur, tHist, tWc, tWh, tActM, tActW = {}, {}, {}, {}, {}, {}
+    for tR in range(N_ROBOT):
+        tTa, tPos, tRot, tW = tTr[tR]
+        tCur[tR], tWc[tR] = _sample(tTa, tPos, tRot, tW, tTq)
+        tHist[tR], tWh[tR] = _sample(tTa, tPos, tRot, tW, tTq - UMI_DT)
+        tTk = (tTq[:, None] + (np.arange(A_HORIZON) + 1)[None, :] * UMI_DT).reshape(-1)
+        tM, tWw = _sample(tTa, tPos, tRot, tW, tTk)
+        tActM[tR] = tM.reshape(tN, A_HORIZON, 4, 4)
+        tActW[tR] = tWw.reshape(tN, A_HORIZON)
 
-    inv_cur = {r: np.linalg.inv(cur[r]) for r in range(N_ROBOT)}
-    state = np.zeros((n, STATE76), np.float32)
-    # Upstream packing: keys sorted alphabetically (timm_obs_encoder.py:169), each reshaped (T, D) -> flat,
-    # so timestep-major with the older frame first. Do not re-order for slim20 compatibility.
-    OFF = {"r0_pos": 0, "r0_pos_wrt": 6, "r0_rot": 12, "r0_rot_wrt": 24, "r0_grip": 36,
-           "r1_pos": 38, "r1_pos_wrt": 44, "r1_rot": 50, "r1_rot_wrt": 62, "r1_grip": 74}
-    for r in range(N_ROBOT):
-        o = 1 - r
-        self_h = mat_to_pose10d(inv_cur[r] @ hist[r])          # (n,9)
-        self_c = mat_to_pose10d(inv_cur[r] @ cur[r])           # identity by construction
-        cross_h = mat_to_pose10d(inv_cur[o] @ hist[r])
-        cross_c = mat_to_pose10d(inv_cur[o] @ cur[r])
-        k = f"r{r}_"
-        state[:, OFF[k + "pos"]:OFF[k + "pos"] + 3] = self_h[:, :3]
-        state[:, OFF[k + "pos"] + 3:OFF[k + "pos"] + 6] = self_c[:, :3]
-        state[:, OFF[k + "pos_wrt"]:OFF[k + "pos_wrt"] + 3] = cross_h[:, :3]
-        state[:, OFF[k + "pos_wrt"] + 3:OFF[k + "pos_wrt"] + 6] = cross_c[:, :3]
-        state[:, OFF[k + "rot"]:OFF[k + "rot"] + 6] = self_h[:, 3:9]
-        state[:, OFF[k + "rot"] + 6:OFF[k + "rot"] + 12] = self_c[:, 3:9]
-        state[:, OFF[k + "rot_wrt"]:OFF[k + "rot_wrt"] + 6] = cross_h[:, 3:9]
-        state[:, OFF[k + "rot_wrt"] + 6:OFF[k + "rot_wrt"] + 12] = cross_c[:, 3:9]
-        state[:, OFF[k + "grip"]] = wh[r]
-        state[:, OFF[k + "grip"] + 1] = wc[r]
+    tInvCur = {tR: np.linalg.inv(tCur[tR]) for tR in range(N_ROBOT)}
+    tState = _packState(tN, tInvCur, tHist, tCur, tWh, tWc, mat_to_pose10d)
 
-    action = np.zeros((n, A_HORIZON, ACTION_PER_ARM * N_ROBOT), np.float32)
-    dp_all, dth_all = [], []
-    for r in range(N_ROBOT):
-        A = inv_cur[r][:, None] @ act_m[r]                      # A[k] = inv(T_t) @ T(t+(k+1)dt)
-        a9 = mat_to_pose10d(A.reshape(-1, 4, 4)).reshape(n, A_HORIZON, 9)
-        off = r * ACTION_PER_ARM
-        action[:, :, off:off + 9] = a9
-        action[:, :, off + 9] = act_w[r]
-        step = np.linalg.inv(A[:, :-1].reshape(-1, 4, 4)) @ A[:, 1:].reshape(-1, 4, 4)
-        dp, dth = delta_magnitudes(np.concatenate([A[:, 0], step], axis=0))
-        dp_all.append(dp); dth_all.append(dth)
+    tAction = np.zeros((tN, A_HORIZON, ACTION_PER_ARM * N_ROBOT), np.float32)
+    tDpAll, tDthAll = [], []
+    for tR in range(N_ROBOT):
+        tA = tInvCur[tR][:, None] @ tActM[tR]                      # A[k] = inv(T_t) @ T(t+(k+1)dt)
+        tA9 = mat_to_pose10d(tA.reshape(-1, 4, 4)).reshape(tN, A_HORIZON, POSE9)
+        tOff = tR * ACTION_PER_ARM
+        tAction[:, :, tOff:tOff + POSE9] = tA9
+        tAction[:, :, tOff + POSE9] = tActW[tR]
+        tStep = np.linalg.inv(tA[:, :-1].reshape(-1, 4, 4)) @ tA[:, 1:].reshape(-1, 4, 4)
+        tDp, tDth = deltaMagnitudes(np.concatenate([tA[:, 0], tStep], axis=0))
+        tDpAll.append(tDp)
+        tDthAll.append(tDth)
 
-    prev_valid = np.ones((n, 1), np.float32)                    # history always exists here, by the mask
-    dp_all = np.concatenate(dp_all); dth_all = np.concatenate(dth_all)
-    stats = dict(n=n, dp_p99=float(np.percentile(dp_all, 99)), dp_max=float(dp_all.max()),
-                 dth_p99=float(np.percentile(dth_all, 99)), dth_max=float(dth_all.max()),
-                 soft=int(((dp_all > SOFT_DP_MM) | (dth_all > SOFT_DTH_DEG)).sum()),
-                 hard=int(((dp_all > HARD_DP_MM) | (dth_all > HARD_DTH_DEG)).sum()))
-    return dict(idx=q_local + s, state=state, action=action, prev_valid=prev_valid), stats
+    tPrevValid = np.ones((tN, 1), np.float32)                      # history always exists here, by the mask
+    tDpAll = np.concatenate(tDpAll)
+    tDthAll = np.concatenate(tDthAll)
+    tStats = dict(n=tN, dp_p99=float(np.percentile(tDpAll, GATE_PERCENTILE)), dp_max=float(tDpAll.max()),
+                  dth_p99=float(np.percentile(tDthAll, GATE_PERCENTILE)), dth_max=float(tDthAll.max()),
+                  soft=int(((tDpAll > SOFT_DP_MM) | (tDthAll > SOFT_DTH_DEG)).sum()),
+                  hard=int(((tDpAll > HARD_DP_MM) | (tDthAll > HARD_DTH_DEG)).sum()))
+    return dict(idx=tLocal + s, state=tState, action=tAction, prev_valid=tPrevValid), tStats
 
 
-def _parse_source(spec):
-    """`zarr=<path>,lerobot=<root>[,global_transform=rot180]` -> dict, with the keys checked.
+def _parseSource(spec):
+    """`zarr=<path>,lerobot=<root>[,global_transform=rot180]` -> dict, with the keys checked (was _parse_source).
 
     Sources are concatenated in the order given and each keeps its own instruction table and its own global
     video root, so R180 = R150 + R30 is one conversion pass rather than a parquet merge: episode indices,
     statistics and provenance then come out right by construction.
     """
-    d = {}
-    for part in spec.split(","):
-        if not part.strip():
+    tD = {}
+    for tPart in spec.split(","):
+        if not tPart.strip():
             continue
-        k, _, v = part.partition("=")
-        d[k.strip()] = v.strip()
-    unknown = set(d) - {"zarr", "lerobot", "global_transform", "episodes_json", "select"}
-    if unknown:
-        raise SystemExit(f"--source: unknown key(s) {sorted(unknown)} in {spec!r}")
-    for k in ("zarr", "lerobot"):
-        if k not in d:
-            raise SystemExit(f"--source: missing {k}= in {spec!r}")
-        if not pathlib.Path(d[k]).exists():
-            raise SystemExit(f"--source: {k}={d[k]} does not exist")
-    d.setdefault("global_transform", None)
-    d.setdefault("episodes_json", None)
+        tK, _, tV = tPart.partition("=")
+        tD[tK.strip()] = tV.strip()
+    tUnknown = set(tD) - SOURCE_KEYS
+    if tUnknown:
+        raise SourceSpecError(f"--source: unknown key(s) {sorted(tUnknown)} in {spec!r}")
+    for tK in ("zarr", "lerobot"):
+        if tK not in tD:
+            raise SourceSpecError(f"--source: missing {tK}= in {spec!r}")
+        if not pathlib.Path(tD[tK]).exists():
+            raise SourceSpecError(f"--source: {tK}={tD[tK]} does not exist")
+    tD.setdefault("global_transform", None)
+    tD.setdefault("episodes_json", None)
     # [2026-09-28] select=<json>: convert only the zarr episodes listed in its "zarr_episodes" (zarr numbering,
     # i.e. BEFORE episodes_json maps them to the pool). Without it every episode is converted, as before.
-    d.setdefault("select", None)
-    if d["select"] and not pathlib.Path(d["select"]).exists():
-        raise SystemExit(f"--source: select={d['select']} does not exist")
-    return d
+    tD.setdefault("select", None)
+    if tD["select"] and not pathlib.Path(tD["select"]).exists():
+        raise SourceSpecError(f"--source: select={tD['select']} does not exist")
+    return tD
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--zarr", default=str(NODE_HOME / "umi_bridge/r150_umi.zarr"),
-                    help="single-source shorthand, paired with the default LeRobot root; "
-                         "ignored when --source is given")
-    ap.add_argument("--source", action="append", default=[],
-                    help="zarr=<path>,lerobot=<root>[,global_transform=rot180]; repeatable")
-    ap.add_argument("--out", required=True)
-    ap.add_argument("--repo-id", default="rebot/r150_umi_v4")
-    ap.add_argument("--episodes", type=int, default=0, help="0 = all")
-    ap.add_argument("--stride", type=int, default=2, help="zarr frames per stored frame (30 fps -> 15 Hz)")
-    ap.add_argument("--fps", type=int, default=15)
-    ap.add_argument("--gripper-target", choices=["current", "next"], default="current",
-                help="which instant the action gripper refers to (see GRIPPER_TARGET)")
-    ap.add_argument("--action-mode", choices=["delta", "umi"], default="delta")
-    ap.add_argument("--state-mode", choices=["full38", "slim20", "s32"], default="full38")
-    ap.add_argument("--drop-hard", action="store_true", help="skip episodes containing a hard-gate delta")
-    a = ap.parse_args()
+def buildParser() -> argparse.ArgumentParser:
+    tAp = argparse.ArgumentParser()
+    tAp.add_argument("--zarr", default=str(NODE_HOME / "umi_bridge/r150_umi.zarr"),
+                     help="single-source shorthand, paired with the default LeRobot root; "
+                          "ignored when --source is given")
+    tAp.add_argument("--source", action="append", default=[],
+                     help="zarr=<path>,lerobot=<root>[,global_transform=rot180]; repeatable")
+    tAp.add_argument("--out", required=True)
+    tAp.add_argument("--repo-id", default="rebot/r150_umi_v4")
+    tAp.add_argument("--episodes", type=int, default=0, help="0 = all")
+    tAp.add_argument("--stride", type=int, default=2, help="zarr frames per stored frame (30 fps -> 15 Hz)")
+    tAp.add_argument("--fps", type=int, default=15)
+    tAp.add_argument("--gripper-target", choices=["current", "next"], default="current",
+                     help="which instant the action gripper refers to (see GRIPPER_TARGET)")
+    tAp.add_argument("--action-mode", choices=["delta", "umi"], default="delta")
+    tAp.add_argument("--state-mode", choices=["full38", "slim20", "s32"], default="full38")
+    tAp.add_argument("--drop-hard", action="store_true", help="skip episodes containing a hard-gate delta")
+    return tAp
 
-    global STATE_MODE, GRIPPER_TARGET, ACTION_MODE
-    STATE_MODE = a.state_mode
-    GRIPPER_TARGET = a.gripper_target
-    ACTION_MODE = a.action_mode
-    from lerobot.datasets.lerobot_dataset import LeRobotDataset
-    sources = [_parse_source(x) for x in a.source] or [
-        dict(zarr=a.zarr, lerobot=str(R150_LEROBOT), global_transform=None)]
 
-    out = pathlib.Path(a.out)
-    # image_writer_threads is the single biggest lever here: without it add_frame writes each PNG inline and
-    # costs 4.3 s per 300 frames, with 8 threads it hands off and costs 0.01 s. Measured on this box.
-    ds = LeRobotDataset.create(repo_id=a.repo_id, fps=a.fps, features=features(),
-                               root=str(out), robot_type="rebot_b601", use_videos=True,
-                               image_writer_threads=int(os.environ.get("CONV_WRITER_THREADS", "8")))
-
-    t0 = time.time(); kept = dropped = 0; agg = []
-    for si, src in enumerate(sources):
-        print(f"[source {si}] zarr={src['zarr']}  lerobot={src['lerobot']}  "
-              f"global_transform={src['global_transform']}", flush=True)
-        z = zarr.open(src["zarr"], "r")
-        ends = np.asarray(z["meta"]["episode_ends"][:], int)
-        starts = np.concatenate([[0], ends[:-1]])
-        tab = episode_table(pathlib.Path(src["lerobot"]))
-        src_meta = _source_episode_meta(src["lerobot"])
-        lut = dict(zip(tab["episode_index"].tolist(), tab["instruction"].tolist()))
+def _episodeOrder(src, ends, episodes):
+    """-> (zarr episodes to convert, pool episode map or None, n for the progress line)"""
+    tEpMap = None
+    if src["episodes_json"]:
         # A zarr built from a SUBSET of a pool is numbered 0..n-1 in the order the subset was added, which is
         # not the pool's episode numbering. Without this map, episode 37 of the zarr would be given episode
         # 37's instruction and episode 37's global video -- both belonging to a different demonstration.
-        ep_map = None
-        if src["episodes_json"]:
-            ep_map = json.loads(pathlib.Path(src["episodes_json"]).read_text())["episodes"]
-            if len(ep_map) != len(ends):
-                raise SystemExit(f"episodes_json lists {len(ep_map)} episodes but the zarr holds {len(ends)}")
-            print(f"  subset mapping: zarr 0..{len(ends)-1} -> pool episodes "
-                  f"{ep_map[0]}..{ep_map[-1]}", flush=True)
-        n_ep = len(ends) if a.episodes == 0 else min(a.episodes, len(ends))
-        ep_iter = list(range(n_ep))
-        if src["select"]:
-            ep_iter = [int(e) for e in json.loads(pathlib.Path(src["select"]).read_text())["zarr_episodes"]]
-            if len(set(ep_iter)) != len(ep_iter) or min(ep_iter) < 0 or max(ep_iter) >= len(ends):
-                raise SystemExit(f"select={src['select']}: zarr_episodes must be unique and within 0..{len(ends)-1}")
-            n_ep = len(ep_iter)
-            print(f"  select: {n_ep} of {len(ends)} zarr episodes from {src['select']}", flush=True)
-        for ep in ep_iter:
-            rec, st = episode_frames(z, starts[ep], ends[ep], a.stride)
-            if rec is None:
-                print(f"  ep {ep:3d} skipped: {st}"); dropped += 1; continue
-            if a.drop_hard and st["hard"] > 0:
-                print(f"  ep {ep:3d} dropped: {st['hard']} hard-gate deltas "
-                      f"(dp_max {st['dp_max']:.1f} mm, dth_max {st['dth_max']:.1f} deg)")
-                dropped += 1; continue
-            src_ep = ep if ep_map is None else int(ep_map[ep])
-            task = lut[src_ep]
-            imgs = {r: z["data"][f"camera{r}_rgb"] for r in range(N_ROBOT)}
-            # the two wrist reads (JpegXl decode, ~1.1 s) and the global mp4 decode (~2.7 s) are independent;
-            # run them together instead of one after the other
-            wrist_fut = _POOL.submit(lambda: {r: imgs[r][rec["idx"]] for r in range(N_ROBOT)})
-            # global comes from the source mp4 at the SAME (episode, frame) index as the wrist views; the
-            # alignment was verified directly (MAE 0.44 / corr 0.9999, and +1 frame raises MAE 17x).
-            row = src_meta[src_meta["episode_index"] == src_ep].iloc[0]
-            g_all = decode_global(row, int(ends[ep] - starts[ep]),
-                                  root=src["lerobot"], transform=src["global_transform"])
-            wrist = wrist_fut.result()
-            for i, fi in enumerate(rec["idx"]):
-                ds.add_frame({
-                    "observation.images.global": g_all[int(fi - starts[ep])],
-                    "observation.images.left_wrist": wrist[0][i],
-                    "observation.images.right_wrist": wrist[1][i],
-                    "observation.state": rec["state"][i],
-                    "action": rec["action"][i],
-                    "state_prev_valid": rec["prev_valid"][i],
-                    "task": task,
-                })
-            # the three camera keys encode in separate processes: 5.17 -> 4.46 s per 300-frame
-            # episode, measured. Not the 3x the three streams suggest, because the encode is only
-            # part of save_episode and each worker pays process startup.
-            ds.save_episode(parallel_encoding=True)
-            kept += 1; agg.append(st)
-            if ep % 10 == 0 or ep == ep_iter[-1]:
-                print(f"  s{si} ep {ep:3d}/{n_ep}  frames {st['n']:5d}  dp_p99 {st['dp_p99']:6.2f} mm  "
-                      f"soft {st['soft']:3d}  hard {st['hard']:2d}  [{time.time()-t0:6.1f}s]", flush=True)
+        tEpMap = json.loads(pathlib.Path(src["episodes_json"]).read_text())["episodes"]
+        if len(tEpMap) != len(ends):
+            raise SourceSpecError(f"episodes_json lists {len(tEpMap)} episodes but the zarr holds {len(ends)}")
+        print(f"  subset mapping: zarr 0..{len(ends)-1} -> pool episodes "
+              f"{tEpMap[0]}..{tEpMap[-1]}", flush=True)
+    tNumEp = len(ends) if episodes == 0 else min(episodes, len(ends))
+    tOrder = list(range(tNumEp))
+    if src["select"]:
+        tOrder = [int(tE) for tE in json.loads(pathlib.Path(src["select"]).read_text())["zarr_episodes"]]
+        if len(set(tOrder)) != len(tOrder) or min(tOrder) < 0 or max(tOrder) >= len(ends):
+            raise SourceSpecError(f"select={src['select']}: zarr_episodes must be unique and within 0..{len(ends)-1}")
+        tNumEp = len(tOrder)
+        print(f"  select: {tNumEp} of {len(ends)} zarr episodes from {src['select']}", flush=True)
+    return tOrder, tEpMap, tNumEp
 
-    prov = dict(converter="umi_to_lerobot_v4.py",
+
+def _provenance(args, sources, kept, dropped, agg, umiAction):
+    return dict(converter="umi_to_lerobot_v4.py",
                 obs_semantics="prev_rel inv(T_t) @ T_{t-1} + gripper + wrt, baked",
-                sources=[dict(zarr=x["zarr"], lerobot=x["lerobot"], global_transform=x["global_transform"],
-                              **({"select": x["select"],
-                                  "select_zarr_episodes": json.loads(pathlib.Path(x["select"]).read_text())["zarr_episodes"]}
-                                 if x["select"] else {})) for x in sources],
+                sources=[dict(zarr=tX["zarr"], lerobot=tX["lerobot"], global_transform=tX["global_transform"],
+                              **({"select": tX["select"],
+                                  "select_zarr_episodes": json.loads(pathlib.Path(tX["select"]).read_text())["zarr_episodes"]}
+                                 if tX["select"] else {})) for tX in sources],
                 source_zarr=sources[0]["zarr"],
                 global_transform=sources[0]["global_transform"],
                 camera_domain_merge=" + ".join(
-                    f"{pathlib.Path(x['lerobot']).name}"
-                    + (f"({x['global_transform']} global)" if x["global_transform"] else "")
-                    for x in sources), repo_id=a.repo_id, fps=a.fps, stride=a.stride,
+                    f"{pathlib.Path(tX['lerobot']).name}"
+                    + (f"({tX['global_transform']} global)" if tX["global_transform"] else "")
+                    for tX in sources), repo_id=args.repo_id, fps=args.fps, stride=args.stride,
                 episodes_kept=kept, episodes_dropped=dropped,
-                frames=int(sum(s["n"] for s in agg)),
+                frames=int(sum(tS["n"] for tS in agg)),
                 gates=dict(soft_dp_mm=SOFT_DP_MM, soft_dth_deg=SOFT_DTH_DEG,
                            hard_dp_mm=HARD_DP_MM, hard_dth_deg=HARD_DTH_DEG,
-                           soft_total=int(sum(s["soft"] for s in agg)),
-                           hard_total=int(sum(s["hard"] for s in agg))),
-                instruction_source=[str(pathlib.Path(x["lerobot"]) / "meta") for x in sources],
+                           soft_total=int(sum(tS["soft"] for tS in agg)),
+                           hard_total=int(sum(tS["hard"] for tS in agg))),
+                instruction_source=[str(pathlib.Path(tX["lerobot"]) / "meta") for tX in sources],
                 state_mode=STATE_MODE, gripper_target=GRIPPER_TARGET, action_mode=ACTION_MODE,
                 action_semantics=("umi current-anchor inv(T_t)@T_(t+k), k=1..16"
                                   if ACTION_MODE == "umi" else "body-frame delta inv(T_t)@T_(t+1)"),
@@ -420,15 +389,103 @@ def main():
                 # loader, collator or trainer may relativise or horizon-expand it a second time
                 pose_repr=("current_anchor_relative" if ACTION_MODE == "umi" else "body_delta"),
                 already_relativized=(ACTION_MODE == "umi"),
-                horizon=(UA.CHUNK if ACTION_MODE == "umi" else 1),
+                horizon=(umiAction.CHUNK if ACTION_MODE == "umi" else 1),
                 state_semantics="UMI-style local relative proprioception "
                                 "(prev_rel = inv(T_t) @ T_(t-1) + current width), "
                                 "not the exact upstream UMI lowdim schema",
                 state_dim=STATE76,
                 action_dim=ACTION_PER_ARM * N_ROBOT)
-    (out / "v4_provenance.json").write_text(json.dumps(prov, indent=2))
-    print(json.dumps(prov, indent=2))
+
+
+def convert(args) -> None:
+    global STATE_MODE, GRIPPER_TARGET, ACTION_MODE
+    STATE_MODE = args.state_mode
+    GRIPPER_TARGET = args.gripper_target
+    ACTION_MODE = args.action_mode
+    tUmiAction, tInstructions = _loadNodeModules()
+    import zarr
+    from lerobot.datasets.lerobot_dataset import LeRobotDataset
+    tSources = [_parseSource(tX) for tX in args.source] or [
+        dict(zarr=args.zarr, lerobot=str(tInstructions.R150_LEROBOT), global_transform=None)]
+
+    tOut = pathlib.Path(args.out)
+    # image_writer_threads is the single biggest lever here: without it add_frame writes each PNG inline and
+    # costs 4.3 s per 300 frames, with 8 threads it hands off and costs 0.01 s. Measured on this box.
+    tDs = LeRobotDataset.create(repo_id=args.repo_id, fps=args.fps, features=features(),
+                                root=str(tOut), robot_type="rebot_b601", use_videos=True,
+                                image_writer_threads=int(os.environ.get("CONV_WRITER_THREADS", WRITER_THREADS)))
+    tPool = ThreadPoolExecutor(max_workers=2)
+
+    tT0 = time.time()
+    tKept = tDropped = 0
+    tAgg = []
+    for tSi, tSrc in enumerate(tSources):
+        print(f"[source {tSi}] zarr={tSrc['zarr']}  lerobot={tSrc['lerobot']}  "
+              f"global_transform={tSrc['global_transform']}", flush=True)
+        tZ = zarr.open(tSrc["zarr"], "r")
+        tEnds = np.asarray(tZ["meta"]["episode_ends"][:], int)
+        tStarts = np.concatenate([[0], tEnds[:-1]])
+        tTab = tInstructions.episode_table(pathlib.Path(tSrc["lerobot"]))
+        tSrcMeta = _sourceEpisodeMeta(tSrc["lerobot"])
+        tLut = dict(zip(tTab["episode_index"].tolist(), tTab["instruction"].tolist()))
+        tOrder, tEpMap, tNumEp = _episodeOrder(tSrc, tEnds, args.episodes)
+        for tEp in tOrder:
+            tRec, tSt = episodeFrames(tZ, tStarts[tEp], tEnds[tEp], args.stride)
+            if tRec is None:
+                print(f"  ep {tEp:3d} skipped: {tSt}")
+                tDropped += 1
+                continue
+            if args.drop_hard and tSt["hard"] > 0:
+                print(f"  ep {tEp:3d} dropped: {tSt['hard']} hard-gate deltas "
+                      f"(dp_max {tSt['dp_max']:.1f} mm, dth_max {tSt['dth_max']:.1f} deg)")
+                tDropped += 1
+                continue
+            tSrcEp = tEp if tEpMap is None else int(tEpMap[tEp])
+            tTask = tLut[tSrcEp]
+            tImgs = {tR: tZ["data"][f"camera{tR}_rgb"] for tR in range(N_ROBOT)}
+            # the two wrist reads (JpegXl decode, ~1.1 s) and the global mp4 decode (~2.7 s) are independent;
+            # run them together instead of one after the other
+            tWristFut = tPool.submit(lambda: {tR: tImgs[tR][tRec["idx"]] for tR in range(N_ROBOT)})
+            # global comes from the source mp4 at the SAME (episode, frame) index as the wrist views; the
+            # alignment was verified directly (MAE 0.44 / corr 0.9999, and +1 frame raises MAE 17x).
+            tRow = tSrcMeta[tSrcMeta["episode_index"] == tSrcEp].iloc[0]
+            tGlobal = decodeGlobal(tRow, int(tEnds[tEp] - tStarts[tEp]),
+                                   root=tSrc["lerobot"], transform=tSrc["global_transform"])
+            tWrist = tWristFut.result()
+            for tI, tFi in enumerate(tRec["idx"]):
+                tDs.add_frame({
+                    "observation.images.global": tGlobal[int(tFi - tStarts[tEp])],
+                    "observation.images.left_wrist": tWrist[0][tI],
+                    "observation.images.right_wrist": tWrist[1][tI],
+                    "observation.state": tRec["state"][tI],
+                    "action": tRec["action"][tI],
+                    "state_prev_valid": tRec["prev_valid"][tI],
+                    "task": tTask,
+                })
+            # the three camera keys encode in separate processes: 5.17 -> 4.46 s per 300-frame
+            # episode, measured. Not the 3x the three streams suggest, because the encode is only
+            # part of save_episode and each worker pays process startup.
+            tDs.save_episode(parallel_encoding=True)
+            tKept += 1
+            tAgg.append(tSt)
+            if tEp % PROGRESS_EVERY == 0 or tEp == tOrder[-1]:
+                print(f"  s{tSi} ep {tEp:3d}/{tNumEp}  frames {tSt['n']:5d}  dp_p99 {tSt['dp_p99']:6.2f} mm  "
+                      f"soft {tSt['soft']:3d}  hard {tSt['hard']:2d}  [{time.time()-tT0:6.1f}s]", flush=True)
+
+    tProv = _provenance(args, tSources, tKept, tDropped, tAgg, tUmiAction)
+    (tOut / "v4_provenance.json").write_text(json.dumps(tProv, indent=2))
+    print(json.dumps(tProv, indent=2))
+
+
+def main(argv: list[str] | None = None) -> int:
+    tArgs = buildParser().parse_args(argv)
+    try:
+        convert(tArgs)
+    except SourceSpecError as tErr:
+        print(tErr, file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
