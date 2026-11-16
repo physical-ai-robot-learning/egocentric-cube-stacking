@@ -107,7 +107,7 @@ published (see [Sample data](#sample-data)).
 
 The v5.2 technical report is the main document. The earlier split documents remain in `report/archive/` (short and
 full-length versions). The LaTeX
-sources and figure scripts are part of the code available on request. The v3 single report is also in `report/archive/`. The claims checker (`analysis/verify_claims.py`, available with the code) also checks that every value required in the full-length reports appears in the v5 report.
+sources and figure scripts are part of the non-public code. The v3 single report is also in `report/archive/`. The claims checker (`analysis/verify_claims.py`, available with the code) also checks that every value required in the full-length reports appears in the v5 report.
 All reports now cite the upstream HandUMI hardware repository.
 The Part I full version 4.1 (2026-10-12) adds Sec. III, *HandUMI hardware*: the upstream HandUMI project (murobotics-ai/handumi-hw by BrikHMP18,
 formerly robonet-ai; we built `e58de33` and forked handumi-sw at `33cc437`, the fork not used for the reported data), print and electronics, our deviations (no VR tracking, added Teensy 4.1 + ICM-42688-P wrist IMU, fixed-focus head

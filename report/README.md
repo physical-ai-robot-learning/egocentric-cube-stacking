@@ -5,12 +5,12 @@ Korean twin `report_ko.pdf` (15 pages). Older and partial documents are in `arch
 
 **Status:** current (v5.2, 5 November 2026: v5 with the code map updated to the refactored layout; no result changed)
 
-The LaTeX sources and the figure scripts are part of the source code, which is available on request
+The LaTeX sources and the figure scripts are part of the non-public source code
 ([Code availability](../README.md#code-availability)).
 
 ## How the numbers are checked
 
-`analysis/verify_claims.py` (included with the code on request) recomputes every quantitative claim from the records in
+`analysis/verify_claims.py` (part of the non-public code) recomputes every quantitative claim from the records in
 `results/` and the calibrations in `configs/`, and checks that the report text contains each value: the unified report
 `report_en.tex` (section `v5_unified`: every value required by the full-length v4 documents, retired values absent,
 attribution sentences), the v4 full and short documents in `archive/`, and `README.md` + `docs/results.md` +

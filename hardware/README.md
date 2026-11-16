@@ -55,9 +55,9 @@ Our capture rig deviates from upstream in three ways:
 
 - **No VR tracking.** The upstream design gets wrist SE(3) from a PICO/Quest controller. Our collector gets wrist
   motion from the fisheye camera plus an IMU. The Quest-tracker variant lives in our `handumi-sw` fork
-  (available with the code on request).
+  (part of the non-public code).
 - **Added wrist IMU per unit**: a Teensy 4.1 with an ICM-42688-P on SPI. The firmware (`teensy_imu/`, plus a `xiao_imu/` variant and the `bringup/` probes)
-  is available with the code on request.
+  is part of the non-public code.
 - **Head camera**: a Logitech C922 at 640x480@30 is the shared human/robot policy view.
 
 Device identities (USB serials, product names) and the bring-up procedure are in `../docs/collector/README.md` and
@@ -79,7 +79,7 @@ The units in use differ from the build above as follows. Details and numbers (la
   board for the TCP calibration. The TCP-in-rig calibration (`umi_tag_rig_v001.json`) is only valid for the tag
   placement it was measured with.
 - **Wrist IMU = Seeed XIAO nRF52840 Sense Plus** on both units (right 10-16, left 10-17), replacing the Teensy 4.1 +
-  ICM-42688-P (lower still noise). Firmware `xiao_imu/` (available with the code on request; it
+  ICM-42688-P (lower still noise). Firmware `xiao_imu/` (part of the non-public code; it
   needs the `TARGET_SEEED_XIAO_NRF52840_SENSE_PLUS` build flag, without it WHO_AM_I reads 0). The USB serial changes after flashing. The IMU must be rigidly fixed: a loose
   mount showed up as a drifting camera↔IMU rotation.
 - A stereo pair of room-facing fisheye cameras was mounted on the right unit for wrist VIO teleop on 10-15/16. It was

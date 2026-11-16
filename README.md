@@ -68,9 +68,9 @@ Headline offline numbers (26 held-out episodes, final 300k checkpoint; dataset, 
 
 This public version contains documentation, the technical report and media only. The source code (HandUMI collector,
 wrist-pose pipeline with MASt3R-SLAM and IMU metric scale, human-to-robot data builders, X-VLA training, robot
-deployment) is available on request: please open an issue in this repository. Every number in the technical report
-was checked against its source file by a script (`736 claims checked, 0 failed.`); that script is included with the
-code on request.
+deployment) is not publicly released. Research access may be considered upon reasonable request (please open an
+issue in this repository). Every number in the technical report was checked against its source file by a script
+(`736 claims checked, 0 failed.`); that script is part of the non-public code.
 
 The raw dataset, robot datasets and checkpoints are not published. Recording needs the HandUMI rig; MASt3R-SLAM and
 training need a GPU node; deployment needs the robot.
